@@ -706,6 +706,8 @@ pub enum Command {
     },
     /// Resolve user ids to display names through the streaming session.
     UserNames(Vec<String>),
+    /// Ask what the account's friends are listening to.
+    FriendActivity,
     LoadLikedSongsCache {
         generation: u64,
     },
@@ -822,6 +824,8 @@ pub enum Event {
         snapshot: String,
         success: bool,
     },
+    /// The friends' latest songs, or why they could not be read.
+    FriendActivity(Result<Vec<crate::friends::Friend>, crate::friends::Unavailable>),
     /// A user id resolved to a display name (`None` when nothing answers).
     UserName {
         id: String,
@@ -1946,6 +1950,7 @@ impl Worker {
                     }
                 }
                 Command::UserNames(ids) => self.fetch_user_names(ids),
+                Command::FriendActivity => self.fetch_friend_activity(),
                 Command::LoadLikedSongsCache { generation } => {
                     if let Some(account) = self.api.account() {
                         let account_id = account.as_str().to_string();
@@ -3223,6 +3228,30 @@ impl Worker {
                 let _ = events.send(Event::UserName { id, name });
                 waker.wake();
             }
+        });
+    }
+
+    /// Ask Spotify's internal buddy list over the streaming session, the
+    /// only connection that can read it.
+    fn fetch_friend_activity(&self) {
+        let events = self.events.clone();
+        let waker = self.waker.clone();
+        let Some(engine) = self.engine.clone() else {
+            let _ = events.send(Event::FriendActivity(Err(
+                crate::friends::Unavailable::NoSession,
+            )));
+            waker.wake();
+            return;
+        };
+        tokio::spawn(async move {
+            let result = crate::friends::fetch(engine.session())
+                .await
+                .map_err(|error| {
+                    log::warn!("friend activity: {error:#}");
+                    crate::friends::Unavailable::Failed(error.to_string())
+                });
+            let _ = events.send(Event::FriendActivity(result));
+            waker.wake();
         });
     }
 

@@ -3086,3 +3086,61 @@ msgstr "在 ARM 版 Windows 上，Spotifast 用于绘制界面的 OpenGL 由 Mic
 
 #~ msgid "Reduce lyrics motion"
 #~ msgstr "减少歌词动画"
+
+#: src/ui/friends.rs
+msgid "Friend Activity"
+msgstr "好友动态"
+
+#: src/ui/friends.rs
+msgid "Open Settings"
+msgstr "打开设置"
+
+#. Translators: a friend's song may still be playing.
+#: src/ui/friends.rs
+msgid "Now"
+msgstr "正在播放"
+
+#. Translators: {count} minutes ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} min"
+msgstr "{count} 分钟"
+
+#. Translators: {count} hours ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} hr"
+msgstr "{count} 小时"
+
+#. Translators: {count} days ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} d"
+msgstr "{count} 天"
+
+#. Translators: {count} weeks ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} wk"
+msgstr "{count} 周"
+
+#: src/ui/friends.rs
+msgid ""
+"Spotify does not publish friend activity, so this list can stop working "
+"without notice."
+msgstr "Spotify 不公开好友动态，因此此列表可能随时失效，恕不另行通知。"
+
+#: src/ui/friends.rs
+msgid ""
+"When the people you follow share their listening on Spotify, it shows here."
+msgstr "当你关注的人在 Spotify 上分享收听内容时，会显示在这里。"
+
+#: src/ui/friends.rs
+msgid ""
+"Friend activity reads through local playback. Turn on playback on this "
+"computer in Settings."
+msgstr "好友动态通过本地播放读取。请在设置中开启此电脑上的播放。"
+
+#: src/ui/friends.rs
+msgid "Spotify did not return friend activity."
+msgstr "Spotify 未返回好友动态。"

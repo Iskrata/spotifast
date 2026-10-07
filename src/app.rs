@@ -53,6 +53,10 @@ const ASSUMED_CONTEXT_HOLD: Duration = Duration::from_secs(8);
 /// has not caught up yet. Spotify can take a moment to report a command it
 /// has already carried out.
 const PLAYBACK_HOLD: Duration = Duration::from_secs(6);
+/// How often an open Friend Activity panel reads the buddy list again.
+const FRIENDS_REFRESH: Duration = Duration::from_secs(60);
+/// How long a buddy list read may take before it is asked again.
+const FRIENDS_TIMEOUT: Duration = Duration::from_secs(20);
 /// Delay before checking playback again after a command.
 const REMOTE_RECHECK: Duration = Duration::from_millis(1200);
 /// Delay before checking the queue after a local change.
@@ -408,6 +412,13 @@ pub struct App {
     uploaded_covers: std::collections::HashMap<String, crate::playlist_cover::PendingCover>,
     pub show_queue_panel: bool,
     pub show_lyrics_panel: bool,
+    pub show_friends_panel: bool,
+    /// What the account's friends last played, newest first.
+    pub friends: Loadable<Vec<crate::friends::Friend>>,
+    /// The buddy list needs the local playback session, which is missing.
+    pub friends_need_session: bool,
+    /// When the buddy list was last asked for, to space out refreshes.
+    friends_requested_at: Option<Instant>,
     pub lyrics_fullscreen: Option<bool>,
     pub lyrics_fullscreen_seen: bool,
     lyrics_fullscreen_restoring: Option<bool>,
@@ -860,6 +871,10 @@ impl App {
             uploaded_covers: Default::default(),
             show_queue_panel: session.queue_open.unwrap_or(false),
             show_lyrics_panel: false,
+            show_friends_panel: false,
+            friends: Loadable::NotLoaded,
+            friends_need_session: false,
+            friends_requested_at: None,
             lyrics_fullscreen: None,
             lyrics_fullscreen_seen: false,
             lyrics_fullscreen_restoring: None,
@@ -1653,6 +1668,44 @@ impl App {
         None
     }
 
+    /// Asks for the friends' latest songs, unless a request is out or the
+    /// list is fresh enough; `force` asks regardless of age.
+    pub fn refresh_friends(&mut self, force: bool) {
+        if self.friends_stale(force) {
+            self.friends_requested_at = Some(Instant::now());
+            if self.friends.get().is_none() {
+                self.friends = Loadable::Loading;
+            }
+            self.backend.send(Command::FriendActivity);
+        }
+    }
+
+    /// Whether the friends list is due another read. Spotify's own client
+    /// asks about once a minute.
+    pub fn friends_stale(&self, force: bool) -> bool {
+        let pending = matches!(self.friends, Loadable::Loading);
+        match self.friends_requested_at {
+            None => true,
+            Some(at) if pending => at.elapsed() >= FRIENDS_TIMEOUT,
+            Some(at) => force || at.elapsed() >= FRIENDS_REFRESH,
+        }
+    }
+
+    fn handle_friends(
+        &mut self,
+        result: Result<Vec<crate::friends::Friend>, crate::friends::Unavailable>,
+    ) {
+        use crate::friends::Unavailable;
+        self.friends_need_session = matches!(result, Err(Unavailable::NoSession));
+        self.friends = match result {
+            Ok(friends) => Loadable::Loaded(friends),
+            // A failed refresh keeps the list already shown.
+            Err(_) if self.friends.get().is_some() => return,
+            Err(Unavailable::NoSession) => Loadable::Failed(String::new()),
+            Err(Unavailable::Failed(error)) => Loadable::Failed(error),
+        };
+    }
+
     pub fn tint_for(&mut self, url: Option<&str>) -> Option<Color32> {
         let url = url?;
         if let Some(color) = self.accents.get(url) {
@@ -1975,6 +2028,7 @@ impl App {
                 Event::UserName { id, name } => {
                     self.set_user_name(id, name);
                 }
+                Event::FriendActivity(result) => self.handle_friends(result),
                 Event::AudiobookShows(uris) => {
                     self.audiobook_shows.extend(uris);
                 }
@@ -8937,6 +8991,9 @@ impl App {
             }
             Action::SignOut => {
                 self.backend.send(Command::SignOut);
+                self.friends = Loadable::NotLoaded;
+                self.friends_need_session = false;
+                self.friends_requested_at = None;
                 self.history = vec![Page::Home];
                 self.history_index = 0;
             }
@@ -8944,9 +9001,20 @@ impl App {
                 self.settings.sidebar_visible = !self.settings.sidebar_visible;
                 self.settings_dirty = true;
             }
+            Action::ToggleFriendsPanel => {
+                self.leave_lyrics_fullscreen(ctx);
+                self.show_friends_panel = !self.show_friends_panel;
+                if self.show_friends_panel {
+                    self.show_queue_panel = false;
+                    self.show_lyrics_panel = false;
+                    self.refresh_friends(false);
+                }
+            }
+            Action::RefreshFriends(force) => self.refresh_friends(force),
             Action::ToggleQueuePanel => {
                 self.show_queue_panel = !self.show_queue_panel;
                 if self.show_queue_panel {
+                    self.show_friends_panel = false;
                     self.show_lyrics_panel = false;
                     self.refresh_queue(true);
                 }
@@ -8955,6 +9023,7 @@ impl App {
                 self.leave_lyrics_fullscreen(ctx);
                 self.show_lyrics_panel = !self.show_lyrics_panel;
                 if self.show_lyrics_panel {
+                    self.show_friends_panel = false;
                     self.show_queue_panel = false;
                     self.lyrics_following = true;
                     self.request_lyrics();

@@ -279,6 +279,8 @@ pub struct Settings {
     pub sidebar_width: f32,
     pub lyrics_width: f32,
     pub queue_width: f32,
+    /// Width of the Friend Activity panel.
+    pub friends_width: f32,
     /// Use compact single-line rows without cover art in track lists.
     pub tracklist_compact: bool,
     /// Linux: middle-click a list to autoscroll it. Off by default, because
@@ -443,6 +445,7 @@ impl Default for Settings {
             sidebar_width: 250.0,
             lyrics_width: 360.0,
             queue_width: 360.0,
+            friends_width: 300.0,
             tracklist_compact: false,
             middle_click_autoscroll: false,
             search_history: Vec::new(),

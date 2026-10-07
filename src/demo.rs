@@ -748,6 +748,73 @@ fn demo_sound() -> Vec<f64> {
         .collect()
 }
 
+/// Friends and what they last played, a few minutes to a few days ago.
+pub fn sample_friends() -> Vec<crate::friends::Friend> {
+    use crate::friends::{Friend, FriendTrack, Link};
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_millis() as i64)
+        .unwrap_or_default();
+    let minute = 60_000;
+    let link = |kind: &str, id: &str, name: &str| Link {
+        uri: Some(format!("spotify:{kind}:{id}")),
+        name: name.into(),
+    };
+    [
+        (
+            "maya",
+            "Maya",
+            2,
+            "Kerala",
+            "Bonobo",
+            Some(link("playlist", "pl0", "Late night focus")),
+        ),
+        (
+            "jonas",
+            "Jonas Weber",
+            4,
+            "Otomo",
+            "Khruangbin",
+            Some(link("album", "alb1", "Mordechai")),
+        ),
+        ("lea", "Léa", 38, "Shadows", "Nils Frahm", None),
+        (
+            "sam",
+            "Sam",
+            190,
+            "Tides",
+            "Little Simz",
+            Some(link("playlist", "pl3", "Running 2026")),
+        ),
+        (
+            "ines",
+            "Inês",
+            2 * 1440,
+            "Elysian",
+            "Floating Points",
+            Some(link("artist", "art4", "Floating Points")),
+        ),
+    ]
+    .into_iter()
+    .enumerate()
+    .map(|(index, (id, name, ago, track, artist, context))| Friend {
+        uri: format!("spotify:user:{id}"),
+        name: name.into(),
+        image_url: (index != 2)
+            .then(|| format!("https://picsum.photos/seed/spotifast-friend{index}/64/64")),
+        timestamp_ms: now - ago * minute,
+        track: FriendTrack {
+            uri: format!("spotify:track:friend{index}"),
+            name: track.into(),
+            image_url: None,
+            artist: link("artist", &format!("art{index}"), artist),
+            album: Some(link("album", &format!("alb{index}"), track)),
+            context,
+        },
+    })
+    .collect()
+}
+
 #[cfg(feature = "demo")]
 pub fn apply_flags(app: &mut App, page: Option<&str>, show: Option<&str>) {
     // Default screenshots to the main window regardless of saved settings.
@@ -774,6 +841,10 @@ pub fn apply_flags(app: &mut App, page: Option<&str>, show: Option<&str>) {
                 };
             }
             "queue" => app.show_queue_panel = true,
+            "friends" => {
+                app.show_friends_panel = true;
+                app.friends = crate::model::Loadable::Loaded(sample_friends());
+            }
             "art-background" => {
                 app.settings.art_background = true;
                 // Fixed colours, so the shot does not wait on the artwork.
@@ -1761,7 +1832,21 @@ mod tests {
             assert!(app.manual_queue.is_empty());
             assert_eq!(app.queue.get().unwrap().queue, rows[2..]);
             let tree = accessible_frame(&ctx, &mut app, vec![]);
-            let recent = accessible_node(&tree, &gettext(locale, "Recent"), Role::Button);
+            // Some languages name the sidebar's Recently played sort the
+            // same, so take the tab in the queue panel at the right.
+            let recent_label = gettext(locale, "Recent");
+            let recent = tree
+                .nodes
+                .iter()
+                .filter(|(_, node)| {
+                    node.label() == Some(&*recent_label) && node.role() == Role::Button
+                })
+                .max_by(|(_, a), (_, b)| {
+                    let x = |node: &egui::accesskit::Node| node.bounds().map_or(0.0, |r| r.x0);
+                    x(a).total_cmp(&x(b))
+                })
+                .expect("the queue panel's Recent tab")
+                .0;
             accessible_frame(
                 &ctx,
                 &mut app,
@@ -2368,6 +2453,52 @@ mod tests {
     }
 
     #[test]
+    fn friend_activity_opens_beside_the_page_and_lists_each_friend() {
+        use egui::accesskit::{Action as AccessibleAction, Role};
+        let (ctx, mut app) = accessible_app("friends");
+        app.show_queue_panel = true;
+        let tree = accessible_frame(&ctx, &mut app, vec![]);
+        let open = accessible_node(&tree, "Friend Activity", Role::Button);
+        accessible_frame(
+            &ctx,
+            &mut app,
+            vec![accessible_action(open, AccessibleAction::Click, None)],
+        );
+        assert!(app.show_friends_panel);
+        assert!(!app.show_queue_panel, "one panel at a time");
+        // The demo is offline, so the request goes nowhere; answer it.
+        app.friends = Loadable::Loaded(sample_friends());
+        accessible_frame(&ctx, &mut app, vec![]);
+        let tree = accessible_frame(&ctx, &mut app, vec![]);
+        for friend in sample_friends() {
+            assert!(
+                tree.nodes
+                    .iter()
+                    .any(|(_, node)| node.label() == Some(&*friend.track.name)),
+                "missing {}",
+                friend.track.name
+            );
+        }
+        let close = tree
+            .nodes
+            .iter()
+            .filter(|(_, node)| node.label() == Some("Close") && node.role() == Role::Button)
+            .max_by(|(_, a), (_, b)| {
+                let x = |node: &egui::accesskit::Node| node.bounds().map_or(0.0, |r| r.x0);
+                x(a).total_cmp(&x(b))
+            })
+            .expect("the panel's close button")
+            .0;
+        accessible_frame(
+            &ctx,
+            &mut app,
+            vec![accessible_action(close, AccessibleAction::Click, None)],
+        );
+        assert!(!app.show_friends_panel);
+        app.backend.shutdown();
+    }
+
+    #[test]
     fn moving_art_background_follows_its_setting_and_the_playing_art() {
         let (ctx, mut app) = accessible_app("art-background");
         let now = app.now_playing().unwrap();
@@ -2520,13 +2651,17 @@ mod tests {
         let liked = tree
             .nodes
             .iter()
-            .find_map(|(_, node)| {
+            .filter_map(|(_, node)| {
                 (node.role() == Role::Button && node.label() == Some("Liked Songs"))
                     .then(|| node.bounds())
                     .flatten()
             })
+            // Home has a Liked Songs shortcut too; the card is the one in
+            // the sidebar, leftmost.
+            .min_by(|a, b| a.x0.total_cmp(&b.x0))
             .expect("Liked Songs card");
-        let pos = egui::pos2(liked.x0 as f32 + 24.0, liked.y0 as f32 + 24.0);
+        // Well inside the cover, clear of the card's padding.
+        let pos = egui::pos2(liked.x0 as f32 + 48.0, liked.y0 as f32 + 48.0);
         egui::DragAndDrop::set_payload(
             &ctx,
             DragTrack {

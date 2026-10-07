@@ -3215,3 +3215,67 @@ msgstr "Sous Windows sur ARM, l’OpenGL avec lequel Spotifast dessine provient 
 
 #~ msgid "Reduce lyrics motion"
 #~ msgstr "Réduire les animations des paroles"
+
+#: src/ui/friends.rs
+msgid "Friend Activity"
+msgstr "Activité des amis"
+
+#: src/ui/friends.rs
+msgid "Open Settings"
+msgstr "Ouvrir les réglages"
+
+#. Translators: a friend's song may still be playing.
+#: src/ui/friends.rs
+msgid "Now"
+msgstr "Maintenant"
+
+#. Translators: {count} minutes ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} min"
+msgstr "{count} min"
+
+#. Translators: {count} hours ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} hr"
+msgstr "{count} h"
+
+#. Translators: {count} days ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} d"
+msgstr "{count} j"
+
+#. Translators: {count} weeks ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} wk"
+msgstr "{count} sem."
+
+#: src/ui/friends.rs
+msgid ""
+"Spotify does not publish friend activity, so this list can stop working "
+"without notice."
+msgstr ""
+"Spotify ne publie pas l’activité des amis, cette liste peut donc cesser de "
+"fonctionner sans préavis."
+
+#: src/ui/friends.rs
+msgid ""
+"When the people you follow share their listening on Spotify, it shows here."
+msgstr ""
+"Quand les personnes que vous suivez partagent leur écoute sur Spotify, elle "
+"apparaît ici."
+
+#: src/ui/friends.rs
+msgid ""
+"Friend activity reads through local playback. Turn on playback on this "
+"computer in Settings."
+msgstr ""
+"L’activité des amis passe par la lecture locale. Activez la lecture sur cet "
+"ordinateur dans les réglages."
+
+#: src/ui/friends.rs
+msgid "Spotify did not return friend activity."
+msgstr "Spotify n’a pas renvoyé l’activité des amis."

@@ -3181,3 +3181,67 @@ msgstr "Spotifast penceresini açamıyor"
 #: src/window.rs:35
 msgid "On Windows on ARM, the OpenGL that Spotifast draws with comes from Microsoft's OpenCL, OpenGL & Vulkan Compatibility Pack. Open its Microsoft Store page to install or repair it?"
 msgstr "ARM üzerinde Windows'ta Spotifast'in çizim için kullandığı OpenGL, Microsoft'un OpenCL, OpenGL & Vulkan Compatibility Pack paketinden gelir. Yüklemek veya onarmak için Microsoft Store sayfası açılsın mı?"
+
+#: src/ui/friends.rs
+msgid "Friend Activity"
+msgstr "Arkadaş Etkinliği"
+
+#: src/ui/friends.rs
+msgid "Open Settings"
+msgstr "Ayarları Aç"
+
+#. Translators: a friend's song may still be playing.
+#: src/ui/friends.rs
+msgid "Now"
+msgstr "Şimdi"
+
+#. Translators: {count} minutes ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} min"
+msgstr "{count} dk"
+
+#. Translators: {count} hours ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} hr"
+msgstr "{count} sa"
+
+#. Translators: {count} days ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} d"
+msgstr "{count} g"
+
+#. Translators: {count} weeks ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} wk"
+msgstr "{count} hf"
+
+#: src/ui/friends.rs
+msgid ""
+"Spotify does not publish friend activity, so this list can stop working "
+"without notice."
+msgstr ""
+"Spotify arkadaş etkinliğini herkese açık sunmaz, bu yüzden bu liste haber "
+"vermeden çalışmayı bırakabilir."
+
+#: src/ui/friends.rs
+msgid ""
+"When the people you follow share their listening on Spotify, it shows here."
+msgstr ""
+"Takip ettiğin kişiler Spotify'da dinlediklerini paylaştığında burada "
+"görünür."
+
+#: src/ui/friends.rs
+msgid ""
+"Friend activity reads through local playback. Turn on playback on this "
+"computer in Settings."
+msgstr ""
+"Arkadaş etkinliği yerel oynatma üzerinden okunur. Ayarlar'da bu bilgisayarda"
+" oynatmayı aç."
+
+#: src/ui/friends.rs
+msgid "Spotify did not return friend activity."
+msgstr "Spotify arkadaş etkinliğini döndürmedi."

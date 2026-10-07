@@ -347,6 +347,17 @@ name is sent through CONNECT, and a proxy failure never falls back to a
 direct connection. Proxy URLs and credentials are not logged by this
 connector. The change adds no destination or background polling.
 
+## Friend activity
+
+The Friend Activity panel, opened from the sidebar, reads the buddy list
+over the local playback session: one request when it opens, then about once
+a minute while it stays open, and on **Refresh**. Nothing is read while the
+panel is closed, and nothing about the account's own listening is sent.
+Without local playback signed in, the panel asks for it instead of making a
+request. Spotify does not document this service, so a refusal or an answer
+the app does not recognise shows a short notice and leaves the rest of the
+app alone.
+
 ## Proxy
 
 Since 0.9.0, Settings → Proxy has four modes:

@@ -478,7 +478,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     // The traffic lights float over the top-left of the sidebar now, so the
     // first nav row has to start below them.
     let top = 12 + theme::titlebar_inset(ui.ctx()) as i8;
-    let beside = if app.show_queue_panel || app.show_lyrics_panel {
+    let beside = if app.show_queue_panel || app.show_lyrics_panel || app.show_friends_panel {
         theme::SIDE_PANEL_MIN_WIDTH
     } else {
         0.0
@@ -849,6 +849,17 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
     .clicked()
     {
         app.actions.push(Action::FocusSearch);
+    }
+    if nav_row(
+        ui,
+        &palette,
+        Icon::Users,
+        &gettext(locale, "Friend Activity"),
+        app.show_friends_panel,
+    )
+    .clicked()
+    {
+        app.actions.push(Action::ToggleFriendsPanel);
     }
     ui.add_space(10.0);
     ui.painter().hline(

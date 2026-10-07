@@ -1091,6 +1091,9 @@ pub enum Action {
     ToggleSidebar,
     ToggleQueuePanel,
     ToggleLyricsPanel,
+    ToggleFriendsPanel,
+    /// Read the friends' latest songs again; `true` even if read recently.
+    RefreshFriends(bool),
     SetLyricsFullscreen(bool),
     LyricsLineShown(Option<usize>),
     FollowLyrics,

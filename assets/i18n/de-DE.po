@@ -3210,3 +3210,67 @@ msgstr "Unter Windows on ARM stammt das OpenGL, mit dem Spotifast zeichnet, aus 
 
 #~ msgid "Reduce lyrics motion"
 #~ msgstr "Songtextanimation reduzieren"
+
+#: src/ui/friends.rs
+msgid "Friend Activity"
+msgstr "Freundesaktivität"
+
+#: src/ui/friends.rs
+msgid "Open Settings"
+msgstr "Einstellungen öffnen"
+
+#. Translators: a friend's song may still be playing.
+#: src/ui/friends.rs
+msgid "Now"
+msgstr "Jetzt"
+
+#. Translators: {count} minutes ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} min"
+msgstr "{count} Min."
+
+#. Translators: {count} hours ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} hr"
+msgstr "{count} Std."
+
+#. Translators: {count} days ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} d"
+msgstr "{count} T."
+
+#. Translators: {count} weeks ago, kept as short as possible. Keep {count} exactly as written.
+#: src/ui/friends.rs
+#, rust-format
+msgid "{count} wk"
+msgstr "{count} Wo."
+
+#: src/ui/friends.rs
+msgid ""
+"Spotify does not publish friend activity, so this list can stop working "
+"without notice."
+msgstr ""
+"Spotify veröffentlicht die Freundesaktivität nicht, daher kann diese Liste "
+"ohne Vorwarnung aufhören zu funktionieren."
+
+#: src/ui/friends.rs
+msgid ""
+"When the people you follow share their listening on Spotify, it shows here."
+msgstr ""
+"Wenn die Leute, denen du folgst, ihr Hören auf Spotify teilen, erscheint es "
+"hier."
+
+#: src/ui/friends.rs
+msgid ""
+"Friend activity reads through local playback. Turn on playback on this "
+"computer in Settings."
+msgstr ""
+"Die Freundesaktivität wird über die lokale Wiedergabe gelesen. Schalte die "
+"Wiedergabe auf diesem Computer in den Einstellungen ein."
+
+#: src/ui/friends.rs
+msgid "Spotify did not return friend activity."
+msgstr "Spotify hat keine Freundesaktivität geliefert."

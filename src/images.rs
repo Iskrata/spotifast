@@ -680,7 +680,14 @@ const PALETTE_HUE_GAP: f32 = 1.0 / 12.0;
 /// each far enough round the colour wheel from the ones before to tell apart;
 /// its greys count as one colour. Empty when the bytes are not an image.
 pub fn art_palette(bytes: &[u8]) -> Vec<[u8; 3]> {
-    let Some(buckets) = art_buckets(bytes) else {
+    art_thumbnail(bytes)
+        .map(|small| palette_of(&small))
+        .unwrap_or_default()
+}
+
+/// [`art_palette`] for a decoded thumbnail.
+fn palette_of(small: &image::RgbImage) -> Vec<[u8; 3]> {
+    let Some(buckets) = pixel_buckets(small.pixels().map(|pixel| pixel.0)) else {
         return Vec::new();
     };
     let total = buckets.iter().map(|(weight, _)| weight).sum::<u64>() as f32;
@@ -737,15 +744,44 @@ fn hue(rgb: [u8; 3]) -> f32 {
     egui::ecolor::Hsva::from_srgb(rgb).h
 }
 
-/// A cover's colours, heaviest first: its pixels in buckets of nearby
+/// The palette of an album cover, as [`art_palette`] reads it, and the
+/// dominant colour of each quarter of it, in reading order, from one decode.
+/// The quarters keep the cover's layout, so a gradient built from them puts
+/// each colour roughly where the art has it.
+pub fn art_colors(bytes: &[u8]) -> Option<(Vec<[u8; 3]>, [[u8; 3]; 4])> {
+    let small = art_thumbnail(bytes)?;
+    let palette = palette_of(&small);
+    let accent = *palette.first()?;
+    let (width, height) = small.dimensions();
+    let quarter = |column: u32, row: u32| {
+        let (x0, x1) = (column * width / 2, (column + 1) * width / 2);
+        let (y0, y1) = (row * height / 2, (row + 1) * height / 2);
+        pixel_buckets(
+            small
+                .enumerate_pixels()
+                .filter(|(x, y, _)| (x0..x1).contains(x) && (y0..y1).contains(y))
+                .map(|(_, _, pixel)| pixel.0),
+        )
+        .map_or(accent, |buckets| buckets[0].1)
+    };
+    Some((
+        palette,
+        [quarter(0, 0), quarter(1, 0), quarter(0, 1), quarter(1, 1)],
+    ))
+}
+
+/// A cover decoded and shrunk to the size its colours are read at.
+fn art_thumbnail(bytes: &[u8]) -> Option<image::RgbImage> {
+    let decoded = image::load_from_memory(bytes).ok()?;
+    Some(decoded.thumbnail(48, 48).to_rgb8())
+}
+
+/// The colours among `pixels`, heaviest first: in buckets of nearby
 /// colours, each weighed toward vivid mid-tones so black borders and white
 /// text lose, with the bucket's average colour.
-fn art_buckets(bytes: &[u8]) -> Option<Vec<(u64, [u8; 3])>> {
-    let decoded = image::load_from_memory(bytes).ok()?;
-    let small = decoded.thumbnail(48, 48).to_rgb8();
+fn pixel_buckets(pixels: impl Iterator<Item = [u8; 3]>) -> Option<Vec<(u64, [u8; 3])>> {
     let mut buckets: HashMap<(u8, u8, u8), (u64, [u64; 3])> = HashMap::new();
-    for pixel in small.pixels() {
-        let [r, g, b] = pixel.0;
+    for [r, g, b] in pixels {
         let (max, min) = (r.max(g).max(b) as f32, r.min(g).min(b) as f32);
         let saturation = if max == 0.0 { 0.0 } else { (max - min) / max };
         let lightness = (max + min) / 510.0;
@@ -1971,6 +2007,20 @@ mod tests {
         let palette = art_palette(&cover_png(&image));
         assert_eq!(palette.len(), PALETTE_COLOURS, "{palette:?}");
         assert!(art_palette(b"not an image").is_empty());
+    }
+
+    #[test]
+    fn art_colors_keep_each_quarter_of_the_cover() {
+        let quarters = [[200, 30, 30], [30, 200, 30], [30, 30, 200], [200, 200, 30]];
+        let image = image::RgbImage::from_fn(16, 16, |x, y| {
+            image::Rgb(quarters[(x / 8 + 2 * (y / 8)) as usize])
+        });
+        let (_, colors) = art_colors(&cover_png(&image)).unwrap();
+        for (found, expected) in colors.iter().zip(quarters) {
+            for (found, expected) in found.iter().zip(expected) {
+                assert!(found.abs_diff(expected) < 12, "{colors:?}");
+            }
+        }
     }
 
     /// #813: Spotify's CDN sometimes serves a cover's bytes as WebP: the

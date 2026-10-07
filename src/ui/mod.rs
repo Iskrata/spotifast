@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+mod art_background;
 pub mod artist;
 pub mod collection;
 pub(crate) mod devices;
@@ -278,6 +279,8 @@ fn page_tint(app: &mut App) -> Option<Color32> {
 fn central(app: &mut App, ui: &mut egui::Ui) {
     let palette = app.palette;
     let tint = page_tint(app);
+    let art = app.now_playing_art_palette();
+    let playing = app.believed_playing();
     egui::CentralPanel::default()
         .frame(Frame::new().fill(palette.window))
         .show(ui, |ui| {
@@ -295,7 +298,9 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                 .ctx()
                 .data(|data| data.get_temp::<f32>(scrolled_id))
                 .unwrap_or(0.0);
-            if let Some((top, bottom)) = header_wash(&palette, overview, tint) {
+            if let Some(art) = art {
+                art_background::paint(ui, &palette, rect, art, playing);
+            } else if let Some((top, bottom)) = header_wash(&palette, overview, tint) {
                 widgets::paint_vertical_gradient(ui, header_rect(rect, scrolled), top, bottom);
             }
             ui.spacing_mut().item_spacing = vec2(8.0, 6.0);

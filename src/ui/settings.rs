@@ -1102,6 +1102,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let theme_guide = gettext(locale, "How to make a theme");
     let themes_folder = gettext(locale, "Open themes folder");
     let accent_from_art = gettext(locale, "Colour from album art");
+    let art_background = gettext(locale, "Moving album art background");
     let sidebar_compact = gettext(locale, "Compact library sidebar");
     let tracklist_compact = gettext(locale, "Compact track list");
     let middle_click = gettext(locale, "Middle-click autoscroll");
@@ -1224,6 +1225,13 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         ),
         pair_row(fastframe_theme::Base::Light),
         pair_row(fastframe_theme::Base::Dark),
+        RowText::new(
+            art_background.clone(),
+            gettext(
+                locale,
+                "Fill pages with a slowly moving gradient from the playing song's cover.",
+            ),
+        ),
     ];
     if section_matches(&needle, &appearance, &appearance_rows) {
         any_visible = true;
@@ -1354,6 +1362,25 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                         &palette,
                         &accent_from_art,
                         &mut app.settings.accent_from_art,
+                    )
+                    .changed()
+                    {
+                        changed = true;
+                    }
+                },
+            );
+            filtered_row(
+                ui,
+                &palette,
+                &needle,
+                &appearance,
+                &appearance_rows[13],
+                |ui| {
+                    if widgets::switch(
+                        ui,
+                        &palette,
+                        &art_background,
+                        &mut app.settings.art_background,
                     )
                     .changed()
                     {

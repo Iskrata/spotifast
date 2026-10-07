@@ -564,8 +564,11 @@ pub struct App {
     /// Optimistic library writes that a stale contains response must not undo.
     saved_writes: HashMap<String, bool>,
     pub accents: HashMap<String, Color32>,
-    /// Each cover's colours, as read from the art, by the same URL.
-    art_palettes: HashMap<String, Vec<[u8; 3]>>,
+    /// Each cover's colours, as read from the art, by the same URL, for the
+    /// visualizer to sweep across.
+    art_sweeps: HashMap<String, Vec<[u8; 3]>>,
+    /// Each quarter's colour of the art in `accents`, unsoftened.
+    pub art_palettes: HashMap<String, [[u8; 3]; 4]>,
     accent_pending: HashSet<String>,
 
     pub dialog: Option<Dialog>,
@@ -1194,6 +1197,7 @@ impl App {
             saved_recordings: HashSet::new(),
             saved_writes: HashMap::new(),
             accents: HashMap::new(),
+            art_sweeps: HashMap::new(),
             art_palettes: HashMap::new(),
             accent_pending: HashSet::new(),
             dialog: None,
@@ -2259,7 +2263,22 @@ impl App {
         }
         let now = self.now_playing()?;
         let url = now.art_small.or(now.art_url)?;
-        self.art_palettes.get(&url).map(Vec::as_slice)
+        self.art_sweeps.get(&url).map(Vec::as_slice)
+    }
+
+    /// The quarter colours of the playing art for the moving background,
+    /// asking for them the first time this art is seen.
+    pub fn now_playing_art_palette(&mut self) -> Option<[[u8; 3]; 4]> {
+        if !self.settings.art_background {
+            return None;
+        }
+        let now = self.now_playing()?;
+        let url = now.art_small.or(now.art_url)?;
+        if let Some(palette) = self.art_palettes.get(&url) {
+            return Some(*palette);
+        }
+        self.tint_for(Some(&url));
+        None
     }
 
     pub fn tint_for(&mut self, url: Option<&str>) -> Option<Color32> {
@@ -2540,11 +2559,13 @@ impl App {
                 Event::Accent {
                     url,
                     color,
+                    sweep,
                     palette,
                 } => {
                     self.accent_pending.remove(&url);
-                    let tint = self.palette.tint_from_art(color);
                     self.art_palettes.insert(url.clone(), palette);
+                    let tint = self.palette.tint_from_art(color);
+                    self.art_sweeps.insert(url.clone(), sweep);
                     self.accents.insert(url, tint);
                 }
                 Event::ProxyRestored { config, password } => {
@@ -21035,14 +21056,15 @@ mod tests {
         app.handle_backend_events(vec![Event::Accent {
             url: url.into(),
             color: [200, 40, 40],
-            palette: vec![[200, 40, 40], [40, 40, 200]],
+            sweep: vec![[200, 40, 40], [40, 40, 200]],
+            palette: [[200, 40, 40]; 4],
         }]);
         assert_eq!(
             app.tint_for(Some(url)),
             Some(app.palette.tint_from_art([200, 40, 40]))
         );
         assert_eq!(
-            app.art_palettes.get(url).map(Vec::as_slice),
+            app.art_sweeps.get(url).map(Vec::as_slice),
             Some(&[[200, 40, 40], [40, 40, 200]][..])
         );
     }

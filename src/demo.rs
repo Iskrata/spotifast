@@ -774,6 +774,19 @@ pub fn apply_flags(app: &mut App, page: Option<&str>, show: Option<&str>) {
                 };
             }
             "queue" => app.show_queue_panel = true,
+            "art-background" => {
+                app.settings.art_background = true;
+                // Fixed colours, so the shot does not wait on the artwork.
+                if let Some(url) = app
+                    .now_playing()
+                    .and_then(|now| now.art_small.or(now.art_url))
+                {
+                    app.art_palettes.insert(
+                        url,
+                        [[214, 92, 48], [168, 40, 96], [60, 70, 180], [30, 150, 140]],
+                    );
+                }
+            }
             "playing-next" => {
                 app.show_queue_panel = true;
                 if let Loadable::Loaded(queue) = &app.queue {
@@ -2351,6 +2364,21 @@ mod tests {
         // A menu item spans its menu, so its width is the menu's.
         let (x0, x1, _, _) = button(&tree, "Play");
         assert!(x1 - x0 <= 300.0, "the menu is {} points wide", x1 - x0);
+        app.backend.shutdown();
+    }
+
+    #[test]
+    fn moving_art_background_follows_its_setting_and_the_playing_art() {
+        let (ctx, mut app) = accessible_app("art-background");
+        let now = app.now_playing().unwrap();
+        let url = now.art_small.or(now.art_url).unwrap();
+        let colors = [[200, 30, 30], [30, 200, 30], [30, 30, 200], [200, 200, 30]];
+        app.art_palettes.insert(url, colors);
+        assert_eq!(app.now_playing_art_palette(), None, "off by default");
+        app.settings.art_background = true;
+        assert_eq!(app.now_playing_art_palette(), Some(colors));
+        // A page draws over the gradient without trouble.
+        accessible_frame(&ctx, &mut app, vec![]);
         app.backend.shutdown();
     }
 

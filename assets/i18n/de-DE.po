@@ -1497,6 +1497,16 @@ msgstr ""
 "Zeigt den Song in Bewegung hinter den Steuerelementen der Wiedergabeleiste, "
 "während er hier läuft."
 
+#: src/ui/settings.rs:803
+msgid "Moving album art background"
+msgstr "Bewegter Albumcover-Hintergrund"
+
+#: src/ui/settings.rs:889
+msgid "Fill pages with a slowly moving gradient from the playing song's cover."
+msgstr ""
+"Füllt Seiten mit einem langsam bewegten Verlauf aus dem Cover des laufenden "
+"Titels."
+
 #: src/ui/settings.rs:1017
 msgid "Off"
 msgstr "Aus"

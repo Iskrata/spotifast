@@ -1479,6 +1479,14 @@ msgstr ""
 "このコンピューターで再生中の曲の動きを、プレイヤーバーの操作ボタンの背後に表"
 "示します。"
 
+#: src/ui/settings.rs:803
+msgid "Moving album art background"
+msgstr "アルバムアートの動く背景"
+
+#: src/ui/settings.rs:889
+msgid "Fill pages with a slowly moving gradient from the playing song's cover."
+msgstr "再生中の曲のジャケットから作った、ゆっくり動くグラデーションでページを満たします。"
+
 #: src/ui/settings.rs:1017
 msgid "Off"
 msgstr "オフ"

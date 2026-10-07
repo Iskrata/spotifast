@@ -1488,6 +1488,16 @@ msgstr ""
 "Mostra a música em movimento atrás dos controlos da barra do leitor enquanto "
 "toca aqui."
 
+#: src/ui/settings.rs:803
+msgid "Moving album art background"
+msgstr "Fundo animado da capa do álbum"
+
+#: src/ui/settings.rs:889
+msgid "Fill pages with a slowly moving gradient from the playing song's cover."
+msgstr ""
+"Preenche as páginas com um gradiente que se move lentamente, a partir da "
+"capa da música em reprodução."
+
 #: src/ui/settings.rs:1017
 msgid "Off"
 msgstr "Desativado"

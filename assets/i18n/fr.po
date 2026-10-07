@@ -1495,6 +1495,16 @@ msgstr ""
 "Montre le titre en mouvement derrière les commandes de la barre de lecture "
 "pendant qu’il est lu ici."
 
+#: src/ui/settings.rs:803
+msgid "Moving album art background"
+msgstr "Arrière-plan animé de la pochette"
+
+#: src/ui/settings.rs:889
+msgid "Fill pages with a slowly moving gradient from the playing song's cover."
+msgstr ""
+"Remplit les pages d’un dégradé qui bouge lentement, tiré de la pochette du "
+"titre en cours."
+
 #: src/ui/settings.rs:1017
 msgid "Off"
 msgstr "Désactivé"

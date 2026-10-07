@@ -1447,6 +1447,14 @@ msgid ""
 "Show the song moving behind the player bar's controls while it plays here."
 msgstr ""
 
+#: src/ui/settings.rs:803
+msgid "Moving album art background"
+msgstr ""
+
+#: src/ui/settings.rs:889
+msgid "Fill pages with a slowly moving gradient from the playing song's cover."
+msgstr ""
+
 #: src/ui/settings.rs:1017
 msgid "Off"
 msgstr ""

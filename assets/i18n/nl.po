@@ -1490,6 +1490,16 @@ msgstr ""
 "Toont het nummer in beweging achter de knoppen van de spelerbalk terwijl het "
 "hier speelt."
 
+#: src/ui/settings.rs:803
+msgid "Moving album art background"
+msgstr "Bewegende achtergrond van albumhoes"
+
+#: src/ui/settings.rs:889
+msgid "Fill pages with a slowly moving gradient from the playing song's cover."
+msgstr ""
+"Vult pagina's met een langzaam bewegend verloop uit de hoes van het spelende"
+" nummer."
+
 #: src/ui/settings.rs:1017
 msgid "Off"
 msgstr "Uit"

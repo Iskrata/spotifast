@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+mod art_background;
 pub mod artist;
 pub mod collection;
 pub(crate) mod devices;
@@ -256,11 +257,15 @@ fn page_tint(app: &mut App) -> Option<Color32> {
 fn central(app: &mut App, ui: &mut egui::Ui) {
     let palette = app.palette;
     let tint = page_tint(app);
+    let art = app.now_playing_art_palette();
+    let playing = app.believed_playing();
     egui::CentralPanel::default()
         .frame(Frame::new().fill(palette.window))
         .show(ui, |ui| {
             let rect = ui.max_rect();
-            if let Some(tint) = tint {
+            if let Some(art) = art {
+                art_background::paint(ui, &palette, rect, art, playing);
+            } else if let Some(tint) = tint {
                 let strength = if matches!(
                     app.page(),
                     Page::Home | Page::Search | Page::Settings | Page::Queue

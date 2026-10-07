@@ -1438,6 +1438,14 @@ msgid ""
 "Show the song moving behind the player bar's controls while it plays here."
 msgstr "歌曲在本机播放时，在播放栏控件后方显示它的律动。"
 
+#: src/ui/settings.rs:803
+msgid "Moving album art background"
+msgstr "动态专辑封面背景"
+
+#: src/ui/settings.rs:889
+msgid "Fill pages with a slowly moving gradient from the playing song's cover."
+msgstr "用正在播放歌曲封面生成的缓慢流动渐变填充页面。"
+
 #: src/ui/settings.rs:1017
 msgid "Off"
 msgstr "关闭"

@@ -1497,6 +1497,16 @@ msgstr ""
 "Pokazuje ruch utworu za przyciskami paska odtwarzacza, gdy gra na tym "
 "komputerze."
 
+#: src/ui/settings.rs:803
+msgid "Moving album art background"
+msgstr "Ruchome tło z okładki albumu"
+
+#: src/ui/settings.rs:889
+msgid "Fill pages with a slowly moving gradient from the playing song's cover."
+msgstr ""
+"Wypełnia strony powoli poruszającym się gradientem z okładki odtwarzanego "
+"utworu."
+
 #: src/ui/settings.rs:1017
 msgid "Off"
 msgstr "Wyłączona"

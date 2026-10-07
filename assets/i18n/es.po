@@ -1489,6 +1489,16 @@ msgstr ""
 "Muestra la canción en movimiento detrás de los controles de la barra de "
 "reproducción mientras suena aquí."
 
+#: src/ui/settings.rs:803
+msgid "Moving album art background"
+msgstr "Fondo animado de la portada"
+
+#: src/ui/settings.rs:889
+msgid "Fill pages with a slowly moving gradient from the playing song's cover."
+msgstr ""
+"Llena las páginas con un degradado que se mueve despacio, a partir de la "
+"portada de la canción en reproducción."
+
 #: src/ui/settings.rs:1017
 msgid "Off"
 msgstr "Desactivado"

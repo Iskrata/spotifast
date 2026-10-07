@@ -1492,6 +1492,16 @@ msgstr ""
 "Mostra il brano in movimento dietro i controlli della barra del lettore "
 "mentre suona qui."
 
+#: src/ui/settings.rs:803
+msgid "Moving album art background"
+msgstr "Sfondo animato dalla copertina"
+
+#: src/ui/settings.rs:889
+msgid "Fill pages with a slowly moving gradient from the playing song's cover."
+msgstr ""
+"Riempie le pagine con una sfumatura che si muove lentamente, presa dalla "
+"copertina del brano in riproduzione."
+
 #: src/ui/settings.rs:1017
 msgid "Off"
 msgstr "Disattivato"

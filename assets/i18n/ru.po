@@ -1493,6 +1493,15 @@ msgstr ""
 "Показывает движение трека за кнопками панели плеера, пока он играет на этом "
 "компьютере."
 
+#: src/ui/settings.rs:803
+msgid "Moving album art background"
+msgstr "Движущийся фон из обложки альбома"
+
+#: src/ui/settings.rs:889
+msgid "Fill pages with a slowly moving gradient from the playing song's cover."
+msgstr ""
+"Заполняет страницы медленно движущимся градиентом из обложки текущего трека."
+
 #: src/ui/settings.rs:1017
 msgid "Off"
 msgstr "Выкл."

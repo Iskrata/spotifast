@@ -23,7 +23,7 @@ use crate::credentials::{
     Store as CredentialStore,
 };
 use crate::http::Http;
-use crate::images::{ArtLoader, accent_color};
+use crate::images::{ArtLoader, art_colors};
 use crate::model::PlaylistCache;
 use crate::paths::AppDirs;
 use crate::player::{
@@ -789,6 +789,8 @@ pub enum Event {
     Accent {
         url: String,
         color: [u8; 3],
+        /// The dominant colour of each quarter of the art, in reading order.
+        palette: [[u8; 3]; 4],
     },
     Error(String),
     /// GitHub answered an update check, or the request failed.
@@ -3299,12 +3301,16 @@ impl Worker {
         let waker = self.waker.clone();
         tokio::spawn(async move {
             if let Ok(bytes) = art.fetch(&url).await {
-                let color = tokio::task::spawn_blocking(move || accent_color(&bytes))
+                let colors = tokio::task::spawn_blocking(move || art_colors(&bytes))
                     .await
                     .ok()
                     .flatten();
-                if let Some(color) = color {
-                    let _ = events.send(Event::Accent { url, color });
+                if let Some((color, palette)) = colors {
+                    let _ = events.send(Event::Accent {
+                        url,
+                        color,
+                        palette,
+                    });
                     waker.wake();
                 }
             }

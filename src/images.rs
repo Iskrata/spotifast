@@ -398,15 +398,36 @@ impl BytesLoader for ArtLoader {
     }
 }
 
-/// A colour that represents an album cover, suitable for tinting a dark or
-/// light surface: the most common saturated hue, with its lightness pulled
-/// into a range that still reads as a background.
-pub fn accent_color(bytes: &[u8]) -> Option<[u8; 3]> {
+/// A colour that represents an album cover (its most common saturated hue)
+/// and the same colour for each quarter of it, in reading order, from one
+/// decode. The quarters keep the cover's layout, so a gradient built from
+/// them puts each colour roughly where the art has it.
+pub fn art_colors(bytes: &[u8]) -> Option<([u8; 3], [[u8; 3]; 4])> {
     let decoded = image::load_from_memory(bytes).ok()?;
     let small = decoded.thumbnail(48, 48).to_rgb8();
+    let accent = dominant_color(small.pixels().map(|pixel| pixel.0))?;
+    let (width, height) = small.dimensions();
+    let quarter = |column: u32, row: u32| {
+        let (x0, x1) = (column * width / 2, (column + 1) * width / 2);
+        let (y0, y1) = (row * height / 2, (row + 1) * height / 2);
+        dominant_color(
+            small
+                .enumerate_pixels()
+                .filter(|(x, y, _)| (x0..x1).contains(x) && (y0..y1).contains(y))
+                .map(|(_, _, pixel)| pixel.0),
+        )
+        .unwrap_or(accent)
+    };
+    Some((
+        accent,
+        [quarter(0, 0), quarter(1, 0), quarter(0, 1), quarter(1, 1)],
+    ))
+}
+
+/// The most common saturated hue among `pixels`.
+fn dominant_color(pixels: impl Iterator<Item = [u8; 3]>) -> Option<[u8; 3]> {
     let mut buckets: HashMap<(u8, u8, u8), (u64, [u64; 3])> = HashMap::new();
-    for pixel in small.pixels() {
-        let [r, g, b] = pixel.0;
+    for [r, g, b] in pixels {
         let (max, min) = (r.max(g).max(b) as f32, r.min(g).min(b) as f32);
         let saturation = if max == 0.0 { 0.0 } else { (max - min) / max };
         let lightness = (max + min) / 510.0;
@@ -1211,11 +1232,32 @@ mod tests {
                 image::ImageFormat::Png,
             )
             .unwrap();
-        let color = accent_color(&bytes).unwrap();
+        let (color, _) = art_colors(&bytes).unwrap();
         assert!(
             color[2] > color[0],
             "expected the blue field, got {color:?}"
         );
+    }
+
+    #[test]
+    fn art_colors_keep_each_quarter_of_the_cover() {
+        let quarters = [[200, 30, 30], [30, 200, 30], [30, 30, 200], [200, 200, 30]];
+        let image = image::RgbImage::from_fn(16, 16, |x, y| {
+            image::Rgb(quarters[(x / 8 + 2 * (y / 8)) as usize])
+        });
+        let mut bytes = Vec::new();
+        image
+            .write_to(
+                &mut std::io::Cursor::new(&mut bytes),
+                image::ImageFormat::Png,
+            )
+            .unwrap();
+        let (_, colors) = art_colors(&bytes).unwrap();
+        for (found, expected) in colors.iter().zip(quarters) {
+            for (found, expected) in found.iter().zip(expected) {
+                assert!(found.abs_diff(expected) < 12, "{colors:?}");
+            }
+        }
     }
 
     fn held(items: &[(&str, u64, usize)]) -> Vec<(String, Instant, usize)> {

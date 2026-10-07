@@ -1,8 +1,11 @@
 //! A slowly moving gradient behind pages, made from the playing song's art.
 //!
-//! Each quarter of the cover gives one colour. The colours drift around their
-//! own corner of the window while the song plays and hold still when it is
-//! paused, and a new song's colours fade in over the old ones.
+//! Each quarter of the cover gives one colour, drawn toward the others so
+//! they stay in one family. They glow faintly from the top of the page and
+//! give way to the plain window below, so the art colours the room without
+//! competing with the page. The colours drift around their own corner while
+//! the song plays and hold still when it is paused, and a new song's colours
+//! fade in over the old ones.
 
 use std::time::Duration;
 
@@ -16,11 +19,13 @@ const ROWS: usize = 10;
 const FADE_SECONDS: f32 = 0.6;
 /// How often the gradient moves while a song plays. The motion is slow, so
 /// this is far below the display's rate and costs little.
-const FRAME: Duration = Duration::from_millis(50);
+const FRAME: Duration = Duration::from_millis(80);
 /// How far each colour wanders from its corner, as a share of the window.
-const DRIFT: f32 = 0.22;
+const DRIFT: f32 = 0.16;
 /// Each colour's turning speed in radians per second, and its starting angle.
-const ORBITS: [(f64, f64); 4] = [(0.11, 0.0), (0.083, 1.7), (0.097, 3.1), (0.071, 4.4)];
+const ORBITS: [(f64, f64); 4] = [(0.05, 0.0), (0.038, 1.7), (0.044, 3.1), (0.032, 4.4)];
+/// How much of its colour each quarter gives up to the cover's average.
+const HARMONY: f32 = 0.45;
 const HOMES: [(f32, f32); 4] = [(0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75)];
 
 #[derive(Clone, Copy)]
@@ -32,7 +37,7 @@ struct State {
 
 /// Paints the gradient over `rect` for the art's quarter colours.
 pub fn paint(ui: &Ui, palette: &Palette, rect: Rect, art: [[u8; 3]; 4], playing: bool) {
-    let target = art.map(|rgb| Rgba::from(background_color(palette, rgb)));
+    let target = harmonized(art.map(|rgb| Rgba::from(palette.tint_from_art(rgb))));
     let now = ui.input(|input| input.time);
     let id = Id::new("art-background");
     let window = Rgba::from(palette.window);
@@ -61,15 +66,30 @@ pub fn paint(ui: &Ui, palette: &Palette, rect: Rect, art: [[u8; 3]; 4], playing:
     } else if playing {
         ui.ctx().request_repaint_after(FRAME);
     }
-    ui.painter()
-        .add(egui::Shape::mesh(mesh(rect, &state.colors, state.phase)));
+    // A light window shows colour more strongly, so it takes less of it.
+    let strength = if palette.dark { 0.34 } else { 0.22 };
+    ui.painter().add(egui::Shape::mesh(mesh(
+        rect,
+        &state.colors,
+        state.phase,
+        window,
+        strength,
+    )));
 }
 
-/// A colour of the art lifted or lowered to sit behind the palette's text.
-fn background_color(palette: &Palette, rgb: [u8; 3]) -> Color32 {
-    // A light window shows colour more strongly, so it takes less of it.
-    let amount = if palette.dark { 0.7 } else { 0.5 };
-    super::blend(palette.window, palette.tint_from_art(rgb), amount)
+/// Draws each colour part of the way toward the colours' average.
+fn harmonized(colors: [Rgba; 4]) -> [Rgba; 4] {
+    let average = colors
+        .iter()
+        .fold(Rgba::TRANSPARENT, |sum, &color| sum + color)
+        * 0.25;
+    colors.map(|color| color * (1.0 - HARMONY) + average * HARMONY)
+}
+
+/// How much colour shows at height `y`, from 1 at the top to a faint wash
+/// at the bottom.
+fn falloff(y: f32) -> f32 {
+    0.12 + 0.88 * (1.0 - y).powf(1.6)
 }
 
 fn centers(phase: f64) -> [(f32, f32); 4] {
@@ -84,21 +104,19 @@ fn centers(phase: f64) -> [(f32, f32); 4] {
     })
 }
 
-fn color_at(x: f32, y: f32, centers: &[(f32, f32); 4], colors: &[Rgba; 4]) -> Color32 {
+fn color_at(x: f32, y: f32, centers: &[(f32, f32); 4], colors: &[Rgba; 4]) -> Rgba {
     let mut sum = Rgba::TRANSPARENT;
     let mut total = 0.0;
     for (&(cx, cy), &color) in centers.iter().zip(colors) {
         let distance = (x - cx).powi(2) + (y - cy).powi(2);
-        let weight = (-distance / 0.08).exp() + 1e-4;
+        let weight = (-distance / 0.14).exp() + 1e-4;
         sum = sum + color * weight;
         total += weight;
     }
-    let mut color = Color32::from(sum * (1.0 / total));
-    color[3] = 255;
-    color
+    sum * (1.0 / total)
 }
 
-fn mesh(rect: Rect, colors: &[Rgba; 4], phase: f64) -> egui::Mesh {
+fn mesh(rect: Rect, colors: &[Rgba; 4], phase: f64, window: Rgba, strength: f32) -> egui::Mesh {
     let centers = centers(phase);
     let mut mesh = egui::Mesh::default();
     for row in 0..=ROWS {
@@ -110,7 +128,14 @@ fn mesh(rect: Rect, colors: &[Rgba; 4], phase: f64) -> egui::Mesh {
                     rect.left() + x * rect.width(),
                     rect.top() + y * rect.height(),
                 ),
-                color_at(x, y, &centers, colors),
+                {
+                    let amount = strength * falloff(y);
+                    let mut color = Color32::from(
+                        window * (1.0 - amount) + color_at(x, y, &centers, colors) * amount,
+                    );
+                    color[3] = 255;
+                    color
+                },
             );
         }
     }
@@ -139,10 +164,26 @@ mod tests {
     fn each_corner_takes_the_colour_of_its_quarter() {
         let colors = [RED, GREEN, BLUE, WHITE];
         let centers = HOMES;
-        let top_left = Rgba::from(color_at(0.0, 0.0, &centers, &colors));
-        let bottom_right = Rgba::from(color_at(1.0, 1.0, &centers, &colors));
+        let top_left = color_at(0.0, 0.0, &centers, &colors);
+        let bottom_right = color_at(1.0, 1.0, &centers, &colors);
         assert!(top_left.r() > top_left.g() && top_left.r() > top_left.b());
         assert!(bottom_right.r() > 0.5 && bottom_right.g() > 0.5 && bottom_right.b() > 0.5);
+    }
+
+    #[test]
+    fn the_colour_fades_toward_the_bottom_of_the_page() {
+        assert_eq!(falloff(0.0), 1.0);
+        assert!(falloff(1.0) < 0.2);
+        assert!(
+            (0..10).all(|step| falloff(step as f32 / 10.0) > falloff((step + 1) as f32 / 10.0))
+        );
+    }
+
+    #[test]
+    fn harmonized_colours_move_toward_one_family() {
+        let [red, green, ..] = harmonized([RED, GREEN, BLUE, WHITE]);
+        assert!(red.g() > 0.0 && green.r() > 0.0);
+        assert!(red.r() > red.g(), "each keeps its own character");
     }
 
     #[test]
@@ -157,7 +198,7 @@ mod tests {
     #[test]
     fn the_mesh_covers_the_whole_page() {
         let rect = Rect::from_min_max(pos2(10.0, 20.0), pos2(810.0, 620.0));
-        let mesh = mesh(rect, &[RED; 4], 0.0);
+        let mesh = mesh(rect, &[RED; 4], 0.0, WHITE, 0.3);
         assert_eq!(mesh.vertices.len(), (COLUMNS + 1) * (ROWS + 1));
         assert_eq!(mesh.indices.len(), COLUMNS * ROWS * 6);
         assert_eq!(mesh.calc_bounds(), rect);

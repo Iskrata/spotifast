@@ -783,7 +783,7 @@ pub fn apply_flags(app: &mut App, page: Option<&str>, show: Option<&str>) {
                 {
                     app.art_palettes.insert(
                         url,
-                        [[214, 92, 48], [168, 40, 96], [60, 70, 180], [30, 150, 140]],
+                        [[196, 112, 72], [152, 72, 96], [72, 64, 118], [44, 92, 112]],
                     );
                 }
             }

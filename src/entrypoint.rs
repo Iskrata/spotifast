@@ -481,6 +481,7 @@ pub(crate) fn run() -> eframe::Result<()> {
     let desktop_surfaces = options.media_controls;
     #[allow(unused_mut)]
     let mut app = app::App::new(&waker, dirs, settings, options);
+    app.open_friends_by_default();
     if guarded {
         app.enable_desktop_themes();
     }

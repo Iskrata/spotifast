@@ -57,6 +57,14 @@ const PLAYBACK_HOLD: Duration = Duration::from_secs(6);
 const FRIENDS_REFRESH: Duration = Duration::from_secs(60);
 /// How long a buddy list read may take before it is asked again.
 const FRIENDS_TIMEOUT: Duration = Duration::from_secs(20);
+
+/// Whether Friend Activity is open at start. A saved open panel always is;
+/// a session that never closed it is too when `by_default`. A queue panel
+/// that was open wins, as the toggles keep one side panel at a time.
+fn friends_open_at_start(session: &SessionState, by_default: bool) -> bool {
+    !session.queue_open.unwrap_or(false) && session.friends_open.unwrap_or(by_default)
+}
+
 /// Delay before checking playback again after a command.
 const REMOTE_RECHECK: Duration = Duration::from_millis(1200);
 /// Delay before checking the queue after a local change.
@@ -413,6 +421,9 @@ pub struct App {
     pub show_queue_panel: bool,
     pub show_lyrics_panel: bool,
     pub show_friends_panel: bool,
+    /// Whether a launch opens Friend Activity, which it does until the
+    /// panel is closed once. See [`App::open_friends_by_default`].
+    friends_open_by_default: bool,
     /// What the account's friends last played, newest first.
     pub friends: Loadable<Vec<crate::friends::Friend>>,
     /// The buddy list needs the local playback session, which is missing.
@@ -871,7 +882,8 @@ impl App {
             uploaded_covers: Default::default(),
             show_queue_panel: session.queue_open.unwrap_or(false),
             show_lyrics_panel: false,
-            show_friends_panel: false,
+            show_friends_panel: friends_open_at_start(&session, false),
+            friends_open_by_default: friends_open_at_start(&session, true),
             friends: Loadable::NotLoaded,
             friends_need_session: false,
             friends_requested_at: None,
@@ -1687,6 +1699,14 @@ impl App {
 
     /// Asks for the friends' latest songs, unless a request is out or the
     /// list is fresh enough; `force` asks regardless of age.
+    /// Opens Friend Activity on launch unless it was last closed. Only a
+    /// real launch calls this, so tests start with no side panel.
+    pub fn open_friends_by_default(&mut self) {
+        if self.friends_open_by_default {
+            self.show_friends_panel = true;
+        }
+    }
+
     pub fn refresh_friends(&mut self, force: bool) {
         if self.friends_stale(force) {
             self.friends_requested_at = Some(Instant::now());
@@ -10144,6 +10164,7 @@ impl App {
                 window_size: self.last_window_size.or(self.session_window_size),
                 window_pos: self.last_window_pos.or(self.session_window_pos),
                 queue_open: Some(self.show_queue_panel),
+                friends_open: Some(self.show_friends_panel),
                 queue_tab: Some(self.queue_tab.encode().to_string()),
                 winamp_pos: self.winamp.last_pos.or(self.winamp.restore_pos),
                 milkdrop_pos: self.milkdrop_pos,
@@ -12423,6 +12444,37 @@ mod tests {
             assert_eq!(app.session_lyrics_fullscreen_from, None);
             app.backend.shutdown();
         }
+    }
+
+    /// Friend Activity opens on launch until it is closed once, and a queue
+    /// panel left open keeps its place.
+    #[test]
+    fn friend_activity_opens_on_launch_until_it_is_closed() {
+        let first = SessionState::default();
+        assert!(friends_open_at_start(&first, true));
+        assert!(!friends_open_at_start(&first, false), "tests start bare");
+        let closed = SessionState {
+            friends_open: Some(false),
+            ..Default::default()
+        };
+        assert!(!friends_open_at_start(&closed, true));
+        let queue = SessionState {
+            queue_open: Some(true),
+            ..Default::default()
+        };
+        assert!(!friends_open_at_start(&queue, true));
+
+        let mut app = test_app("friends-open-by-default");
+        app.open_friends_by_default();
+        assert!(
+            app.show_friends_panel,
+            "a first launch opens Friend Activity"
+        );
+        app.show_friends_panel = false;
+        app.save_session();
+        let session = SessionState::load(&app.dirs.session_file());
+        assert_eq!(session.friends_open, Some(false));
+        assert!(!friends_open_at_start(&session, true));
     }
 
     /// The session remembers fullscreen lyrics and the mode they left, and a

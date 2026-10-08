@@ -393,6 +393,28 @@ the Lyrics and Queue panels do: the lyrics once per song, from the cache when
 they are there, and the queue when the panel opens and when the song
 changes. It does not poll the queue while the song plays.
 
+Between the lyrics and the queue, **About the artist** shows the song's
+first artist. The first time an artist plays while the panel is open,
+Spotifast reads it twice, once each:
+
+- the Web API's artist (`GET /artists/{id}`), the request the artist page
+  makes, through the personal app when one is ready. It gives the portrait,
+  and the follower count and genres when Spotify includes them; Spotify
+  leaves these out for some apps. An artist page already open or loading
+  supplies it instead, and an artist page opened later reuses the card's.
+  Whether the account follows the artist is asked as the artist page asks
+  it, so the card can offer **Follow**.
+- the artist's catalogue metadata over the local playback session, the
+  record librespot reads, for the biography Spotify's own clients show and
+  portraits for when the Web API has none. Without local playback signed in
+  there is no biography; it is read once the session connects.
+
+Both are kept for the rest of the session, so an artist who plays again is
+not asked for again, and nothing is read while the panel is closed. The
+card stays away until one of them says more than the artist's name, and a
+failed read is not repeated. Monthly listeners are not shown: neither the
+Web API nor librespot provides them.
+
 **Unfollow**, from a friend's right-click menu or More button, asks first and
 then removes the person's `spotify:user:` URI from the library through the
 Web API (`DELETE /me/library`, the write that also unfollows artists; Spotify

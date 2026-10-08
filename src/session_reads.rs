@@ -699,7 +699,7 @@ fn artist_ref(artist: &SessionArtist) -> ArtistRef {
     }
 }
 
-fn images(images: &Images) -> Vec<Image> {
+pub(crate) fn images(images: &Images) -> Vec<Image> {
     images
         .iter()
         .map(|image| Image {

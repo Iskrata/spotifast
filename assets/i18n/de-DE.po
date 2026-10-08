@@ -3321,3 +3321,8 @@ msgstr "{name} wird nicht mehr gefolgt"
 #, rust-format
 msgid "Couldn't unfollow {name}: {error}"
 msgstr "{name} konnte nicht entfolgt werden: {error}"
+
+#. Translators: The heading of the now playing panel's card about the playing song's artist.
+#: src/ui/artist_about.rs
+msgid "About the artist"
+msgstr "Über den Künstler"

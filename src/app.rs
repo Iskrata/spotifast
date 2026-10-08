@@ -373,6 +373,8 @@ pub struct App {
     load_generation: u64,
     pub album_pages: HashMap<String, AlbumPage>,
     pub artist_pages: HashMap<String, ArtistPage>,
+    /// The About the artist card's artists, by id, for the session.
+    pub artist_about: HashMap<String, ArtistAbout>,
     pub show_pages: HashMap<String, ShowPage>,
     /// Radio pages by the seed's URI.
     pub radio_pages: HashMap<String, RadioPage>,
@@ -858,6 +860,7 @@ impl App {
             load_generation: 0,
             album_pages: HashMap::new(),
             artist_pages: HashMap::new(),
+            artist_about: HashMap::new(),
             show_pages: HashMap::new(),
             radio_pages: HashMap::new(),
             track_cache: HashMap::new(),
@@ -1991,7 +1994,7 @@ impl App {
         self.handle_backend_events(events);
     }
 
-    fn handle_backend_events(&mut self, events: Vec<Event>) {
+    pub(crate) fn handle_backend_events(&mut self, events: Vec<Event>) {
         for event in events {
             if self.offline
                 && (self.update_source.is_github()
@@ -2139,6 +2142,11 @@ impl App {
                     self.set_user_name(id, name);
                 }
                 Event::FriendActivity(result) => self.handle_friends(result),
+                Event::ArtistProfile { id, result } => {
+                    if let Some(about) = self.artist_about.get_mut(&id) {
+                        about.profile = Loadable::from_result(result);
+                    }
+                }
                 Event::AudiobookShows(uris) => {
                     self.audiobook_shows.extend(uris);
                 }
@@ -2274,6 +2282,7 @@ impl App {
                 }
                 self.reread_playlists_over_session();
                 self.reread_friends_over_session();
+                self.reread_artist_profiles_over_session();
             }
             LocalPlayback::Unavailable => {
                 self.local_ready = false;
@@ -2314,6 +2323,7 @@ impl App {
         self.playlist_pages.clear();
         self.album_pages.clear();
         self.artist_pages.clear();
+        self.artist_about.clear();
         self.show_pages.clear();
         self.album_types_requested.clear();
         self.audiobook_shows.clear();
@@ -3915,11 +3925,26 @@ impl App {
             }
             Page::Artist(id) => {
                 let page = self.artist_pages.entry(id.clone()).or_default();
+                let mut known = false;
                 if page.artist.needs_load() {
-                    page.artist = Loadable::Loading;
-                    self.backend.api(ApiRequest::Artist { id: id.clone() });
+                    // The About the artist card may have read the artist
+                    // already, or be reading it.
+                    match self.artist_about.get(&id).map(|about| &about.artist) {
+                        Some(Loadable::Loaded(artist)) => {
+                            page.artist = Loadable::Loaded(artist.clone());
+                            known = true;
+                        }
+                        Some(Loadable::Loading) => page.artist = Loadable::Loading,
+                        _ => {
+                            page.artist = Loadable::Loading;
+                            self.backend.api(ApiRequest::Artist { id: id.clone() });
+                        }
+                    }
                 }
                 let filter = page.filter;
+                if known {
+                    self.request_artist_top_tracks(&id);
+                }
                 self.load_artist_albums(&id, filter);
                 if page_related_needs_load(&self.artist_pages, &id) {
                     if let Some(page) = self.artist_pages.get_mut(&id) {
@@ -3941,6 +3966,72 @@ impl App {
             Page::Radio(seed) => self.load_radio(&seed),
             Page::Queue => self.refresh_queue(true),
             Page::Settings => {}
+        }
+    }
+
+    /// The open artist page's top tracks, once its artist is known.
+    fn request_artist_top_tracks(&mut self, id: &str) {
+        if let Some(page) = self.artist_pages.get_mut(id)
+            && page.top_tracks.needs_load()
+        {
+            page.top_tracks = Loadable::Loading;
+            self.backend
+                .api(ApiRequest::ArtistTopTracks { id: id.to_string() });
+        }
+    }
+
+    /// Whether the About the artist card has something to ask about the
+    /// artist `id`: the Web API's artist once, and the session's biography
+    /// once local playback can be asked.
+    pub fn artist_about_due(&self, id: &str) -> bool {
+        if self.offline {
+            return false;
+        }
+        match self.artist_about.get(id) {
+            None => true,
+            Some(about) => {
+                matches!(about.artist, Loadable::NotLoaded)
+                    || (self.local_ready && matches!(about.profile, Loadable::NotLoaded))
+            }
+        }
+    }
+
+    /// Reads what the About the artist card shows of the artist `id`,
+    /// once per session. The artist comes through the artist page's own
+    /// request, and from its page when that has it; the biography and
+    /// portraits come from the playback session.
+    fn load_artist_about(&mut self, id: &str) {
+        if !self.artist_about_due(id) {
+            return;
+        }
+        let page = self.artist_pages.get(id).map(|page| &page.artist);
+        let about = self.artist_about.entry(id.to_string()).or_default();
+        if matches!(about.artist, Loadable::NotLoaded) {
+            match page {
+                Some(Loadable::Loaded(artist)) => about.artist = Loadable::Loaded(artist.clone()),
+                // The page's answer fills the card too.
+                Some(Loadable::Loading) => about.artist = Loadable::Loading,
+                _ => {
+                    about.artist = Loadable::Loading;
+                    self.backend.api(ApiRequest::Artist { id: id.to_string() });
+                }
+            }
+        }
+        if self.local_ready && matches!(about.profile, Loadable::NotLoaded) {
+            about.profile = Loadable::Loading;
+            self.backend.artist_profile(id.to_string());
+        }
+        // For Follow, as the artist page asks.
+        self.request_contains(vec![format!("spotify:artist:{id}")]);
+    }
+
+    /// Biographies that could not be read, for want of a session or
+    /// because it dropped, are read again by the card once it connects.
+    fn reread_artist_profiles_over_session(&mut self) {
+        for about in self.artist_about.values_mut() {
+            if matches!(about.profile, Loadable::Failed(_)) {
+                about.profile = Loadable::NotLoaded;
+            }
         }
     }
 
@@ -6207,13 +6298,10 @@ impl App {
                     if let Some(image) = pick_image(&artist.images, 64) {
                         self.tint_for(Some(image));
                     }
-                    if let Some(page) = self.artist_pages.get_mut(&id)
-                        && page.top_tracks.needs_load()
-                    {
-                        page.top_tracks = Loadable::Loading;
-                        self.backend
-                            .api(ApiRequest::ArtistTopTracks { id: id.clone() });
-                    }
+                    self.request_artist_top_tracks(&id);
+                }
+                if let Some(about) = self.artist_about.get_mut(&id) {
+                    about.artist = Loadable::from_result(result.clone());
                 }
                 if let Some(page) = self.artist_pages.get_mut(&id) {
                     page.artist = Loadable::from_result(result);
@@ -9198,6 +9286,7 @@ impl App {
                 }
             }
             Action::RefreshFriends(force) => self.refresh_friends(force),
+            Action::LoadArtistAbout(id) => self.load_artist_about(&id),
             Action::ToggleQueuePanel => {
                 self.show_queue_panel = !self.show_queue_panel;
                 if self.show_queue_panel {

@@ -3271,3 +3271,8 @@ msgstr "{name}のフォローを解除しました"
 #, rust-format
 msgid "Couldn't unfollow {name}: {error}"
 msgstr "{name}のフォローを解除できませんでした: {error}"
+
+#. Translators: The heading of the now playing panel's card about the playing song's artist.
+#: src/ui/artist_about.rs
+msgid "About the artist"
+msgstr "アーティストについて"

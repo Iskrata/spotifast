@@ -711,6 +711,9 @@ pub enum Command {
     UserNames(Vec<String>),
     /// Ask what the account's friends are listening to.
     FriendActivity,
+    /// Read an artist's biography and portraits through the streaming
+    /// session, for the now playing panel's About the artist card.
+    ArtistProfile(String),
     LoadLikedSongsCache {
         generation: u64,
     },
@@ -829,6 +832,12 @@ pub enum Event {
     },
     /// The friends' latest songs, or why they could not be read.
     FriendActivity(Result<Vec<crate::friends::Friend>, crate::friends::Unavailable>),
+    /// An artist's biography and portraits from the streaming session, or
+    /// why they could not be read.
+    ArtistProfile {
+        id: String,
+        result: Result<crate::artist_profile::ArtistProfile, String>,
+    },
     /// A user id resolved to a display name (`None` when nothing answers).
     UserName {
         id: String,
@@ -911,6 +920,9 @@ pub struct Backend {
     album_type_requests: std::sync::Mutex<Vec<Vec<String>>>,
     #[cfg(test)]
     home_episode_requests: std::sync::Mutex<Vec<(Vec<String>, u64)>>,
+    /// Artist reads, as `("web api" | "session", id)`.
+    #[cfg(test)]
+    artist_reads: std::sync::Mutex<Vec<(&'static str, String)>>,
 }
 
 impl Backend {
@@ -999,6 +1011,8 @@ impl Backend {
             album_type_requests: std::sync::Mutex::new(Vec::new()),
             #[cfg(test)]
             home_episode_requests: std::sync::Mutex::new(Vec::new()),
+            #[cfg(test)]
+            artist_reads: std::sync::Mutex::new(Vec::new()),
         }
     }
 
@@ -1049,6 +1063,13 @@ impl Backend {
     }
 
     pub fn api(&self, request: ApiRequest) {
+        #[cfg(test)]
+        if let ApiRequest::Artist { id } = &request {
+            self.artist_reads
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .push(("web api", id.clone()));
+        }
         #[cfg(test)]
         if matches!(
             request,
@@ -1228,6 +1249,26 @@ impl Backend {
             self.queued_tracks.lock().unwrap().push(uri.clone());
         }
         self.send(Command::Player(command));
+    }
+
+    /// Asks the streaming session for an artist's biography and portraits.
+    pub(crate) fn artist_profile(&self, id: String) {
+        #[cfg(test)]
+        self.artist_reads
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .push(("session", id.clone()));
+        self.send(Command::ArtistProfile(id));
+    }
+
+    #[cfg(test)]
+    pub(crate) fn take_artist_reads(&self) -> Vec<(&'static str, String)> {
+        std::mem::take(
+            &mut *self
+                .artist_reads
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()),
+        )
     }
 
     pub(crate) fn album_types(&self, uris: Vec<String>) {
@@ -1975,6 +2016,7 @@ impl Worker {
                 }
                 Command::UserNames(ids) => self.fetch_user_names(ids),
                 Command::FriendActivity => self.fetch_friend_activity(),
+                Command::ArtistProfile(id) => self.fetch_artist_profile(id),
                 Command::LoadLikedSongsCache { generation } => {
                     if let Some(account) = self.api.account() {
                         let account_id = account.as_str().to_string();
@@ -3275,6 +3317,31 @@ impl Worker {
                     crate::friends::Unavailable::Failed(error.to_string())
                 });
             let _ = events.send(Event::FriendActivity(result));
+            waker.wake();
+        });
+    }
+
+    /// Ask the streaming session about an artist. Without a session there
+    /// is nobody to ask; the app asks again once one connects.
+    fn fetch_artist_profile(&self, id: String) {
+        let events = self.events.clone();
+        let waker = self.waker.clone();
+        let Some(engine) = self.engine.clone() else {
+            let _ = events.send(Event::ArtistProfile {
+                id,
+                result: Err("local playback is not signed in".into()),
+            });
+            waker.wake();
+            return;
+        };
+        tokio::spawn(async move {
+            let result = crate::artist_profile::read(engine.session(), &id)
+                .await
+                .map_err(|error| {
+                    log::warn!("artist profile {id}: {error:#}");
+                    error.to_string()
+                });
+            let _ = events.send(Event::ArtistProfile { id, result });
             waker.wake();
         });
     }

@@ -1,6 +1,6 @@
 //! The playing song at the top of the Friend Activity panel: a small cover
 //! with its title and artists, Like and Add to playlist, the lyrics as they
-//! are sung, and what plays next.
+//! are sung, about the artist, and what plays next.
 
 use egui::{CornerRadius, Frame, Margin, Sense, Stroke, Vec2, vec2};
 
@@ -24,6 +24,9 @@ pub(super) fn section(app: &mut App, ui: &mut egui::Ui, now: &NowPlaying) {
     song(app, ui, now);
     ui.add_space(12.0);
     if lyrics_card(app, ui, now) {
+        ui.add_space(SECTION_GAP);
+    }
+    if super::artist_about::card(app, ui, now) {
         ui.add_space(SECTION_GAP);
     }
     if up_next(app, ui) {

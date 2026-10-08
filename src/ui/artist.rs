@@ -269,21 +269,24 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, id: &str) {
     app.artist_pages.insert(id.to_string(), page);
 }
 
+/// How many people follow an artist, as the artist page and the About the
+/// artist card say it.
+pub(super) fn followers_label(locale: crate::i18n::Locale, total: u64) -> String {
+    ngettext(
+        locale,
+        // Translators: {count} is the number of people who follow an artist.
+        "{count} follower",
+        "{count} followers",
+        u32::try_from(total).unwrap_or(u32::MAX),
+    )
+    .replace("{count}", &util::format_count(total))
+}
+
 fn artist_hero(app: &mut App, ui: &mut egui::Ui, artist: &Artist, preview: Option<&Artist>) {
     let locale = app.locale;
     let mut byline = Vec::new();
     if let Some(followers) = &artist.followers {
-        byline.push((
-            ngettext(
-                locale,
-                // Translators: {count} is the number of people who follow an artist.
-                "{count} follower",
-                "{count} followers",
-                u32::try_from(followers.total).unwrap_or(u32::MAX),
-            )
-            .replace("{count}", &util::format_count(followers.total)),
-            None,
-        ));
+        byline.push((followers_label(locale, followers.total), None));
     }
     if !artist.genres.is_empty() {
         byline.push((

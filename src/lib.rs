@@ -4,6 +4,7 @@ pub mod api;
 pub mod app;
 #[cfg(target_os = "linux")]
 pub mod appearance;
+pub mod artist_profile;
 pub mod auth;
 pub mod autoscroll;
 pub mod backend;

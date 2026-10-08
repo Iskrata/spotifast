@@ -376,6 +376,15 @@ pub fn populate(app: &mut App) {
         .insert(DiscographyFilter::All.groups().to_string(), albums);
     app.artist_pages.insert("art0".into(), artist_page);
     app.saved.insert("spotify:artist:art0".into(), true);
+    // What the now playing panel's About the artist card read of the
+    // playing song's artist.
+    app.artist_about.insert(
+        "art0".into(),
+        ArtistAbout {
+            artist: Loadable::Loaded(artist(0)),
+            profile: Loadable::Loaded(sample_artist_profile()),
+        },
+    );
 
     // Show page.
     let mut show_page = ShowPage {
@@ -615,6 +624,22 @@ pub fn populate(app: &mut App) {
         if let Some(id) = &track.id {
             app.track_cache.insert(id.clone(), track.clone());
         }
+    }
+}
+
+/// The biography the playback session gives for the demo's first artist,
+/// long enough to be cut short on the card.
+fn sample_artist_profile() -> crate::artist_profile::ArtistProfile {
+    crate::artist_profile::ArtistProfile {
+        biography: Some(
+            "Simon Green has recorded as Bonobo since the late 1990s, building warm, \
+             unhurried electronic music out of live instruments, field recordings and \
+             patient drum programming. What began as a bedroom project in Brighton grew \
+             into a touring band that plays his records with strings, horns and voices.\n\n\
+             His later albums lean towards the dancefloor without losing their melodies."
+                .into(),
+        ),
+        portraits: image(100),
     }
 }
 
@@ -2575,6 +2600,9 @@ mod tests {
         let (ctx, mut app) = accessible_app("friends-now-playing");
         let now = app.now_playing().expect("the demo plays a song");
         open_friends_panel(&mut app);
+        // The About the artist card has tests of its own; without it the
+        // friends start within the 800-point window this test draws.
+        app.artist_about.clear();
         let labels = panel_labels(&ctx, &mut app);
         let has = |label: &str| labels.iter().any(|shown| shown == label);
         assert!(has("Now playing"), "the panel's heading: {labels:?}");
@@ -2652,6 +2680,163 @@ mod tests {
             }
             app.backend.shutdown();
         }
+    }
+
+    /// The About the artist card's node in the side panel, by its name.
+    fn about_card(
+        app: &App,
+        tree: &egui::accesskit::TreeUpdate,
+        name: &str,
+    ) -> Option<egui::accesskit::NodeId> {
+        let panel_left = 1280.0 - f64::from(app.settings.friends_width) - 1.0;
+        tree.nodes
+            .iter()
+            .find(|(_, node)| {
+                node.label() == Some(name)
+                    && node.role() == egui::accesskit::Role::Button
+                    && node.bounds().is_some_and(|bounds| bounds.x0 >= panel_left)
+            })
+            .map(|(id, _)| *id)
+    }
+
+    #[test]
+    fn friend_activity_tells_about_the_playing_artist() {
+        use egui::accesskit::{Action as AccessibleAction, Role};
+        let (ctx, mut app) = accessible_app("friends-about-artist");
+        open_friends_panel(&mut app);
+        let labels = panel_labels(&ctx, &mut app);
+        let has = |label: &str| labels.iter().any(|shown| shown == label);
+        assert!(has("About the artist"), "the card: {labels:?}");
+        assert!(has("1,284,930 followers"), "{labels:?}");
+        assert!(has("electronic, downtempo"), "two genres: {labels:?}");
+        assert!(has("Following"), "the demo follows the artist: {labels:?}");
+        let biography = sample_artist_profile().biography.unwrap();
+        assert!(has(&biography), "the biography: {labels:?}");
+        assert!(
+            has("See more") && !has("Show less"),
+            "cut short: {labels:?}"
+        );
+        let tree = accessible_frame(&ctx, &mut app, vec![]);
+        let more = accessible_node(&tree, "See more", Role::Link);
+        accessible_frame(
+            &ctx,
+            &mut app,
+            vec![accessible_action(more, AccessibleAction::Click, None)],
+        );
+        let labels = panel_labels(&ctx, &mut app);
+        assert!(
+            labels.iter().any(|label| label == "Show less"),
+            "the whole biography: {labels:?}"
+        );
+        app.backend.shutdown();
+    }
+
+    #[test]
+    fn the_about_the_artist_card_waits_for_something_to_say() {
+        let (ctx, mut app) = accessible_app("friends-about-artist-unknown");
+        open_friends_panel(&mut app);
+        app.artist_about.clear();
+        let labels = panel_labels(&ctx, &mut app);
+        assert!(!labels.iter().any(|label| label == "About the artist"));
+        assert!(labels.iter().any(|label| label == "Next in queue"));
+        // The Web API failing and the session knowing nothing is no better.
+        app.artist_about.insert(
+            "art0".into(),
+            ArtistAbout {
+                artist: Loadable::Failed("Too many requests".into()),
+                profile: Loadable::Loaded(crate::artist_profile::ArtistProfile::default()),
+            },
+        );
+        let labels = panel_labels(&ctx, &mut app);
+        assert!(!labels.iter().any(|label| label == "About the artist"));
+        // The biography alone is enough, under the name the song gives.
+        app.artist_about.insert(
+            "art0".into(),
+            ArtistAbout {
+                artist: Loadable::Failed("Too many requests".into()),
+                profile: Loadable::Loaded(crate::artist_profile::ArtistProfile {
+                    biography: Some("A short one.".into()),
+                    portraits: Vec::new(),
+                }),
+            },
+        );
+        let labels = panel_labels(&ctx, &mut app);
+        let has = |label: &str| labels.iter().any(|shown| shown == label);
+        assert!(has("About the artist") && has("A short one."), "{labels:?}");
+        assert!(!has("See more"), "nothing more to see: {labels:?}");
+        assert!(!labels.iter().any(|label| label.ends_with("followers")));
+        app.backend.shutdown();
+    }
+
+    #[test]
+    fn the_about_the_artist_card_opens_the_artist() {
+        use egui::accesskit::Action as AccessibleAction;
+        let (ctx, mut app) = accessible_app("friends-about-artist-open");
+        open_friends_panel(&mut app);
+        accessible_frame(&ctx, &mut app, vec![]);
+        let tree = accessible_frame(&ctx, &mut app, vec![]);
+        let card = about_card(&app, &tree, "Bonobo").expect("the card");
+        accessible_frame(
+            &ctx,
+            &mut app,
+            vec![accessible_action(card, AccessibleAction::Click, None)],
+        );
+        assert_eq!(app.page(), &Page::Artist("art0".into()));
+        app.backend.shutdown();
+    }
+
+    /// The card reads an artist once for the session: the Web API's artist
+    /// through the artist page's request, and the biography through the
+    /// playback session once it is there. Opening the artist page while
+    /// the card's read is on its way waits for that answer.
+    #[test]
+    fn the_about_the_artist_card_reads_each_artist_once() {
+        let (ctx, mut app) = accessible_app("friends-about-artist-once");
+        app.offline = false;
+        app.local_ready = false;
+        app.artist_about.clear();
+        app.artist_pages.remove("art0");
+        open_friends_panel(&mut app);
+        for _ in 0..3 {
+            accessible_frame(&ctx, &mut app, vec![]);
+        }
+        assert_eq!(
+            app.backend.take_artist_reads(),
+            [("web api", "art0".to_string())],
+            "no session to ask yet"
+        );
+        app.local_ready = true;
+        for _ in 0..3 {
+            accessible_frame(&ctx, &mut app, vec![]);
+        }
+        assert_eq!(
+            app.backend.take_artist_reads(),
+            [("session", "art0".to_string())]
+        );
+        app.open(Page::Artist("art0".into()));
+        assert!(app.artist_pages["art0"].artist.is_loading());
+        assert!(
+            app.backend.take_artist_reads().is_empty(),
+            "the page waits for the card's read"
+        );
+        app.handle_backend_events(vec![
+            crate::backend::Event::Api(Box::new(crate::backend::ApiResponse::Artist {
+                id: "art0".into(),
+                result: Ok(artist(0)),
+            })),
+            crate::backend::Event::ArtistProfile {
+                id: "art0".into(),
+                result: Ok(sample_artist_profile()),
+            },
+        ]);
+        assert!(app.artist_pages["art0"].artist.get().is_some(), "the page");
+        assert!(app.artist_about["art0"].artist.get().is_some(), "the card");
+        assert!(app.artist_about["art0"].profile.get().is_some());
+        for _ in 0..3 {
+            accessible_frame(&ctx, &mut app, vec![]);
+        }
+        assert!(app.backend.take_artist_reads().is_empty(), "known now");
+        app.backend.shutdown();
     }
 
     /// A friend's row offers Unfollow from a right-click and from the More

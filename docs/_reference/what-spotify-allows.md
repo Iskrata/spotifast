@@ -71,6 +71,9 @@ clients. Spotifast uses its session for:
   cache. A song the session reads first has unknown availability; if it cannot
   play, it is skipped when reached, as it would be anywhere else.
 - **Lyrics** when Spotify has them.
+- **Artist biographies.** The artist's catalogue metadata carries the
+  biography Spotify's own clients show, which the Web API does not. The
+  now playing panel's About the artist card shows it.
 - **Display names** for the user IDs attached to songs in a playlist.
 - **Precise EP types** for releases that the Web API groups with singles.
 - **Radio and autoplay** through Spotify's context resolver: stations seeded
@@ -137,6 +140,10 @@ The Web API and librespot do not provide these features:
   public API for them. Friend activity is read through the librespot
   session, above.
 - **Canvas videos and video podcasts.** librespot does not provide them.
+- **Monthly listeners.** Spotify shows them only through a private endpoint
+  its own apps use. The Web API's artist has, at most, a follower count, and
+  librespot's artist metadata has neither. The About the artist card shows
+  followers when the Web API includes them.
 - **Play counts.** Spotify shows them only through a private endpoint its own
   apps use. The Web API has no play counts, and librespot does not provide
   them. See [issue #543](https://github.com/crmne/spotifast/issues/543).

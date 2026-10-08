@@ -3286,3 +3286,8 @@ msgstr "Du följer inte längre {name}"
 #, rust-format
 msgid "Couldn't unfollow {name}: {error}"
 msgstr "Det gick inte att sluta följa {name}: {error}"
+
+#. Translators: The heading of the now playing panel's card about the playing song's artist.
+#: src/ui/artist_about.rs
+msgid "About the artist"
+msgstr "Om artisten"

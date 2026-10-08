@@ -3325,3 +3325,8 @@ msgstr "Przestano obserwować {name}"
 #, rust-format
 msgid "Couldn't unfollow {name}: {error}"
 msgstr "Nie udało się przestać obserwować {name}: {error}"
+
+#. Translators: The heading of the now playing panel's card about the playing song's artist.
+#: src/ui/artist_about.rs
+msgid "About the artist"
+msgstr "O wykonawcy"

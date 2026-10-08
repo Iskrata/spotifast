@@ -775,6 +775,16 @@ pub struct ArtistPage {
     pub show_all_top: bool,
 }
 
+/// What the now playing panel's About the artist card knows of one
+/// artist, kept for the session so the same artist is read once.
+#[derive(Default)]
+pub struct ArtistAbout {
+    /// The Web API's artist, the one the artist page reads.
+    pub artist: Loadable<Artist>,
+    /// The biography and portraits, from the playback session.
+    pub profile: Loadable<crate::artist_profile::ArtistProfile>,
+}
+
 /// A radio page: the songs Spotify mixed for its seed, which are the songs
 /// its Play button plays.
 #[derive(Default)]
@@ -1104,6 +1114,9 @@ pub enum Action {
     ToggleFriendsPanel,
     /// Read the friends' latest songs again; `true` even if read recently.
     RefreshFriends(bool),
+    /// Read what the About the artist card shows of the artist with this
+    /// id, unless it is known or on its way.
+    LoadArtistAbout(String),
     SetLyricsFullscreen(bool),
     LyricsLineShown(Option<usize>),
     FollowLyrics,

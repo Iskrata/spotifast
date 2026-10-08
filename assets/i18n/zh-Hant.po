@@ -3200,3 +3200,8 @@ msgstr "已取消追蹤 {name}"
 #, rust-format
 msgid "Couldn't unfollow {name}: {error}"
 msgstr "無法取消追蹤 {name}:{error}"
+
+#. Translators: The heading of the now playing panel's card about the playing song's artist.
+#: src/ui/artist_about.rs
+msgid "About the artist"
+msgstr "關於藝人"

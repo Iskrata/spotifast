@@ -3305,3 +3305,8 @@ msgstr "{name} ontvolgd"
 #, rust-format
 msgid "Couldn't unfollow {name}: {error}"
 msgstr "Kan {name} niet ontvolgen: {error}"
+
+#. Translators: The heading of the now playing panel's card about the playing song's artist.
+#: src/ui/artist_about.rs
+msgid "About the artist"
+msgstr "Over de artiest"

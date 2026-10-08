@@ -3320,3 +3320,8 @@ msgstr "Вы отписались от {name}"
 #, rust-format
 msgid "Couldn't unfollow {name}: {error}"
 msgstr "Не удалось отписаться от {name}: {error}"
+
+#. Translators: The heading of the now playing panel's card about the playing song's artist.
+#: src/ui/artist_about.rs
+msgid "About the artist"
+msgstr "Об исполнителе"

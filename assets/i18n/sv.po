@@ -1484,10 +1484,9 @@ msgid "Moving album art background"
 msgstr "Rörlig bakgrund från skivomslaget"
 
 #: src/ui/settings.rs:889
-msgid "Fill pages with a slowly moving gradient from the playing song's cover."
-msgstr ""
-"Fyller sidorna med en långsamt rörlig toning från den spelande låtens "
-"omslag."
+msgid ""
+"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
+msgstr "Fyller sidorna med en långsamt rörlig toning från omslaget under pekaren, sidans eget omslag eller den spelande låtens omslag."
 
 #: src/ui/settings.rs:1017
 msgid "Off"

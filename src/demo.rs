@@ -2505,11 +2505,128 @@ mod tests {
         let url = now.art_small.or(now.art_url).unwrap();
         let colors = [[200, 30, 30], [30, 200, 30], [30, 30, 200], [200, 200, 30]];
         app.art_palettes.insert(url, colors);
-        assert_eq!(app.now_playing_art_palette(), None, "off by default");
-        app.settings.art_background = true;
-        assert_eq!(app.now_playing_art_palette(), Some(colors));
+        assert!(app.settings.art_background, "on by default");
+        assert_eq!(app.art_background_palette(None, None), Some(colors));
         // A page draws over the gradient without trouble.
         accessible_frame(&ctx, &mut app, vec![]);
+        app.settings.art_background = false;
+        assert_eq!(app.art_background_palette(None, None), None);
+        app.backend.shutdown();
+    }
+
+    #[test]
+    fn moving_art_background_prefers_the_hovered_card_then_the_page() {
+        let (_ctx, mut app) = accessible_app("art-background-sources");
+        let now = app.now_playing().unwrap();
+        let playing_url = now.art_small.or(now.art_url).unwrap();
+        let playing = [[200, 30, 30]; 4];
+        let page = [[30, 200, 30]; 4];
+        let card = [[30, 30, 200]; 4];
+        app.art_palettes.insert(playing_url, playing);
+        app.art_palettes.insert("page".into(), page);
+        app.art_palettes.insert("card".into(), card);
+        assert_eq!(app.art_background_palette(None, None), Some(playing));
+        assert_eq!(app.art_background_palette(Some("page"), None), Some(page));
+        assert_eq!(
+            app.art_background_palette(Some("page"), Some("card")),
+            Some(card)
+        );
+        // Art whose colours are still being read gives way to the next.
+        assert_eq!(
+            app.art_background_palette(Some("page"), Some("unread card")),
+            Some(page)
+        );
+        assert_eq!(
+            app.art_background_palette(Some("unread page"), None),
+            Some(playing)
+        );
+        app.backend.shutdown();
+    }
+
+    #[test]
+    fn resting_on_a_card_eases_the_background_toward_its_cover() {
+        use egui::accesskit::Role;
+        let (ctx, mut app) = accessible_app("art-background-hover");
+        app.open(Page::Home);
+        let now = app.now_playing().unwrap();
+        let playing_url = now.art_small.or(now.art_url).unwrap();
+        app.art_palettes.insert(playing_url, [[10, 10, 240]; 4]);
+        let tree = accessible_frame(&ctx, &mut app, vec![]);
+        let card = tree
+            .nodes
+            .iter()
+            .filter(|(_, node)| node.role() == Role::Button)
+            .filter_map(|(_, node)| node.bounds())
+            .find(|bounds| {
+                // A whole card above the player bar.
+                (bounds.x1 - bounds.x0 - crate::ui::widgets::CARD_WIDTH as f64).abs() < 1.0
+                    && bounds.y1 < 700.0
+                    && bounds.x1 < 1000.0
+            })
+            .map(|bounds| {
+                egui::pos2(
+                    ((bounds.x0 + bounds.x1) / 2.0) as f32,
+                    ((bounds.y0 + bounds.y1) / 2.0) as f32,
+                )
+            })
+            .expect("a card on Home");
+        // The top-left colour of the gradient behind the page.
+        fn backdrop(
+            ctx: &egui::Context,
+            app: &mut App,
+            time: f64,
+            events: Vec<egui::Event>,
+        ) -> egui::Color32 {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(1280.0, 800.0),
+                    )),
+                    time: Some(time),
+                    events,
+                    ..Default::default()
+                },
+                |ui| app.frame_ui(ui),
+            );
+            output.textures_delta.clear();
+            output
+                .shapes
+                .iter()
+                .find_map(|shape| match &shape.shape {
+                    egui::Shape::Mesh(mesh) if mesh.vertices.len() > 100 => {
+                        Some(mesh.vertices[0].color)
+                    }
+                    _ => None,
+                })
+                .expect("the moving background")
+        }
+        let mut time = 0.0;
+        backdrop(&ctx, &mut app, time, vec![egui::Event::PointerMoved(card)]);
+        let url = crate::ui::card_hover::under_pointer(&ctx).expect("the card notes its cover");
+        // Settle on the playing song's colours, the pointer still on the card.
+        while time < 3.0 {
+            time += 0.1;
+            backdrop(&ctx, &mut app, time, vec![]);
+        }
+        app.art_palettes.insert(url, [[240, 10, 10]; 4]);
+        let resting = backdrop(&ctx, &mut app, time, vec![]);
+        let mut eased = resting;
+        while time < 6.0 {
+            time += 0.1;
+            eased = backdrop(&ctx, &mut app, time, vec![]);
+        }
+        assert!(
+            eased.r() > resting.r() && eased.r() > eased.b(),
+            "{resting:?} toward red: {eased:?}"
+        );
+        backdrop(&ctx, &mut app, time, vec![egui::Event::PointerGone]);
+        let mut back = eased;
+        while time < 9.0 {
+            time += 0.1;
+            back = backdrop(&ctx, &mut app, time, vec![]);
+        }
+        assert!(back.r() < eased.r(), "{eased:?} eases back: {back:?}");
         app.backend.shutdown();
     }
 

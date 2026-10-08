@@ -887,7 +887,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             art_background.clone(),
             gettext(
                 locale,
-                "Fill pages with a slowly moving gradient from the playing song's cover.",
+                "Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's.",
             ),
         ),
     ];

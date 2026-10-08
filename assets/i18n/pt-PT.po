@@ -1493,10 +1493,9 @@ msgid "Moving album art background"
 msgstr "Fundo animado da capa do álbum"
 
 #: src/ui/settings.rs:889
-msgid "Fill pages with a slowly moving gradient from the playing song's cover."
-msgstr ""
-"Preenche as páginas com um gradiente que se move lentamente, a partir da "
-"capa da música em reprodução."
+msgid ""
+"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
+msgstr "Preenche as páginas com um gradiente que se move lentamente, a partir da capa sob o ponteiro, da capa da própria página ou da capa da música em reprodução."
 
 #: src/ui/settings.rs:1017
 msgid "Off"

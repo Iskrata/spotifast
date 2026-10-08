@@ -262,7 +262,8 @@ pub struct Settings {
     pub home: HomeSettings,
     /// Tint the interface with the colour of the playing album's art.
     pub accent_from_art: bool,
-    /// A slowly moving gradient from the playing album's art behind pages.
+    /// A slowly moving gradient behind pages from the hovered card's, the
+    /// page's or the playing album's art.
     pub art_background: bool,
     /// A spectrum or waveform of the playing song behind the player bar.
     pub player_bar_vis: PlayerBarVis,
@@ -435,7 +436,7 @@ impl Default for Settings {
             system_theme_cache: None,
             home: HomeSettings::default(),
             accent_from_art: true,
-            art_background: false,
+            art_background: true,
             player_bar_vis: PlayerBarVis::Off,
             volume: (u16::MAX as u32 * 70 / 100) as u16,
             sidebar_visible: true,
@@ -1073,6 +1074,14 @@ mod tests {
     fn older_settings_keep_the_sidebar_visible() {
         let settings: Settings = serde_json::from_str("{}").unwrap();
         assert!(settings.sidebar_visible);
+    }
+
+    #[test]
+    fn the_moving_art_background_is_on_unless_turned_off() {
+        let older: Settings = serde_json::from_str("{}").unwrap();
+        assert!(older.art_background);
+        let off: Settings = serde_json::from_str(r#"{"art_background":false}"#).unwrap();
+        assert!(!off.art_background);
     }
 
     #[test]

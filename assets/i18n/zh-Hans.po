@@ -1443,8 +1443,9 @@ msgid "Moving album art background"
 msgstr "动态专辑封面背景"
 
 #: src/ui/settings.rs:889
-msgid "Fill pages with a slowly moving gradient from the playing song's cover."
-msgstr "用正在播放歌曲封面生成的缓慢流动渐变填充页面。"
+msgid ""
+"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
+msgstr "用指针下方的封面、页面自身的封面或正在播放歌曲的封面生成的缓慢流动渐变填充页面。"
 
 #: src/ui/settings.rs:1017
 msgid "Off"

@@ -1500,10 +1500,9 @@ msgid "Moving album art background"
 msgstr "Arrière-plan animé de la pochette"
 
 #: src/ui/settings.rs:889
-msgid "Fill pages with a slowly moving gradient from the playing song's cover."
-msgstr ""
-"Remplit les pages d’un dégradé qui bouge lentement, tiré de la pochette du "
-"titre en cours."
+msgid ""
+"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
+msgstr "Remplit les pages d’un dégradé qui bouge lentement, tiré de la pochette sous le pointeur, de celle de la page ou de celle du titre en cours."
 
 #: src/ui/settings.rs:1017
 msgid "Off"

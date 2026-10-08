@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 mod art_background;
 pub mod artist;
+pub(crate) mod card_hover;
 pub mod collection;
 pub(crate) mod devices;
 mod dialogs;
@@ -214,74 +215,92 @@ where
     }
 }
 
-fn page_tint(app: &mut App) -> Option<Color32> {
-    let page = app.page().clone();
-    let image = match &page {
+/// The cover of the page's own subject, for pages that have one.
+fn page_art(app: &App) -> Option<String> {
+    let image = match app.page() {
         Page::Playlist(id) => app
             .playlist_pages
             .get(id)
             .and_then(|page| page.playlist.get())
             .or_else(|| app.known_playlist(id))
-            .and_then(|playlist| pick_image(&playlist.images, 64))
-            .map(str::to_string),
+            .and_then(|playlist| pick_image(&playlist.images, 64)),
         Page::Album(id) => app
             .album_pages
             .get(id)
             .and_then(|page| page.album.get())
             .or_else(|| app.known_album(id))
-            .and_then(|album| pick_image(&album.images, 64))
-            .map(str::to_string),
+            .and_then(|album| pick_image(&album.images, 64)),
         Page::Artist(id) => app
             .artist_pages
             .get(id)
             .and_then(|page| page.artist.get())
             .or_else(|| app.known_artist(id))
-            .and_then(|artist| pick_image(&artist.images, 64))
-            .map(str::to_string),
+            .and_then(|artist| pick_image(&artist.images, 64)),
         Page::Show(id) => app
             .show_pages
             .get(id)
             .and_then(|page| page.show.get())
             .or_else(|| app.known_show(id))
-            .and_then(|show| pick_image(&show.images, 64))
-            .map(str::to_string),
-        Page::Radio(seed) => pick_image(&app.radio_images(seed), 64).map(str::to_string),
-        Page::LikedSongs => return Some(Color32::from_rgb(0x50, 0x38, 0xc8)),
+            .and_then(|show| pick_image(&show.images, 64)),
+        Page::Radio(seed) => return pick_image(&app.radio_images(seed), 64).map(str::to_string),
         _ => None,
     };
+    image.map(str::to_string)
+}
+
+fn page_tint(app: &mut App, image: Option<&str>) -> Option<Color32> {
+    if *app.page() == Page::LikedSongs {
+        return Some(Color32::from_rgb(0x50, 0x38, 0xc8));
+    }
     if !app.settings.accent_from_art && image.is_some() {
         return None;
     }
     match image {
-        Some(url) => app.tint_for(Some(&url)).or_else(|| app.now_playing_tint()),
+        Some(url) => app.tint_for(Some(url)).or_else(|| app.now_playing_tint()),
         None => app.now_playing_tint(),
     }
 }
 
+/// The backdrop behind the page: the moving album art gradient, or else the
+/// cover's tint glowing from the top.
+fn backdrop(app: &mut App, ui: &egui::Ui, rect: Rect, page_art: Option<&str>) -> egui::Shape {
+    let palette = app.palette;
+    let hovered = if app.settings.art_background {
+        card_hover::art(ui.ctx(), |url| app.art_palette(url).is_some())
+    } else {
+        None
+    };
+    if let Some(art) = app.art_background_palette(page_art, hovered.as_deref()) {
+        let playing = app.believed_playing();
+        return art_background::shape(ui, &palette, rect, art, playing);
+    }
+    let Some(tint) = page_tint(app, page_art) else {
+        return egui::Shape::Noop;
+    };
+    let strength = if matches!(
+        app.page(),
+        Page::Home | Page::Search | Page::Settings | Page::Queue
+    ) {
+        0.45
+    } else {
+        0.85
+    };
+    let top = blend(palette.window, tint, strength);
+    let header = Rect::from_min_size(rect.min, vec2(rect.width(), 340.0));
+    widgets::vertical_gradient(header, top, palette.window)
+}
+
 fn central(app: &mut App, ui: &mut egui::Ui) {
     let palette = app.palette;
-    let tint = page_tint(app);
-    let art = app.now_playing_art_palette();
-    let playing = app.believed_playing();
+    let page_art = page_art(app);
     egui::CentralPanel::default()
         .frame(Frame::new().fill(palette.window))
         .show(ui, |ui| {
             let rect = ui.max_rect();
-            if let Some(art) = art {
-                art_background::paint(ui, &palette, rect, art, playing);
-            } else if let Some(tint) = tint {
-                let strength = if matches!(
-                    app.page(),
-                    Page::Home | Page::Search | Page::Settings | Page::Queue
-                ) {
-                    0.45
-                } else {
-                    0.85
-                };
-                let top = blend(palette.window, tint, strength);
-                let header = Rect::from_min_size(rect.min, vec2(rect.width(), 340.0));
-                widgets::paint_vertical_gradient(ui, header, top, palette.window);
-            }
+            // The backdrop is chosen once the page has drawn, so it knows
+            // which card the pointer rests on, and painted beneath it.
+            let backdrop_slot = ui.painter().add(egui::Shape::Noop);
+            card_hover::begin_frame(ui.ctx());
             ui.spacing_mut().item_spacing = vec2(8.0, 6.0);
             // egui fades a scrolled page's edge into the panel's plain
             // colour, which shows as a pale band over a cover's tint; the
@@ -325,6 +344,8 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                 },
             );
             header_shadow(ui, scroll.inner_rect, scroll.state.offset.y, palette.dark);
+            let shape = backdrop(app, ui, rect, page_art.as_deref());
+            ui.painter().set(backdrop_slot, shape);
         });
 }
 

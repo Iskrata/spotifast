@@ -1497,10 +1497,9 @@ msgid "Moving album art background"
 msgstr "Sfondo animato dalla copertina"
 
 #: src/ui/settings.rs:889
-msgid "Fill pages with a slowly moving gradient from the playing song's cover."
-msgstr ""
-"Riempie le pagine con una sfumatura che si muove lentamente, presa dalla "
-"copertina del brano in riproduzione."
+msgid ""
+"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
+msgstr "Riempie le pagine con una sfumatura che si muove lentamente, presa dalla copertina sotto il puntatore, da quella della pagina o da quella del brano in riproduzione."
 
 #: src/ui/settings.rs:1017
 msgid "Off"

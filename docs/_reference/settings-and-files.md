@@ -233,7 +233,7 @@ main fields are:
 | `system_theme_cache` | absent | Last accepted Omarchy palette for Follow system; retained across restarts |
 | `accent_from_art` | `true` | Tint pages with album art |
 | `friends_width` | `300` | Width of the Friend Activity panel |
-| `art_background` | `false` | A faint, slowly moving glow from the playing song's cover at the top of pages, still while paused |
+| `art_background` | `true` | A faint, slowly moving glow at the top of pages from album art, still while paused: the cover of a card the pointer rests on, else the cover of an album, playlist, artist, podcast or radio page, else the playing song's. Files that store `false` keep it off |
 | `player_bar_vis` | `off` | Since 0.11.0: what moves behind the player bar while a song plays on this computer: `off`, `spectrum` or `waveform` |
 | `library_sort` | `{}` | Per-section Library order overrides, since 0.8.0: `library`, `recently_played`, `name`, `recently_added`, `local`, or `spotify`, where supported |
 | `sidebar_order` | `[]` | Saved local playlist arrangement, including an unpinned Liked Songs, retained when another sort is selected |

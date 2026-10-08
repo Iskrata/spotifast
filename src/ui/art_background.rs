@@ -1,4 +1,6 @@
-//! A slowly moving gradient behind pages, made from the playing song's art.
+//! A slowly moving gradient behind pages, made from album art: a hovered
+//! card's cover (see [`super::card_hover`]), else the page's own cover, else
+//! the playing song's.
 //!
 //! Each quarter of the cover gives one colour, drawn toward the others so
 //! they stay in one family. They glow faintly from the top of the page and
@@ -9,7 +11,7 @@
 
 use std::time::Duration;
 
-use egui::{Color32, Id, Rect, Rgba, Ui, pos2};
+use egui::{Color32, Id, Rect, Rgba, Shape, Ui, pos2};
 
 use crate::theme::Palette;
 
@@ -35,8 +37,9 @@ struct State {
     last: f64,
 }
 
-/// Paints the gradient over `rect` for the art's quarter colours.
-pub fn paint(ui: &Ui, palette: &Palette, rect: Rect, art: [[u8; 3]; 4], playing: bool) {
+/// The gradient over `rect` for the art's quarter colours. Whichever art it
+/// is given, the colours fade from what it showed before.
+pub fn shape(ui: &Ui, palette: &Palette, rect: Rect, art: [[u8; 3]; 4], playing: bool) -> Shape {
     let target = harmonized(art.map(|rgb| Rgba::from(palette.tint_from_art(rgb))));
     let now = ui.input(|input| input.time);
     let id = Id::new("art-background");
@@ -68,13 +71,7 @@ pub fn paint(ui: &Ui, palette: &Palette, rect: Rect, art: [[u8; 3]; 4], playing:
     }
     // A light window shows colour more strongly, so it takes less of it.
     let strength = if palette.dark { 0.34 } else { 0.22 };
-    ui.painter().add(egui::Shape::mesh(mesh(
-        rect,
-        &state.colors,
-        state.phase,
-        window,
-        strength,
-    )));
+    Shape::mesh(mesh(rect, &state.colors, state.phase, window, strength))
 }
 
 /// Draws each colour part of the way toward the colours' average.

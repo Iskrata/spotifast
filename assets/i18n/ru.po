@@ -1498,9 +1498,9 @@ msgid "Moving album art background"
 msgstr "Движущийся фон из обложки альбома"
 
 #: src/ui/settings.rs:889
-msgid "Fill pages with a slowly moving gradient from the playing song's cover."
-msgstr ""
-"Заполняет страницы медленно движущимся градиентом из обложки текущего трека."
+msgid ""
+"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
+msgstr "Заполняет страницы медленно движущимся градиентом из обложки под указателем, обложки самой страницы или обложки текущего трека."
 
 #: src/ui/settings.rs:1017
 msgid "Off"

@@ -1653,19 +1653,36 @@ impl App {
         self.accents.get(&url).copied()
     }
 
-    /// The quarter colours of the playing art for the moving background,
-    /// asking for them the first time this art is seen.
-    pub fn now_playing_art_palette(&mut self) -> Option<[[u8; 3]; 4]> {
+    /// The quarter colours of `url`'s art, asking for them the first time
+    /// this art is seen.
+    pub fn art_palette(&mut self, url: &str) -> Option<[[u8; 3]; 4]> {
+        if let Some(palette) = self.art_palettes.get(url) {
+            return Some(*palette);
+        }
+        self.tint_for(Some(url));
+        None
+    }
+
+    /// The quarter colours the moving background shows: the hovered card's
+    /// cover, else the page's own cover, else the playing song's. Art whose
+    /// colours are still being read gives way to the next, so the
+    /// background never waits on a decode.
+    pub fn art_background_palette(
+        &mut self,
+        page_art: Option<&str>,
+        hovered_art: Option<&str>,
+    ) -> Option<[[u8; 3]; 4]> {
         if !self.settings.art_background {
             return None;
         }
-        let now = self.now_playing()?;
-        let url = now.art_small.or(now.art_url)?;
-        if let Some(palette) = self.art_palettes.get(&url) {
-            return Some(*palette);
-        }
-        self.tint_for(Some(&url));
-        None
+        hovered_art
+            .and_then(|url| self.art_palette(url))
+            .or_else(|| page_art.and_then(|url| self.art_palette(url)))
+            .or_else(|| {
+                let now = self.now_playing()?;
+                let url = now.art_small.or(now.art_url)?;
+                self.art_palette(&url)
+            })
     }
 
     /// Asks for the friends' latest songs, unless a request is out or the

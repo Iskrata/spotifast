@@ -237,10 +237,13 @@ fn row(app: &mut App, ui: &mut egui::Ui, friend: &Friend, now: i64) {
     let age = crate::friends::age_label(now, friend.timestamp_ms);
     let menu_id = ui.make_persistent_id(("friend-menu", &friend.uri));
     // The row answers a right-click, and its More button stands in for the
-    // age while the row is pointed at or its menu is open. Sensed before its
-    // contents, so the links inside keep their own clicks.
+    // age while the pointer is over the row or its menu is open. Sensed
+    // before its contents, so the links inside keep their own clicks. The
+    // pointer counts while it rests on the button too: the row is not
+    // `hovered` then, and the button would vanish under it and flicker.
     let scope = ui.scope_builder(UiBuilder::new().sense(Sense::click()), |ui| {
-        let show_more = ui.response().hovered() || egui::Popup::is_id_open(ui.ctx(), menu_id);
+        let show_more =
+            ui.response().contains_pointer() || egui::Popup::is_id_open(ui.ctx(), menu_id);
         row_contents(app, ui, friend, age, show_more.then_some(menu_id));
     });
     egui::Popup::context_menu(&scope.response)

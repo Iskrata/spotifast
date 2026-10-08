@@ -2657,6 +2657,51 @@ mod tests {
     /// A friend's row offers Unfollow from a right-click and from the More
     /// button that shows while it is pointed at. Unfollow asks first, then
     /// takes the row away.
+    /// The More button stays under a pointer resting on it. Pointing at the
+    /// button takes the hover from the row, which hid the button and made it
+    /// flicker with the age it stands in for.
+    #[test]
+    fn a_friends_more_button_stays_under_the_pointer() {
+        use egui::accesskit::Role;
+        let (ctx, mut app) = accessible_app("friends-more-steady");
+        app.remote = None;
+        open_friends_panel(&mut app);
+        let jonas = sample_friends()[1].clone();
+        let label = format!("More options for {}", jonas.name);
+        accessible_frame(&ctx, &mut app, vec![]);
+        let tree = accessible_frame(&ctx, &mut app, vec![]);
+        let song = tree
+            .nodes
+            .iter()
+            .find(|(_, node)| node.label() == Some(jonas.track.name.as_str()))
+            .and_then(|(_, node)| node.bounds())
+            .expect("Jonas's song");
+        let avatar = egui::pos2(song.x0 as f32 - 25.0, song.y0 as f32 + 4.0);
+        accessible_frame(&ctx, &mut app, vec![egui::Event::PointerMoved(avatar)]);
+        let tree = accessible_frame(&ctx, &mut app, vec![]);
+        let more = tree
+            .nodes
+            .iter()
+            .find(|(_, node)| node.label() == Some(label.as_str()) && node.role() == Role::Button)
+            .and_then(|(_, node)| node.bounds())
+            .expect("the More button while the row is pointed at");
+        let on_button = egui::pos2(
+            ((more.x0 + more.x1) / 2.0) as f32,
+            ((more.y0 + more.y1) / 2.0) as f32,
+        );
+        accessible_frame(&ctx, &mut app, vec![egui::Event::PointerMoved(on_button)]);
+        for frame in 0..6 {
+            let tree = accessible_frame(&ctx, &mut app, vec![]);
+            assert!(
+                tree.nodes
+                    .iter()
+                    .any(|(_, node)| node.label() == Some(label.as_str())),
+                "the More button is still there on frame {frame}"
+            );
+        }
+        app.backend.shutdown();
+    }
+
     #[test]
     fn a_friend_is_unfollowed_from_their_row_after_confirming() {
         use egui::accesskit::{Action as AccessibleAction, Role};

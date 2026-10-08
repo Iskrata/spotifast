@@ -247,7 +247,8 @@ out, or a reconnection that gives up stops it.
   panel is open and neither Spotify nor a local file has lyrics, it sends
   the track's artist, title, album, and length to
   [lrclib.net](https://lrclib.net). It also checks
-  api.github.com once a day for updates. You can turn off automatic checks in
+  api.github.com once a day for updates. This fork reads the releases of
+  Iskrata/spotifast, not crmne/spotifast. You can turn off automatic checks in
   Settings, or request one there at any time. On macOS, **Check for Updates**
   is also in the application menu. On a connection the system reports as
   metered (Windows), the daily check, automatic downloads, and the large cover

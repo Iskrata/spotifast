@@ -25,8 +25,11 @@ pub const CONFIG: UpdateConfig = UpdateConfig {
     // checksums.txt lists them (#737): an AppImage replaces itself with the
     // next one.
     appimage: true,
+    // This fork updates from its own releases, so an upstream release never
+    // replaces the fork's features. A fork release must be signed with the
+    // key whose public half is in update-public-key.hex.
     ..UpdateConfig::new(
-        "crmne/spotifast",
+        "Iskrata/spotifast",
         "Spotifast",
         "spotifast",
         env!("CARGO_PKG_VERSION"),

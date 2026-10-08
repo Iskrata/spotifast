@@ -8007,9 +8007,9 @@ mod tests {
 
         // Sweep from the top; the first slot inside the list is the one
         // right under Liked Songs, between what were the first two
-        // unpinned playlists.
+        // unpinned playlists. The sweep reaches below every nav row.
         let mut dropped = false;
-        for step in 0..40 {
+        for step in 0..60 {
             let pos = egui::pos2(120.0, 100.0 + step as f32 * 10.0);
             egui::DragAndDrop::set_payload(
                 &ctx,

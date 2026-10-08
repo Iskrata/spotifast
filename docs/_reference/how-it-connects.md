@@ -76,6 +76,12 @@ Spotifast uses separate credentials for Web API access and local playback:
    to disk or logged. If the feed fails, the session's older
    `presence-view/v1/buddylist` stands in.
 
+   While a song plays, the panel shows it above the friends with the line of
+   its lyrics being sung and the next songs in the queue. It reads both the
+   way the Lyrics and Queue panels do: the lyrics once per song, from the
+   cache when they are there, and the queue when the panel opens and when the
+   song changes. It does not poll the queue while the song plays.
+
 Local playback authorization stays separate from the Web API grants. Its
 browser approval requests only the streaming permission and always shows the
 consent dialog. The playback session uses the account ID verified by a
@@ -244,9 +250,9 @@ out, or a reconnection that gives up stops it.
   while the saved rows remain visible. Manual refresh starts immediately.
   Like and Unlike are kept over lagging reads until Spotify confirms them.
 - Spotifast has no telemetry, analytics, or hosted service. When the lyrics
-  panel is open and neither Spotify nor a local file has lyrics, it sends
-  the track's artist, title, album, and length to
-  [lrclib.net](https://lrclib.net). It also checks
+  panel or the Listening activity panel is open and neither Spotify nor a
+  local file has lyrics, it sends the track's artist, title, album, and
+  length to [lrclib.net](https://lrclib.net). It also checks
   api.github.com once a day for updates. This fork reads the releases of
   Iskrata/spotifast, not crmne/spotifast. You can turn off automatic checks in
   Settings, or request one there at any time. On macOS, **Check for Updates**

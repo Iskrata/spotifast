@@ -54,7 +54,8 @@ Spotifast connects only to the services below.
   service, which answers with the account's feed of new releases; when it
   cannot, the Web API is asked for the followed artists and their latest
   albums. The shelf is saved in the same Home cache.
-- **LRCLIB.** When the lyrics panel is open and neither Spotify nor, for a
+- **LRCLIB.** When the lyrics panel or the Listening activity panel is open
+  and neither Spotify nor, for a
   local file, the file itself has lyrics for the song, Spotifast sends its
   artist, title, album and length to [lrclib.net](https://lrclib.net).
   Nothing identifying you is included.

@@ -1,4 +1,5 @@
-//! What friends are listening to, in the right panel.
+//! What friends are listening to, in the right panel, under the song
+//! playing here.
 
 use egui::{Frame, Margin, Sense, Vec2};
 
@@ -43,17 +44,20 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
         let window_controls =
             super::window_controls_reservation(ui.ctx(), true, false, ui.available_width());
         ui.add_space(window_controls.queue_top);
+        // While a song plays, it heads the panel and Listening activity
+        // follows as a section of its own.
+        let now = app.now_playing();
+        let title = if now.is_some() {
+            gettext(locale, "Now playing")
+        } else {
+            gettext(locale, "Listening activity")
+        };
         let mut close = false;
         egui::Sides::new().shrink_left().show(
             ui,
             |ui| {
                 ui.add_space(4.0);
-                theme::text(
-                    ui,
-                    gettext(locale, "Listening activity"),
-                    theme::bold(16.0),
-                    palette.text,
-                );
+                theme::text(ui, title, theme::bold(16.0), palette.text);
             },
             |ui| {
                 close = theme::icon_button(
@@ -74,7 +78,24 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
         egui::ScrollArea::vertical()
             .id_salt("friends-panel-scroll")
             .auto_shrink([false, false])
-            .show(ui, |ui| contents(app, ui));
+            .show(ui, |ui| {
+                if let Some(now) = &now {
+                    // Lined up with the friends' rows below.
+                    Frame::new()
+                        .inner_margin(Margin {
+                            left: TITLE_INSET,
+                            right: CLOSE_GLYPH_INSET,
+                            top: 0,
+                            bottom: 0,
+                        })
+                        .show(ui, |ui| {
+                            super::now_playing_panel::section(app, ui, now);
+                            friends_heading(ui, &palette, locale);
+                        });
+                    ui.add_space(8.0);
+                }
+                contents(app, ui);
+            });
     });
     // The Listening activity panel shares the Queue panel's width, so switching
     // between the two never moves the page.
@@ -85,6 +106,16 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
         app.settings.queue_width = width;
         app.actions.push(Action::SettingsChanged);
     }
+}
+
+/// Listening activity's heading below the playing song.
+fn friends_heading(ui: &mut egui::Ui, palette: &Palette, locale: crate::i18n::Locale) {
+    theme::text(
+        ui,
+        gettext(locale, "Listening activity"),
+        theme::semibold(14.0),
+        palette.text,
+    );
 }
 
 fn contents(app: &mut App, ui: &mut egui::Ui) {

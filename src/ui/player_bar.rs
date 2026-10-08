@@ -477,11 +477,7 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
     let offer_expand = art_available && !app.settings.art_expanded && app.settings.sidebar_visible;
     let over_expand = offer_expand && ui.rect_contains_pointer(expand_rect);
     if cover_response.clicked() && !over_expand {
-        if let Some(id) = &now.album_id {
-            app.actions.push(Action::Open(Page::Album(id.clone())));
-        } else if let Some(id) = &now.show_id {
-            app.actions.push(Action::Open(Page::Show(id.clone())));
-        }
+        open_playing(app, now);
     }
     if offer_expand && (cover_response.hovered() || over_expand) {
         let expand = ui.interact(
@@ -526,11 +522,7 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
     let title_response = theme::link(&mut text_ui, &now.title, theme::medium(14.0), palette.text)
         .interact(drag_sense);
     if title_response.clicked() {
-        if let Some(id) = &now.album_id {
-            app.actions.push(Action::Open(Page::Album(id.clone())));
-        } else if let Some(id) = &now.show_id {
-            app.actions.push(Action::Open(Page::Show(id.clone())));
-        }
+        open_playing(app, now);
     }
     let mut responses = vec![cover_response, title_response];
     text_ui.horizontal_top(|ui| {
@@ -671,6 +663,35 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
                 }
             }
         }
+    }
+}
+
+/// Opens the playing song's album, or the playing episode's show.
+pub(super) fn open_playing(app: &mut App, now: &NowPlaying) {
+    if let Some(id) = &now.album_id {
+        app.actions.push(Action::Open(Page::Album(id.clone())));
+    } else if let Some(id) = &now.show_id {
+        app.actions.push(Action::Open(Page::Show(id.clone())));
+    }
+}
+
+/// The playing song's artists, each opening its page, or the playing
+/// episode's show.
+pub(super) fn byline(
+    ui: &mut egui::Ui,
+    app: &mut App,
+    now: &NowPlaying,
+    font: egui::FontId,
+    color: Color32,
+) {
+    if now.artists.is_empty() {
+        if theme::link(ui, &now.subtitle, font, color).clicked()
+            && let Some(id) = &now.show_id
+        {
+            app.actions.push(Action::Open(Page::Show(id.clone())));
+        }
+    } else {
+        super::widgets::artist_links(ui, app, &now.artists, font, color);
     }
 }
 

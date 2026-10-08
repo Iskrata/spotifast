@@ -548,7 +548,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let top = 12
         + theme::titlebar_inset(ui.ctx()) as i8
         + super::linux_left_controls_inset(ui.ctx()) as i8;
-    let beside = if app.show_queue_panel || app.show_lyrics_panel || app.show_friends_panel {
+    let beside = if super::right_panel_open(app) {
         theme::SIDE_PANEL_MIN_WIDTH
     } else {
         0.0

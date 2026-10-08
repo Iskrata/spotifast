@@ -71,7 +71,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     if app.lyrics_fullscreen.is_some() {
         lyrics::fullscreen(app, ui);
     } else {
-        if app.settings.sidebar_visible {
+        if sidebar_shown(app, ctx) {
             sidebar::show(app, ui);
         }
         if app.show_queue_panel {
@@ -110,6 +110,28 @@ fn main_min_width(page: f32, sidebar: bool, right_panel: bool) -> f32 {
 /// The sidebar's narrowest width.
 pub(crate) const SIDEBAR_MIN_WIDTH: f32 = 210.0;
 
+/// Whether a right panel is open beside the page.
+pub(crate) fn right_panel_open(app: &App) -> bool {
+    app.show_queue_panel || app.show_lyrics_panel || app.show_friends_panel
+}
+
+/// Whether the sidebar is drawn. It is, while it is on, unless a right
+/// panel is open in a window too narrow to hold both at their least widths
+/// and leave the page the room its top bar needs. The window's minimum
+/// keeps that from happening, but a tiling window manager ignores the
+/// minimum. The sidebar steps aside then, beside every right panel alike,
+/// and comes back once the window widens or the panel closes; the setting
+/// is left as it is.
+pub(crate) fn sidebar_shown(app: &App, ctx: &Context) -> bool {
+    app.settings.sidebar_visible
+        && (!right_panel_open(app)
+            || sidebar_fits(ctx.content_rect().width(), topbar::least_width(ctx)))
+}
+
+fn sidebar_fits(window: f32, page: f32) -> bool {
+    SIDEBAR_MIN_WIDTH + theme::SIDE_PANEL_MIN_WIDTH + page <= window + 0.5
+}
+
 /// Raise the window's minimum width while the Queue or Lyrics panel is open,
 /// so even at its narrowest the page beside the panels keeps the room its
 /// top bar needs (#624), and lower it again once they close. Window managers
@@ -121,7 +143,7 @@ fn keep_room_for_panels(app: &App, ctx: &Context) {
     let width = main_min_width(
         topbar::least_width(ctx),
         app.settings.sidebar_visible,
-        app.show_queue_panel || app.show_lyrics_panel || app.show_friends_panel,
+        right_panel_open(app),
     )
     .round();
     let id = Id::new("main-min-width");

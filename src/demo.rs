@@ -1715,10 +1715,16 @@ mod tests {
             let translated = accessible_frame(&ctx, &mut app, vec![]);
             assert_eq!(translated.focus, pause, "translation must retain focus");
             for ((source, role), id) in controls.iter().zip(ids) {
-                assert_eq!(
-                    accessible_node(&translated, &gettext(locale, source), *role),
-                    id,
-                    "translation must retain the {source} control"
+                // German names the top bar's Back and the player's Previous
+                // alike, so look for this control among the namesakes.
+                let label = gettext(locale, source);
+                assert!(
+                    translated.nodes.iter().any(|(node_id, node)| {
+                        *node_id == id
+                            && node.role() == *role
+                            && node.label() == Some(label.as_ref())
+                    }),
+                    "translation to {locale:?} must retain the {source} control"
                 );
             }
 
@@ -9817,17 +9823,14 @@ mod tests {
                     version: "9.9.9".into(),
                     url: "https://example.invalid/releases".into(),
                 });
-                // Keep the original 760-point coverage without a right panel,
-                // and the reported 1080-point size with one. Full-height panel
-                // placement at 760 points is checked independently below.
-                let widths: &[f32] = if panel.is_some() && sidebar {
-                    &[1080.0, 1120.0, 1200.0, 1280.0, 1440.0, 1600.0, 1920.0]
-                } else {
-                    &[
-                        760.0, 800.0, 860.0, 900.0, 1000.0, 1080.0, 1200.0, 1280.0, 1440.0, 1600.0,
-                        1920.0,
-                    ]
-                };
+                // From the 760-point minimum up, with and without a right
+                // panel: a tiling window manager keeps a panel's window as
+                // narrow as it likes. Full-height panel placement at 760
+                // points is checked independently below.
+                let widths: &[f32] = &[
+                    760.0, 800.0, 860.0, 900.0, 1000.0, 1080.0, 1200.0, 1280.0, 1440.0, 1600.0,
+                    1920.0,
+                ];
                 for &width in widths {
                     let narrowest = width == widths[0];
                     let mut draw = || {
@@ -9847,7 +9850,10 @@ mod tests {
                             .accesskit_update
                             .expect("screen-reader tree")
                     };
-                    // The first frame settles the new window size.
+                    // The first frames settle the new window size: the
+                    // sidebar can step aside or come back, and the field's
+                    // rect below is the one the frame before the last drew.
+                    draw();
                     draw();
                     let tree = draw();
                     let badge = |label: &str| {
@@ -9871,7 +9877,8 @@ mod tests {
                     let device = badge("Playing on").expect("the device badge");
                     assert!(
                         device >= field,
-                        "the device badge covers {} px of the search field at {width} px",
+                        "the device badge covers {} px of the search field at {width} px \
+                         beside {panel:?} with the sidebar {sidebar}",
                         field - device
                     );
                     // The buttons beside the account sit clear of the field,
@@ -9922,6 +9929,92 @@ mod tests {
         }
         app.backend.shutdown();
     }
+    /// B2 of the UX audit: in a window narrower than its minimum, as a tiling
+    /// window manager leaves it, a right panel beside the sidebar squeezed
+    /// the page under its header and its songs out of sight. The sidebar
+    /// steps aside instead, beside each right panel alike, and Show sidebar
+    /// closes the panel to bring it back.
+    #[test]
+    fn the_sidebar_steps_aside_for_a_right_panel_in_a_narrow_window() {
+        use egui::accesskit::{Action as AccessibleAction, Role};
+        let (ctx, mut app) = accessible_app("sidebar-steps-aside");
+        app.open(Page::Playlist("pl1".into()));
+        let frame = |app: &mut App, width: f32, events: Vec<egui::Event>| {
+            let mut tree = None;
+            for _ in 0..3 {
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(width, 800.0),
+                        )),
+                        events: events.clone(),
+                        ..Default::default()
+                    },
+                    |ui| app.frame_ui(ui),
+                );
+                output.textures_delta.clear();
+                tree = output.platform_output.accesskit_update;
+                if !events.is_empty() {
+                    break;
+                }
+            }
+            tree.expect("screen-reader tree")
+        };
+        let show_sidebar = if cfg!(target_os = "macos") {
+            "Show sidebar (Cmd+B)"
+        } else {
+            "Show sidebar (Ctrl+B)"
+        };
+        for panel in ["queue", "lyrics", "friends"] {
+            let open = |app: &mut App| {
+                app.show_queue_panel = panel == "queue";
+                app.show_lyrics_panel = panel == "lyrics";
+                app.show_friends_panel = panel == "friends";
+            };
+            open(&mut app);
+            app.settings.sidebar_visible = true;
+            let tree = frame(&mut app, 760.0, Vec::new());
+            let id = format!("{panel}-panel");
+            let side = egui::containers::panel::PanelState::load(&ctx, egui::Id::new(&id))
+                .expect("the panel was drawn")
+                .outer_rect;
+            // The page starts at the window's edge and keeps all the panel
+            // leaves; the top bar's own fit is checked above.
+            assert!(
+                side.left() >= 760.0 - side.width() - 0.5 && side.width() < 300.0,
+                "beside {panel} the page keeps {} points",
+                side.left()
+            );
+            assert!(
+                !crate::ui::sidebar_shown(&app, &ctx),
+                "the sidebar steps aside"
+            );
+            assert!(app.settings.sidebar_visible, "the setting stays on");
+            // Show sidebar makes room by closing the panel.
+            let button = accessible_node(&tree, show_sidebar, Role::Button);
+            frame(
+                &mut app,
+                760.0,
+                vec![accessible_action(button, AccessibleAction::Click, None)],
+            );
+            assert!(!crate::ui::right_panel_open(&app), "{panel} closes");
+            assert!(app.settings.sidebar_visible);
+
+            // A window with room for all three keeps the sidebar.
+            open(&mut app);
+            let tree = frame(&mut app, 1280.0, Vec::new());
+            assert!(
+                !tree
+                    .nodes
+                    .iter()
+                    .any(|(_, node)| node.label() == Some(show_sidebar)),
+                "beside {panel} at 1280 points the sidebar is there"
+            );
+        }
+        app.backend.shutdown();
+    }
+
     #[test]
     fn side_panels_keep_their_full_height_beside_the_page_toolbar() {
         for theme in ["dark", "light"] {
@@ -9956,9 +10049,12 @@ mod tests {
                             .outer_rect
                     };
                     let side = rect(&format!("{panel}-panel"));
-                    let library = rect("sidebar");
                     let player = rect("player-bar");
-                    assert_eq!(side.top(), library.top(), "{panel} at {width} in {theme}");
+                    // At 760 points the sidebar steps aside for the panel.
+                    if crate::ui::sidebar_shown(&app, &ctx) {
+                        let library = rect("sidebar");
+                        assert_eq!(side.top(), library.top(), "{panel} at {width} in {theme}");
+                    }
                     assert_eq!(side.top(), 0.0, "{panel} must start at the window top");
                     assert_eq!(side.bottom(), player.top());
                     let search = ctx.read_response(egui::Id::new("global-search")).unwrap();

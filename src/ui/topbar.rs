@@ -186,6 +186,8 @@ fn nav_button(
             Sense::hover()
         },
     );
+    // The tooltip names the button for a screen reader too.
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, tooltip));
     if ui.is_rect_visible(rect) {
         let fill = if palette.dark {
             egui::Color32::from_black_alpha(90)
@@ -239,7 +241,8 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         |ui| {
             ui.add_space(super::widgets::PAGE_PADDING);
             ui.spacing_mut().item_spacing.x = ITEM_SPACING;
-            if !app.settings.sidebar_visible {
+            let sidebar_shown = super::sidebar_shown(app, ui.ctx());
+            if !sidebar_shown {
                 if nav_button(
                     ui,
                     &palette,
@@ -252,11 +255,11 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 )
                 .clicked()
                 {
-                    app.actions.push(Action::ToggleSidebar);
+                    app.actions.push(show_sidebar(app));
                 }
                 ui.add_space(2.0);
             }
-            if !app.settings.sidebar_visible
+            if !sidebar_shown
                 && nav_button(ui, &palette, Icon::House, true, &gettext(locale, "Home")).clicked()
             {
                 app.actions.push(Action::Open(Page::Home));
@@ -619,6 +622,20 @@ fn folded_items(app: &mut App, ui: &mut egui::Ui) {
         ),
     ) {
         app.actions.push(Action::ToggleWinampMilkdrop);
+    }
+}
+
+/// What Show sidebar does: turn the sidebar on or, when it is on but a
+/// right panel leaves it no room, close that panel to make some.
+fn show_sidebar(app: &App) -> Action {
+    if !app.settings.sidebar_visible {
+        Action::ToggleSidebar
+    } else if app.show_queue_panel {
+        Action::ToggleQueuePanel
+    } else if app.show_lyrics_panel {
+        Action::ToggleLyricsPanel
+    } else {
+        Action::ToggleFriendsPanel
     }
 }
 

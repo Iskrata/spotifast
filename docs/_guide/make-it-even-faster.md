@@ -40,7 +40,10 @@ compared with twenty on the shared connection.
 
 Setting up playback on this computer also helps playlists load faster.
 Spotifast can load your playlist list, and playlists that would otherwise use
-the shared allowance, through its music connection instead.
+the shared allowance, through its music connection instead. Without it, when
+the shared connection is busy, your personal app loads your playlist list so
+you are not left waiting; Spotify's own playlists, such as Daily Mixes, are
+missing from that list until the shared connection answers again.
 [How it connects](/how-it-connects/) explains which connection each feature uses.
 
 ## Make a Spotify app

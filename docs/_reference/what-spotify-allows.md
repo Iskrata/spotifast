@@ -38,9 +38,11 @@ Spotify also limits apps created since November 2024. These apps cannot access
 Spotify-owned playlists, related artists, recommendations, or audio features.
 This is why a personal app cannot handle every request. The playlist
 library is read over the librespot session while local playback is signed
-in, and otherwise on the shared app. Playlists other people own, and every
-playlist when there is no personal app, are read over the librespot session
-while local playback is signed in. See [How It Connects](/how-it-connects/).
+in, and otherwise on the shared app. A personal app reads it only when the
+shared app cannot answer, and its list then lacks Spotify-owned playlists.
+Playlists other people own, and every playlist when there is no personal app,
+are read over the librespot session while local playback is signed in. See
+[How It Connects](/how-it-connects/).
 
 ## librespot session
 
@@ -51,7 +53,7 @@ clients. Spotifast uses its session for:
   rootlist. librespot cannot create, rename, or move folders.
 - **The playlist library.** The same rootlist lists every saved and followed
   playlist, Spotify's own included, with each one's name, cover, owner,
-  song count, and public flag, so the sidebar's list needs no Web API
+  song count, and, when Spotify includes it, public flag, so the sidebar's list needs no Web API
   request. It carries the owner's user ID but not their display name.
 - **Playlist permissions.** The rootlist shows when a playlist shared by
   invitation can be edited. The Web API's `collaborative` flag does not cover

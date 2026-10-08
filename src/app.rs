@@ -3718,8 +3718,8 @@ impl App {
 
     /// Local playback's session reads the whole library, Spotify's own
     /// playlists among it, without the shared app's quota. When it comes up
-    /// while the list still waits on the Web API, or failed there, the list
-    /// is read again through it.
+    /// while the list still waits on the Web API, failed there, or holds a
+    /// personal app's partial list, the list is read again through it.
     fn reread_playlists_over_session(&mut self) {
         if !self.is_connected() {
             return;
@@ -3727,6 +3727,7 @@ impl App {
         match &self.library.playlists {
             Loadable::Failed(_) => self.load_playlists(),
             Loadable::Loading => self.request_playlists(),
+            Loadable::Loaded(_) if self.library.playlists_partial => self.request_playlists(),
             Loadable::Loaded(_) | Loadable::NotLoaded => {}
         }
     }
@@ -5296,13 +5297,19 @@ impl App {
                 offset, generation, ..
             } if generation != self.library.playlists_generation
                 || (offset > 0 && self.library.playlists_asked != Some(offset)) => {}
-            // A load from the top over a list already on screen replaces
-            // that list only with a complete one: rows on screen do not
-            // vanish to come back later.
+            // A load from the top over a list already on screen, which
+            // local playback's session starts when it comes up, replaces
+            // that list only with a complete one, and a complete one never
+            // with a personal app's, which leaves Spotify's own playlists
+            // out: rows on screen do not vanish to come back later.
             ApiResponse::MyPlaylists {
-                offset: 0, result, ..
+                offset: 0,
+                partial,
+                result,
+                ..
             } if self.library.playlists.get().is_some()
-                && !matches!(&result, Ok(page) if page.next_offset().is_none()) =>
+                && !matches!(&result, Ok(page) if page.next_offset().is_none()
+                    && (!partial || self.library.playlists_partial)) =>
             {
                 self.library.playlists_asked = None;
                 match result {
@@ -5310,9 +5317,17 @@ impl App {
                     Err(error) => log::warn!("Couldn't read the playlists again: {error}"),
                 }
             }
-            ApiResponse::MyPlaylists { offset, result, .. } => match result {
+            ApiResponse::MyPlaylists {
+                offset,
+                partial,
+                result,
+                ..
+            } => match result {
                 Ok(mut page) => {
                     self.library.playlists_asked = None;
+                    if offset == 0 {
+                        self.library.playlists_partial = partial;
+                    }
                     // The session's list names no owner; the account's own
                     // name stands in for its own playlists.
                     for playlist in &mut page.items {
@@ -11581,6 +11596,7 @@ mod tests {
         // The list can arrive after the header: the page takes the flag
         // then, and a flag Spotify already gave stays.
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 0,
             generation: app.library.playlists_generation,
             result: Ok(crate::api::models::Page {
@@ -11653,6 +11669,7 @@ mod tests {
         app.load_playlists();
         let old = app.library.playlists_generation;
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 0,
             generation: old,
             result: Ok(playlist_page(&["a", "b"], 0, 3)),
@@ -11667,6 +11684,7 @@ mod tests {
         let new = app.library.playlists_generation;
         assert_ne!(new, old, "a reload is a new load");
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 2,
             generation: old,
             result: Ok(playlist_page(&["c"], 2, 3)),
@@ -11678,11 +11696,13 @@ mod tests {
         assert_eq!(app.library.playlists_next, None, "and asks for nothing");
 
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 0,
             generation: new,
             result: Ok(playlist_page(&["new", "a"], 0, 4)),
         });
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 2,
             generation: new,
             result: Ok(playlist_page(&["b", "c"], 2, 4)),
@@ -11691,6 +11711,7 @@ mod tests {
         assert_eq!(listed_playlists(&app), whole);
         // Another answer for a page already taken adds nothing.
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 2,
             generation: new,
             result: Ok(playlist_page(&["b", "c"], 2, 4)),
@@ -11710,6 +11731,7 @@ mod tests {
         app.load_playlists();
         let old = app.library.playlists_generation;
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 0,
             generation: old,
             result: Ok(playlist_page(&["a", "b"], 0, 3)),
@@ -11722,6 +11744,7 @@ mod tests {
         });
         let new = app.library.playlists_generation;
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 0,
             generation: new,
             result: Ok(playlist_page(&["new", "a"], 0, 4)),
@@ -11733,6 +11756,7 @@ mod tests {
         );
 
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 2,
             generation: old,
             result: Ok(playlist_page(&["c"], 2, 3)),
@@ -11749,6 +11773,7 @@ mod tests {
         );
 
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 2,
             generation: new,
             result: Ok(playlist_page(&["b", "c"], 2, 4)),
@@ -11769,17 +11794,20 @@ mod tests {
         app.load_playlists();
         let generation = app.library.playlists_generation;
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 0,
             generation,
             result: Ok(playlist_page(&["a", "b"], 0, 3)),
         });
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 2,
             generation,
             result: Err(crate::api::ApiError::RateLimited),
         });
         assert_eq!(app.library.playlists_asked, None);
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 2,
             generation,
             result: Ok(playlist_page(&["c"], 2, 3)),
@@ -11790,12 +11818,14 @@ mod tests {
     /// Signing out forgets the library, but not which load came last: a
     /// page the old account asked for does not become the next account's
     /// list.
-    /// A whole library as one answer.
-    fn whole_library(app: &App, ids: &[&str]) -> ApiResponse {
+    /// A whole library as one answer, read through `partial` a personal
+    /// app or not.
+    fn whole_library(app: &App, ids: &[&str], partial: bool) -> ApiResponse {
         let total = ids.len() as u32;
         ApiResponse::MyPlaylists {
             offset: 0,
             generation: app.library.playlists_generation,
+            partial,
             result: Ok(playlist_page(ids, 0, total)),
         }
     }
@@ -11813,10 +11843,11 @@ mod tests {
         app.handle_api(ApiResponse::MyPlaylists {
             offset: 0,
             generation,
+            partial: false,
             result: Ok(playlist_page(&["a", "b"], 0, 4)),
         });
         assert_eq!(app.library.playlists_asked, Some(2));
-        app.handle_api(whole_library(&app, &["a", "b", "daily", "c"]));
+        app.handle_api(whole_library(&app, &["a", "b", "daily", "c"], false));
         assert_eq!(
             listed_playlists(&app),
             playlist_ids(&["a", "b", "daily", "c"])
@@ -11827,12 +11858,107 @@ mod tests {
         app.handle_api(ApiResponse::MyPlaylists {
             offset: 2,
             generation,
+            partial: false,
             result: Ok(playlist_page(&["daily", "c"], 2, 4)),
         });
         assert_eq!(
             listed_playlists(&app),
             playlist_ids(&["a", "b", "daily", "c"])
         );
+    }
+
+    /// A reread over a list on screen never takes rows away: a personal
+    /// app's partial list does not replace a complete one, nor does the
+    /// first page of a longer list, nor a failure.
+    #[test]
+    fn a_reread_never_shrinks_a_complete_list() {
+        let mut app = headless_app();
+        app.backend.set_offline(true);
+
+        app.load_playlists();
+        app.handle_api(whole_library(&app, &["a", "daily", "b"], false));
+        let complete = playlist_ids(&["a", "daily", "b"]);
+        assert!(!app.library.playlists_partial);
+
+        app.request_playlists();
+        app.handle_api(whole_library(&app, &["a", "b"], true));
+        assert_eq!(listed_playlists(&app), complete, "the personal app's");
+        assert!(!app.library.playlists_partial);
+
+        app.request_playlists();
+        app.handle_api(ApiResponse::MyPlaylists {
+            offset: 0,
+            generation: app.library.playlists_generation,
+            partial: false,
+            result: Ok(playlist_page(&["a", "daily"], 0, 3)),
+        });
+        assert_eq!(listed_playlists(&app), complete, "a first page");
+        assert_eq!(app.library.playlists_next, None, "and asks for nothing");
+
+        app.request_playlists();
+        app.handle_api(ApiResponse::MyPlaylists {
+            offset: 0,
+            generation: app.library.playlists_generation,
+            partial: false,
+            result: Err(crate::api::ApiError::RateLimited),
+        });
+        assert_eq!(listed_playlists(&app), complete, "a failure");
+
+        // A complete answer is the list now, a playlist unfollowed
+        // elsewhere gone from it.
+        app.request_playlists();
+        app.handle_api(whole_library(&app, &["daily", "b"], false));
+        assert_eq!(listed_playlists(&app), playlist_ids(&["daily", "b"]));
+    }
+
+    /// When local playback's session comes up, a library still waiting on
+    /// the Web API, or holding a personal app's partial list, is read again
+    /// through it; the list on screen stays until the complete one comes,
+    /// and the earlier load's late answer is not taken.
+    #[test]
+    fn the_playback_session_completes_a_partial_or_waiting_library() {
+        let mut app = headless_app();
+        app.backend.set_offline(true);
+        app.auth = AuthStatus::Connected {
+            username: "me".into(),
+        };
+        let ready = || LocalPlayback::Ready {
+            device_id: "here".into(),
+        };
+
+        // Still waiting on the shared app.
+        app.load_playlists();
+        let waiting = app.library.playlists_generation;
+        app.handle_playback(ready());
+        assert_ne!(app.library.playlists_generation, waiting);
+        assert!(app.library.playlists.is_loading());
+        app.handle_api(ApiResponse::MyPlaylists {
+            offset: 0,
+            generation: waiting,
+            partial: false,
+            result: Ok(playlist_page(&["late"], 0, 1)),
+        });
+        assert!(app.library.playlists.is_loading(), "the old load's answer");
+        app.handle_api(whole_library(&app, &["a", "daily", "b"], false));
+        assert_eq!(listed_playlists(&app), playlist_ids(&["a", "daily", "b"]));
+
+        // A complete list is not read again.
+        let complete = app.library.playlists_generation;
+        app.handle_playback(ready());
+        assert_eq!(app.library.playlists_generation, complete);
+
+        // A personal app's partial list is, and stays until replaced.
+        app.request_playlists();
+        app.library.playlists = Loadable::Loading;
+        app.handle_api(whole_library(&app, &["a", "b"], true));
+        assert!(app.library.playlists_partial);
+        let partial = app.library.playlists_generation;
+        app.handle_playback(ready());
+        assert_ne!(app.library.playlists_generation, partial);
+        assert_eq!(listed_playlists(&app), playlist_ids(&["a", "b"]));
+        app.handle_api(whole_library(&app, &["a", "daily", "b"], false));
+        assert_eq!(listed_playlists(&app), playlist_ids(&["a", "daily", "b"]));
+        assert!(!app.library.playlists_partial);
     }
 
     /// The session's list names no owner; the account's own name stands
@@ -11860,6 +11986,7 @@ mod tests {
         app.handle_api(ApiResponse::MyPlaylists {
             offset: 0,
             generation: app.library.playlists_generation,
+            partial: false,
             result: Ok(crate::api::models::Page::whole(vec![
                 owned_by("mine", "me"),
                 owned_by("theirs", "1263908142"),
@@ -11877,74 +12004,6 @@ mod tests {
         assert_eq!(owners, ["Me Myself", "1263908142", "Spotify"]);
     }
 
-    /// A reread over a list on screen never takes rows away: neither the
-    /// first page of a longer list nor a failure replaces it.
-    #[test]
-    fn a_reread_never_shrinks_a_complete_list() {
-        let mut app = headless_app();
-        app.backend.set_offline(true);
-
-        app.load_playlists();
-        app.handle_api(whole_library(&app, &["a", "daily", "b"]));
-        let complete = playlist_ids(&["a", "daily", "b"]);
-
-        app.request_playlists();
-        app.handle_api(ApiResponse::MyPlaylists {
-            offset: 0,
-            generation: app.library.playlists_generation,
-            result: Ok(playlist_page(&["a", "daily"], 0, 3)),
-        });
-        assert_eq!(listed_playlists(&app), complete, "a first page");
-        assert_eq!(app.library.playlists_next, None, "and asks for nothing");
-
-        app.request_playlists();
-        app.handle_api(ApiResponse::MyPlaylists {
-            offset: 0,
-            generation: app.library.playlists_generation,
-            result: Err(crate::api::ApiError::RateLimited),
-        });
-        assert_eq!(listed_playlists(&app), complete, "a failure");
-
-        // A complete answer is the list now, a playlist unfollowed
-        // elsewhere gone from it.
-        app.request_playlists();
-        app.handle_api(whole_library(&app, &["daily", "b"]));
-        assert_eq!(listed_playlists(&app), playlist_ids(&["daily", "b"]));
-    }
-
-    /// When local playback's session comes up while the library still
-    /// waits on the Web API, it is read again through it, and the earlier
-    /// load's late answer is not taken. A complete list is not read again.
-    #[test]
-    fn the_playback_session_rereads_a_waiting_library() {
-        let mut app = headless_app();
-        app.backend.set_offline(true);
-        app.auth = AuthStatus::Connected {
-            username: "me".into(),
-        };
-        let ready = || LocalPlayback::Ready {
-            device_id: "here".into(),
-        };
-
-        app.load_playlists();
-        let waiting = app.library.playlists_generation;
-        app.handle_playback(ready());
-        assert_ne!(app.library.playlists_generation, waiting);
-        assert!(app.library.playlists.is_loading());
-        app.handle_api(ApiResponse::MyPlaylists {
-            offset: 0,
-            generation: waiting,
-            result: Ok(playlist_page(&["late"], 0, 1)),
-        });
-        assert!(app.library.playlists.is_loading(), "the old load's answer");
-        app.handle_api(whole_library(&app, &["a", "daily", "b"]));
-        assert_eq!(listed_playlists(&app), playlist_ids(&["a", "daily", "b"]));
-
-        let complete = app.library.playlists_generation;
-        app.handle_playback(ready());
-        assert_eq!(app.library.playlists_generation, complete);
-    }
-
     #[test]
     fn a_playlist_page_asked_for_before_sign_out_is_not_taken() {
         let mut app = headless_app();
@@ -11956,6 +12015,7 @@ mod tests {
         app.load_playlists();
         assert_ne!(app.library.playlists_generation, old);
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 0,
             generation: old,
             result: Ok(playlist_page(&["theirs"], 0, 1)),
@@ -12028,6 +12088,7 @@ mod tests {
         // then, and a name Spotify already gave stays.
         app.handle_api(header("pl2", owned_by("other", Some("Molly"))));
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 0,
             generation: app.library.playlists_generation,
             result: Ok(crate::api::models::Page {
@@ -12115,6 +12176,7 @@ mod tests {
         // The list can arrive after the header: the page takes the cover
         // then, and one the header carried stays.
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 0,
             generation: app.library.playlists_generation,
             result: Ok(crate::api::models::Page {
@@ -15165,6 +15227,7 @@ mod tests {
         );
         assert!(app.uploaded_covers.contains_key("pl1"));
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 0,
             generation: app.library.playlists_generation,
             result: Ok(crate::api::models::Page {
@@ -15262,6 +15325,7 @@ mod tests {
             });
         }
         app.handle_api(ApiResponse::MyPlaylists {
+            partial: false,
             offset: 0,
             generation: app.library.playlists_generation,
             result: Ok(crate::api::models::Page {
@@ -15351,6 +15415,7 @@ mod tests {
             for url in ["old", "confirmed", "changed-elsewhere"] {
                 if confirm_from_library {
                     app.handle_api(ApiResponse::MyPlaylists {
+                        partial: false,
                         offset: 0,
                         generation: app.library.playlists_generation,
                         result: Ok(crate::api::models::Page {

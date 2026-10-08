@@ -313,8 +313,31 @@ impl NetActivity {
     }
 }
 
+tokio::task_local! {
+    static UNSEEN: ();
+}
+
+/// Runs requests nothing on screen waits for without showing them as
+/// activity. Checking a grant in the background retries through rate
+/// limits for as long as Spotify keeps refusing, and would otherwise hold
+/// the "Waiting for Spotify" spinner up over an app that is ready to use.
+pub async fn unseen<F: std::future::Future>(future: F) -> F::Output {
+    UNSEEN.scope((), future).await
+}
+
 /// Decrements the in-flight count even if the request future is dropped.
 struct ActivityGuard<'a>(&'a NetActivity);
+
+impl<'a> ActivityGuard<'a> {
+    /// Counts a request as activity, unless it runs [`unseen`].
+    fn begin(activity: &'a NetActivity) -> Option<Self> {
+        if UNSEEN.try_with(|_| ()).is_ok() {
+            return None;
+        }
+        activity.begin();
+        Some(Self(activity))
+    }
+}
 
 impl Drop for ActivityGuard<'_> {
     fn drop(&mut self) {
@@ -395,6 +418,15 @@ impl ApiClient {
         }
     }
 
+    /// Whether requests are waiting out a `Retry-After` from Spotify.
+    pub async fn cooling_down(&self) -> bool {
+        *self.cooldown_until.lock().await > Instant::now()
+    }
+
+    pub fn source(&self) -> ApiSource {
+        self.source
+    }
+
     async fn extend_cooldown(&self, wait: Duration) {
         let mut until = self.cooldown_until.lock().await;
         *until = (*until).max(Instant::now() + wait);
@@ -434,8 +466,7 @@ impl ApiClient {
         // This is one logical request even when it waits for another request
         // or for a Retry-After cooldown. Keep the interface's activity signal
         // alive for that whole wait, not only while bytes are on the wire.
-        self.activity.begin();
-        let _activity = ActivityGuard(&self.activity);
+        let _activity = ActivityGuard::begin(&self.activity);
 
         let mut attempt = 0;
         let queue_write = method == Method::POST && path == "/me/player/queue";
@@ -756,6 +787,20 @@ impl ApiClient {
             &[("limit", limit.to_string()), ("offset", offset.to_string())],
         )
         .await
+    }
+
+    /// Every page of the account's playlists, read one after another, as
+    /// one page.
+    pub async fn all_my_playlists(&self) -> Result<Page<Playlist>> {
+        let mut items = Vec::new();
+        let mut offset = Some(0);
+        while let Some(at) = offset {
+            let mut page = self.my_playlists(at, 50).await?;
+            // An empty page ends the list, whatever it says follows.
+            offset = page.next_offset().filter(|_| !page.items.is_empty());
+            items.append(&mut page.items);
+        }
+        Ok(Page::whole(items))
     }
 
     pub async fn playlist(&self, id: &str) -> Result<Playlist> {
@@ -1501,8 +1546,97 @@ mod tests {
             10,
             ApiSource::Personal,
         );
+        assert!(!shared.cooling_down().await);
         shared.extend_cooldown(Duration::from_secs(10)).await;
         assert!(*shared.cooldown_until.lock().await > Instant::now());
         assert!(*personal.cooldown_until.lock().await <= Instant::now());
+        assert!(shared.cooling_down().await);
+        assert!(!personal.cooling_down().await);
+    }
+
+    /// A personal app reads the whole library page after page and answers
+    /// it as one page with nothing after it.
+    #[tokio::test]
+    async fn the_whole_library_is_read_page_after_page() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let mut paths = Vec::new();
+            for body in [
+                r#"{"items":[{"id":"a"},{"id":"b"}],"total":3,"limit":2,"offset":0,"next":"more"}"#,
+                r#"{"items":[{"id":"c"}],"total":3,"limit":2,"offset":2,"next":null}"#,
+            ] {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                let mut request = Vec::new();
+                while !request.ends_with(b"\r\n\r\n") {
+                    request.push(socket.read_u8().await.unwrap());
+                }
+                let request = String::from_utf8(request).unwrap();
+                paths.push(request.lines().next().unwrap().to_string());
+                socket
+                    .write_all(
+                        format!(
+                            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                            body.len()
+                        )
+                        .as_bytes(),
+                    )
+                    .await
+                    .unwrap();
+            }
+            paths
+        });
+        let http = reqwest::Client::builder().no_proxy().build().unwrap();
+        let mut client = ApiClient::new(
+            http.clone(),
+            Arc::new(NetActivity::default()),
+            10,
+            10,
+            ApiSource::Personal,
+        );
+        client.base_url = Some(format!("http://{address}"));
+        client.set_token_provider(Some(TokenProvider::Web(WebTokens::new(
+            http,
+            crate::auth::StoredToken {
+                access_token: "test-only".into(),
+                expires_at: u64::MAX,
+                ..Default::default()
+            },
+            crate::credentials::Store::in_memory(crate::paths::AppDirs {
+                config: std::env::temp_dir().join("unused-library-token/config"),
+                state: std::env::temp_dir().join("unused-library-token/state"),
+                cache: std::env::temp_dir().join("unused-library-token/cache"),
+            })
+            .lease(crate::credentials::Slot::Personal),
+            ApiSource::Personal,
+            Arc::new(|_| {}),
+        ))));
+        let page = client.all_my_playlists().await.unwrap();
+        let ids: Vec<_> = page
+            .items
+            .iter()
+            .map(|playlist| playlist.id.as_str())
+            .collect();
+        assert_eq!(ids, ["a", "b", "c"]);
+        assert_eq!((page.offset, page.total, page.next_offset()), (0, 3, None));
+        let paths = server.await.unwrap();
+        assert!(paths[0].contains("offset=0"), "{}", paths[0]);
+        assert!(paths[1].contains("offset=2"), "{}", paths[1]);
+    }
+
+    /// A background check of a grant is not activity the interface shows;
+    /// any other request is, and stops being once it ends.
+    #[tokio::test]
+    async fn unseen_requests_are_not_activity() {
+        let activity = NetActivity::default();
+        let seen = ActivityGuard::begin(&activity);
+        assert!(seen.is_some());
+        assert!(activity.busy(Duration::ZERO));
+        drop(seen);
+        assert!(!activity.busy(Duration::ZERO));
+        let hidden = unseen(async { ActivityGuard::begin(&activity).is_none() }).await;
+        assert!(hidden);
+        assert!(!activity.busy(Duration::ZERO));
     }
 }

@@ -374,6 +374,9 @@ pub enum ApiResponse {
     MyPlaylists {
         offset: u32,
         generation: u64,
+        /// Read through a personal app, whose Development Mode list leaves
+        /// out Spotify's own playlists.
+        partial: bool,
         result: ApiResult<Page<Playlist>>,
     },
     Playlist {
@@ -2185,7 +2188,7 @@ impl Worker {
                     let _ = commands.send(Command::SignInEnded { source, attempt });
                     return;
                 }
-                match client.me().await {
+                match crate::api::client::unseen(client.me()).await {
                     Ok(user) => {
                         let _ = commands.send(Command::WebVerified {
                             source,
@@ -3389,7 +3392,8 @@ fn operation_for(api: &ApiGateway, request: &ApiRequest) -> Operation {
                 Operation::UserData
             }
         }
-        ApiRequest::MyPlaylists { .. } => Operation::PlaylistLibrary,
+        ApiRequest::MyPlaylists { offset: 0, .. } => Operation::PlaylistLibrary,
+        ApiRequest::MyPlaylists { .. } => Operation::PlaylistLibraryContinuation,
         ApiRequest::CreatePlaylist { .. } => Operation::PlaylistCreation,
         ApiRequest::Discover { .. } | ApiRequest::SearchPlaylists { .. } => {
             Operation::PlaylistSearch
@@ -3574,11 +3578,37 @@ async fn handle(
                 result,
             }
         }
-        ApiRequest::MyPlaylists { offset, generation } => ApiResponse::MyPlaylists {
-            offset,
-            generation,
-            result: routed!(my_playlists(offset, 50)),
-        },
+        ApiRequest::MyPlaylists { offset, generation } => {
+            let personal =
+                matches!(&selected, Ok(client) if client.source() == ApiSource::Personal);
+            let result = if personal {
+                routed!(all_my_playlists())
+            } else {
+                routed!(my_playlists(offset, 50))
+            };
+            // A first page the shared app gave up on is not left failed
+            // while a personal app could read the list.
+            let (partial, result) = match result {
+                Err(error) if offset == 0 && !personal && shared_gave_up(&error) => {
+                    match library_from_personal(api).await {
+                        Some(result) => {
+                            if let Err(ApiError::SignInExpired { api_source }) = &result {
+                                expired.set(Some(*api_source));
+                            }
+                            (true, result)
+                        }
+                        None => (false, Err(error)),
+                    }
+                }
+                result => (personal, result),
+            };
+            ApiResponse::MyPlaylists {
+                offset,
+                generation,
+                partial,
+                result,
+            }
+        }
         ApiRequest::Playlist { id, generation } => ApiResponse::Playlist {
             result: routed!(playlist(&id)),
             id,
@@ -3920,6 +3950,22 @@ fn same_account(username: &str, account: Option<&AccountId>) -> bool {
 /// the operating system, which is far longer than a page should spin.
 const SESSION_READ_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// Whether the shared app stopped short of an answer a personal app can
+/// still give: it stayed rate limited through its retries.
+fn shared_gave_up(error: &ApiError) -> bool {
+    matches!(error, ApiError::RateLimited)
+}
+
+/// The whole library through a personal app, once the shared app could not
+/// read it; `None` when no personal app is ready to.
+async fn library_from_personal(api: &ApiGateway) -> Option<ApiResult<Page<Playlist>>> {
+    let client = api.ready_client(ApiSource::Personal)?;
+    log::debug!(
+        "Spotify route operation=PlaylistLibrary source=personal after a shared rate limit"
+    );
+    Some(client.all_my_playlists().await)
+}
+
 /// Answers a playlist read over the streaming session. `None` when the
 /// session could not, leaving the request to the Web API.
 async fn over_session(engine: &Engine, request: &ApiRequest) -> Option<ApiResponse> {
@@ -4030,6 +4076,7 @@ fn session_response(request: &ApiRequest, answer: SessionAnswer) -> Option<ApiRe
             ApiResponse::MyPlaylists {
                 offset: 0,
                 generation: *generation,
+                partial: false,
                 result: result.map(Page::whole),
             }
         }
@@ -6211,7 +6258,7 @@ mod session_tests {
     }
 
     /// The session reads the library whole, so its answer to any page of a
-    /// load is the whole list from the top.
+    /// load is the whole list from the top, complete and not partial.
     #[test]
     fn the_session_answers_any_library_page_with_the_whole_list() {
         let listed = |id: &str| Playlist {
@@ -6228,6 +6275,7 @@ mod session_tests {
             let Some(ApiResponse::MyPlaylists {
                 offset: 0,
                 generation: 7,
+                partial: false,
                 result: Ok(page),
             }) = session_response(&request, answer)
             else {
@@ -6236,6 +6284,30 @@ mod session_tests {
             assert_eq!(page.items.len(), 2);
             assert_eq!((page.total, page.next_offset()), (2, None));
         }
+    }
+
+    /// Only the page that starts a library load may fall to a personal
+    /// app; a later page continues the shared app's offsets.
+    #[test]
+    fn only_the_first_library_page_starts_a_load() {
+        let api = ApiGateway::new(
+            reqwest::Client::new(),
+            std::sync::Arc::new(NetActivity::default()),
+        );
+        let page = |offset| ApiRequest::MyPlaylists {
+            offset,
+            generation: 1,
+        };
+        assert_eq!(operation_for(&api, &page(0)), Operation::PlaylistLibrary);
+        assert_eq!(
+            operation_for(&api, &page(50)),
+            Operation::PlaylistLibraryContinuation
+        );
+        assert!(shared_gave_up(&ApiError::RateLimited));
+        assert!(!shared_gave_up(&ApiError::Status {
+            status: 404,
+            message: "Not Found".into(),
+        }));
     }
 }
 

@@ -27,7 +27,13 @@ if [ -z "${ICON_PNG:-}" ] && [ -f packaging/macos/local-icon.png ]; then
     export ICON_PNG="$root/packaging/macos/local-icon.png"
 fi
 
-cargo build --release --locked
+# Through mise when it is installed, so the build goes through mbx (see
+# mise.toml) even from a shell that has not activated mise.
+if command -v mise >/dev/null; then
+    mise exec -- cargo build --release --locked
+else
+    cargo build --release --locked
+fi
 version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n 1)-$(git rev-parse --short HEAD)"
 staging="$root/.cache/install-local"
 rm -rf "$staging"

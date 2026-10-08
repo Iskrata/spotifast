@@ -101,12 +101,17 @@ pub enum Operation {
 /// The streaming session reads every playlist the shared app would have
 /// been asked for: other people's, which no personal app may read, and the
 /// account's own when it has no personal app. A personal app keeps its own
-/// playlists, which it reads quickly and with every field.
+/// playlists, which it reads quickly and with every field. The session also
+/// reads the whole playlist library from the rootlist, Spotify's own
+/// playlists included, which no personal app is shown.
 fn session_serves(operation: Operation, personal_ready: bool) -> bool {
-    matches!(
-        operation,
-        Operation::PlaylistMetadata(_) | Operation::PlaylistItems(_)
-    ) && plan(operation, personal_ready) == ApiSource::Shared
+    match operation {
+        Operation::PlaylistLibrary => true,
+        Operation::PlaylistMetadata(_) | Operation::PlaylistItems(_) => {
+            plan(operation, personal_ready) == ApiSource::Shared
+        }
+        _ => false,
+    }
 }
 
 /// A playlist with unknown access dispatches to the shared app, which can
@@ -427,6 +432,9 @@ mod tests {
                 Operation::PlaylistItems(PlaylistAccess::Collaborative),
                 false,
             ),
+            // The rootlist holds the whole library, Spotify's own lists too.
+            (Operation::PlaylistLibrary, false),
+            (Operation::PlaylistLibrary, true),
         ] {
             assert!(session_serves(operation, personal), "{operation:?}");
         }
@@ -438,7 +446,8 @@ mod tests {
             ),
             (Operation::PlaylistMutation(PlaylistAccess::External), true),
             (Operation::Catalog, false),
-            (Operation::PlaylistLibrary, false),
+            (Operation::CanonicalAccount, true),
+            (Operation::PlaylistSearch, true),
         ] {
             assert!(!session_serves(operation, personal), "{operation:?}");
         }

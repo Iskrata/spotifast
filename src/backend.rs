@@ -3935,6 +3935,9 @@ async fn over_session(engine: &Engine, request: &ApiRequest) -> Option<ApiRespon
             SessionRead::Sample { id, offset } => SessionAnswer::Rows(settle(
                 session_reads::sample(session, id, offset, PLAYLIST_PAGE_SIZE).await,
             )?),
+            SessionRead::Library => {
+                SessionAnswer::Library(settle(session_reads::library(session).await)?)
+            }
         })
     };
     let Ok(answer) = tokio::time::timeout(SESSION_READ_TIMEOUT, read).await else {
@@ -3950,9 +3953,19 @@ async fn over_session(engine: &Engine, request: &ApiRequest) -> Option<ApiRespon
 /// where the session serves the operation.
 #[derive(Debug, PartialEq)]
 enum SessionRead<'a> {
-    Header { id: &'a str },
-    Rows { id: &'a str, offset: u32 },
-    Sample { id: &'a str, offset: u32 },
+    Header {
+        id: &'a str,
+    },
+    Rows {
+        id: &'a str,
+        offset: u32,
+    },
+    Sample {
+        id: &'a str,
+        offset: u32,
+    },
+    /// The whole playlist library, whichever page was asked for.
+    Library,
 }
 
 fn session_read(request: &ApiRequest) -> Option<SessionRead<'_>> {
@@ -3966,14 +3979,17 @@ fn session_read(request: &ApiRequest) -> Option<SessionRead<'_>> {
             id,
             offset: *offset,
         },
+        ApiRequest::MyPlaylists { .. } => SessionRead::Library,
         _ => return None,
     })
 }
 
-/// What the session read: a playlist's header, or a page of its rows.
+/// What the session read: a playlist's header, a page of its rows, or the
+/// whole playlist library.
 enum SessionAnswer {
     Header(ApiResult<Playlist>),
     Rows(ApiResult<Page<PlaylistItem>>),
+    Library(ApiResult<Vec<Playlist>>),
 }
 
 /// The response a session answer becomes, carrying the request's own id,
@@ -4005,6 +4021,16 @@ fn session_response(request: &ApiRequest, answer: SessionAnswer) -> Option<ApiRe
                 id: id.clone(),
                 generation: *generation,
                 result,
+            }
+        }
+        // The session reads the library whole, so its answer starts the
+        // list over at the top, whichever page of a Web API load asked:
+        // it holds every row that load had shown, and the rest.
+        (ApiRequest::MyPlaylists { generation, .. }, SessionAnswer::Library(result)) => {
+            ApiResponse::MyPlaylists {
+                offset: 0,
+                generation: *generation,
+                result: result.map(Page::whole),
             }
         }
         _ => return None,
@@ -6182,6 +6208,34 @@ mod session_tests {
             session_response(&ApiRequest::Me, header()).is_none(),
             "nothing else is served here"
         );
+    }
+
+    /// The session reads the library whole, so its answer to any page of a
+    /// load is the whole list from the top.
+    #[test]
+    fn the_session_answers_any_library_page_with_the_whole_list() {
+        let listed = |id: &str| Playlist {
+            id: id.into(),
+            ..Playlist::default()
+        };
+        for offset in [0, 50] {
+            let request = ApiRequest::MyPlaylists {
+                offset,
+                generation: 7,
+            };
+            assert_eq!(session_read(&request), Some(SessionRead::Library));
+            let answer = SessionAnswer::Library(Ok(vec![listed("a"), listed("b")]));
+            let Some(ApiResponse::MyPlaylists {
+                offset: 0,
+                generation: 7,
+                result: Ok(page),
+            }) = session_response(&request, answer)
+            else {
+                panic!("expected the whole library from the top");
+            };
+            assert_eq!(page.items.len(), 2);
+            assert_eq!((page.total, page.next_offset()), (2, None));
+        }
     }
 }
 

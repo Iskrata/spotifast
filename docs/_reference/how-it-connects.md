@@ -13,15 +13,16 @@ local playback:
 2. **Your optional personal Web API app** handles supported playback, library,
    catalog, catalogue search, playlist creation, and owned or collaborative
    playlist requests without using the shared app's quota. Complete
-   playlist-library views and the playlist half of a search stay on the shared
-   app so Spotify-owned results are not filtered out. Both Web API grants must
-   verify as the same Spotify account.
+   playlist-library views without local playback, and the playlist half of a
+   search, stay on the shared app so Spotify-owned results are not filtered
+   out. Both Web API grants must verify as the same Spotify account.
 3. **Local playback** uses
    [librespot](https://github.com/librespot-org/librespot). It needs one more
    browser approval and keeps an independent reusable credential. Spotify Premium
    is required. While it is signed in, its session also reads the playlists
    the shared app would otherwise be asked for: other people's, and the
-   account's own when there is no personal app. Radio pages come only from
+   account's own when there is no personal app, and the playlist
+   library itself. Radio pages come only from
    this session: the Web API has no stations. Opening one resolves the
    station and reads its songs' details in one batched request.
 
@@ -30,6 +31,20 @@ browser approval requests only the streaming permission and always shows the
 consent dialog. The playback session uses the account ID verified by either
 Web API grant. A verified personal app can complete sign-in while the shared
 app's verification is still waiting.
+
+## The playlist library
+
+The sidebar's playlist list is the account's rootlist: every playlist it
+created, saved, or follows, Spotify's own included, in Spotify's order. While
+local playback is signed in, Spotifast reads it over the playback session
+with one request per 500 entries, which carries each playlist's name, cover,
+owner, song count, and public flag, and uses none of the shared app's quota.
+The session names no owner, so the account's own name stands in for its own
+playlists and other people's show their user ID. If the session comes up
+after the list was asked for, while the list is still waiting on the Web API
+or failed there, the list is read again through the session. Without that
+session, or when its read fails, the list is read through the shared app in
+pages of 50. A reread never replaces a list on screen with a shorter one.
 
 Since 0.8.0, local playback retains the artist IDs
 already supplied by librespot. Artist links in the player bar work before the

@@ -41,7 +41,8 @@ library is read over the librespot session while local playback is signed
 in, and otherwise on the shared app. A personal app reads it only when the
 shared app cannot answer, and its list then lacks Spotify-owned playlists.
 Playlists other people own, and every playlist when there is no personal app,
-are read over the librespot session while local playback is signed in. See
+are read over the librespot session while local playback is signed in, and
+so is the playlist half of a search when a personal app takes the rest. See
 [How It Connects](/how-it-connects/).
 
 ## librespot session
@@ -70,6 +71,13 @@ clients. Spotifast uses its session for:
   account, and a newer Web API answer takes precedence over an older disk
   cache. A song the session reads first has unknown availability; if it cannot
   play, it is skipped when reached, as it would be anywhere else.
+- **Playlist search.** The session's authorization reaches the search
+  service Spotify's own clients use, whose playlist results include
+  Spotify's own playlists and the account's personal mixes, so the playlist
+  half of a search, which a personal app splits off, needs no Web API
+  request. Spotify does not document this
+  service; when it does not answer, the Web API does. It gives no song
+  count, and Spotifast reads only its first page of playlists.
 - **Lyrics** when Spotify has them.
 - **Artist biographies.** The artist's catalogue metadata carries the
   biography Spotify's own clients show, which the Web API does not. The

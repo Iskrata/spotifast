@@ -13,15 +13,16 @@ local playback:
 2. **Your optional personal Web API app** handles supported playback, library,
    catalog, catalogue search, playlist creation, and owned or collaborative
    playlist requests without using the shared app's quota. The playlist half
-   of a search stays on the shared app so Spotify-owned results are not
-   filtered out. Both Web API grants must verify as the same Spotify account.
+   of a search never goes to it, so Spotify-owned results are not filtered
+   out. Both Web API grants must verify as the same Spotify account.
 3. **Local playback** uses
    [librespot](https://github.com/librespot-org/librespot). It needs one more
    browser approval and keeps an independent reusable credential. Spotify Premium
    is required. While it is signed in, its session also reads the playlists
    the shared app would otherwise be asked for: other people's, and the
    account's own when there is no personal app, and the playlist
-   library itself. Radio pages come only from
+   library itself, and it finds the playlists for a search (see below).
+   Radio pages come only from
    this session: the Web API has no stations. Opening one resolves the
    station and reads its songs' details in one batched request.
 
@@ -89,7 +90,15 @@ adds a separate Development Mode quota. See
 Since 0.8.0, a search runs as two requests when a
 personal app is ready: songs, artists, albums, podcasts, and episodes on the
 personal app, and playlists on the shared app. This moves catalogue search off the quota Spotify divides among every user
-of the shared app. Each half is shown the moment it
+of the shared app. While local playback is signed in, the playlist half
+goes to neither app: the playback session asks Spotify's search service,
+`api-partner.spotify.com/pathfinder`, the way Spotify's own clients do,
+with the session's own authorization. It answers with the first twenty
+playlists, Spotify's own and the account's personal mixes included, with
+each one's name, cover, description, and owner, but no song count. Spotify
+does not document this service, and it names the search by a fingerprint
+Spotify may retire; when the session cannot answer, or answers in a way
+Spotifast does not recognise, the shared app is asked as before. Each half is shown the moment it
 arrives, so a shared app waiting out a rate limit no longer holds up the songs,
 and playlists appear underneath when that wait ends. A half belonging to an
 earlier search is discarded rather than shown beside a newer one. A newer or cleared search cancels the previous requests, including waits

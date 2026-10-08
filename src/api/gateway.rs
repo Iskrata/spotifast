@@ -108,11 +108,13 @@ pub enum Operation {
 /// been asked for: other people's, which no personal app may read, and the
 /// account's own when it has no personal app. A personal app keeps its own
 /// playlists, which it reads quickly and with every field. The session also
-/// reads the whole playlist library from the rootlist, Spotify's own
-/// playlists included, which no personal app is shown.
+/// reads the whole playlist library from the rootlist, and searches for
+/// playlists, Spotify's own included, which no personal app is shown.
 fn session_serves(operation: Operation, personal_ready: bool) -> bool {
     match operation {
-        Operation::PlaylistLibrary | Operation::PlaylistLibraryContinuation => true,
+        Operation::PlaylistLibrary
+        | Operation::PlaylistLibraryContinuation
+        | Operation::PlaylistSearch => true,
         Operation::PlaylistMetadata(_) | Operation::PlaylistItems(_) => {
             plan(operation, personal_ready) == ApiSource::Shared
         }
@@ -474,6 +476,9 @@ mod tests {
             (Operation::PlaylistLibrary, false),
             (Operation::PlaylistLibrary, true),
             (Operation::PlaylistLibraryContinuation, true),
+            // Its search finds Spotify's own playlists too.
+            (Operation::PlaylistSearch, true),
+            (Operation::PlaylistSearch, false),
         ] {
             assert!(session_serves(operation, personal), "{operation:?}");
         }
@@ -486,7 +491,7 @@ mod tests {
             (Operation::PlaylistMutation(PlaylistAccess::External), true),
             (Operation::Catalog, false),
             (Operation::CanonicalAccount, true),
-            (Operation::PlaylistSearch, true),
+            (Operation::CatalogSearch, true),
         ] {
             assert!(!session_serves(operation, personal), "{operation:?}");
         }

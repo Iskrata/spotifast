@@ -40,6 +40,7 @@ pub mod player;
 pub mod playlist_cover;
 pub mod resample;
 pub mod session_reads;
+pub mod session_search;
 pub mod settings;
 pub mod single_instance;
 pub mod sink;

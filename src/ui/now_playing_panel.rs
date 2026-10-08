@@ -7,7 +7,7 @@ use egui::{CornerRadius, Frame, Margin, Sense, Stroke, Vec2, vec2};
 use crate::app::{App, NowPlaying};
 use crate::i18n::gettext;
 use crate::lyrics::Lyrics;
-use crate::model::{Action, Loadable};
+use crate::model::{Action, Loadable, Page};
 use crate::theme::{self, Icon};
 
 use super::{player_bar, widgets};
@@ -29,7 +29,9 @@ pub(super) fn section(app: &mut App, ui: &mut egui::Ui, now: &NowPlaying) {
     if super::artist_about::card(app, ui, now) {
         ui.add_space(SECTION_GAP);
     }
-    if up_next(app, ui) {
+    // The whole queue on screen already lists what plays next.
+    let queue_shown = app.show_queue_panel || matches!(app.page(), Page::Queue);
+    if !queue_shown && up_next(app, ui) {
         ui.add_space(SECTION_GAP);
     }
 }

@@ -255,7 +255,10 @@ fn contents(app: &mut App, ui: &mut egui::Ui, compact: bool) {
         });
         ui.add_space(10.0);
     }
-    if let Some(current) = current.as_ref() {
+    // Friend Activity beside the queue heads with the playing song, and
+    // the player bar shows it too; a third copy here only repeats them.
+    let shown_beside = app.show_friends_panel && now.is_some();
+    if let Some(current) = current.as_ref().filter(|_| !shown_beside) {
         theme::text(
             ui,
             gettext(app.locale, "Now playing"),

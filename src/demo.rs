@@ -842,6 +842,20 @@ pub fn sample_friends() -> Vec<crate::friends::Friend> {
 
 #[cfg(feature = "demo")]
 pub fn apply_flags(app: &mut App, page: Option<&str>, show: Option<&str>) {
+    apply_surfaces(app, page, show);
+    // The app shows one right panel at a time: opening one closes the
+    // others. Launch opened Friend Activity before these flags, so a flag
+    // that opens the Queue or the Lyrics closes it, as the button would.
+    if app.show_queue_panel || app.show_lyrics_panel {
+        app.show_friends_panel = false;
+    }
+    if app.show_queue_panel {
+        app.show_lyrics_panel = false;
+    }
+}
+
+#[cfg(feature = "demo")]
+fn apply_surfaces(app: &mut App, page: Option<&str>, show: Option<&str>) {
     // Default screenshots to the main window regardless of saved settings.
     app.settings.winamp_window = false;
     if let Some(page) = page.and_then(Page::decode) {
@@ -10013,6 +10027,70 @@ mod tests {
             );
         }
         app.backend.shutdown();
+    }
+
+    /// B3 of the UX audit: beside the queue, Friend Activity heads with the
+    /// playing song and the player bar shows it as well, so the queue's own
+    /// Now playing row made three. The queue leaves it out there, and the
+    /// panel leaves out Next in queue while the whole queue is on screen.
+    #[test]
+    fn the_playing_song_shows_once_beside_friend_activity() {
+        let (ctx, mut app) = accessible_app("now-playing-once");
+        let count = |tree: &egui::accesskit::TreeUpdate, text: &str| {
+            tree.nodes
+                .iter()
+                .filter(|(_, node)| node.label() == Some(text) || node.value() == Some(text))
+                .count()
+        };
+        app.open(Page::Queue);
+        app.show_friends_panel = true;
+        accessible_frame(&ctx, &mut app, Vec::new());
+        let tree = accessible_frame(&ctx, &mut app, Vec::new());
+        assert_eq!(
+            count(&tree, "Now playing"),
+            1,
+            "Friend Activity's heading only"
+        );
+        assert_eq!(count(&tree, "Next in queue"), 0);
+        assert!(
+            count(&tree, "Next up") > 0,
+            "the queue still lists what follows"
+        );
+
+        // Without Friend Activity the queue names the playing song itself.
+        app.show_friends_panel = false;
+        accessible_frame(&ctx, &mut app, Vec::new());
+        let tree = accessible_frame(&ctx, &mut app, Vec::new());
+        assert_eq!(count(&tree, "Now playing"), 1, "the queue's own row");
+        app.backend.shutdown();
+    }
+
+    /// Demo flags open one right panel, as the app does, though launch has
+    /// opened Friend Activity before them.
+    #[cfg(feature = "demo")]
+    #[test]
+    fn demo_flags_open_one_right_panel() {
+        for (flag, queue, lyrics, friends) in [
+            ("queue", true, false, false),
+            ("recents", true, false, false),
+            ("lyrics", false, true, false),
+            ("friends", false, false, true),
+            ("", false, false, true),
+        ] {
+            let (_ctx, mut app) = accessible_app(&format!("one-panel-{flag}"));
+            app.show_friends_panel = true;
+            apply_flags(&mut app, None, Some(flag));
+            assert_eq!(
+                (
+                    app.show_queue_panel,
+                    app.show_lyrics_panel,
+                    app.show_friends_panel
+                ),
+                (queue, lyrics, friends),
+                "{flag}"
+            );
+            app.backend.shutdown();
+        }
     }
 
     #[test]

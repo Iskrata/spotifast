@@ -2544,6 +2544,33 @@ mod tests {
     }
 
     #[test]
+    fn resting_on_a_home_shortcut_tile_notes_its_cover() {
+        let (ctx, mut app) = accessible_app("art-background-shortcut");
+        app.open(Page::Home);
+        let tree = accessible_frame(&ctx, &mut app, vec![]);
+        // The shortcut tiles are 60 points tall. The first is Liked Songs,
+        // which has no cover, so take the one to its right.
+        let mut tiles: Vec<_> = tree
+            .nodes
+            .iter()
+            .filter_map(|(_, node)| node.bounds())
+            .filter(|bounds| (bounds.y1 - bounds.y0 - 60.0).abs() < 0.5)
+            .collect();
+        tiles.sort_by(|a, b| (a.y0, a.x0).partial_cmp(&(b.y0, b.x0)).unwrap());
+        let tile = tiles.get(1).expect("a playlist shortcut tile on Home");
+        let pointer = egui::pos2(
+            ((tile.x0 + tile.x1) / 2.0) as f32,
+            ((tile.y0 + tile.y1) / 2.0) as f32,
+        );
+        accessible_frame(&ctx, &mut app, vec![egui::Event::PointerMoved(pointer)]);
+        assert!(
+            crate::ui::card_hover::under_pointer(&ctx).is_some(),
+            "a shortcut tile under the pointer notes its cover"
+        );
+        app.backend.shutdown();
+    }
+
+    #[test]
     fn resting_on_a_card_eases_the_background_toward_its_cover() {
         use egui::accesskit::Role;
         let (ctx, mut app) = accessible_app("art-background-hover");

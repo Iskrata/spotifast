@@ -94,6 +94,9 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) {
                     ui.allocate_exact_size(vec2(tile_width, 60.0), Sense::click());
                 if ui.is_rect_visible(rect) {
                     let hovered = ui.rect_contains_pointer(rect);
+                    if hovered && let Some(image) = image {
+                        super::card_hover::hover(ui.ctx(), image);
+                    }
                     let fill = if hovered {
                         palette.surface_hover
                     } else {

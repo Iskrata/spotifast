@@ -60,6 +60,7 @@ pub mod ui;
 pub mod updates;
 pub mod util;
 pub mod vis;
+pub mod vis_energy;
 pub mod winamp;
 pub mod window;
 pub mod zeroconf;

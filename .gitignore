@@ -13,3 +13,4 @@ docs/.bundle/
 /.cache/
 
 /dist/
+/packaging/macos/local-icon.png

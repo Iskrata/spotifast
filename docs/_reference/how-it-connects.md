@@ -39,7 +39,8 @@ Spotifast uses separate credentials for Web API access and local playback:
    browser approval and keeps an independent reusable credential. Spotify Premium
    is required. While it is signed in, its session also reads the playlists
    a personal app cannot: other people's, Spotify's own among them, and the
-   account's own when there is no personal app. The personalized Made for you
+   account's own when there is no personal app, and it finds the playlists
+   for a search (see below). The personalized Made for you
    shelf needs this active session and a verified Web API grant, preferably
    personal. Spotify's private Home request receives the Web API access token as
    its `sp_t` context and the session's Login5 bearer and client token as
@@ -181,10 +182,19 @@ player stops. See
 [Make It Even Faster](/make-it-even-faster/#api-rate-limits).
 
 Since 0.8.0, a search runs as two requests when a
-personal app is ready and a shared grant is still signed in: songs, artists,
-albums, podcasts, and episodes on the personal app, and playlists on the
-shared app. This moves catalogue search off the quota Spotify divides among every user
-of the shared app. Each half is shown the moment it
+personal app is ready and either a shared grant is still signed in or local
+playback is: songs, artists, albums, podcasts, and episodes on the personal
+app, and playlists apart. This moves catalogue search off the quota Spotify divides among every user
+of the shared app. While local playback is signed in, the playlist half
+goes to neither app: the playback session asks Spotify's search service,
+`api-partner.spotify.com/pathfinder`, the way Spotify's own clients do,
+with the session's own authorization. It answers with the first twenty
+playlists, Spotify's own and the account's personal mixes included, with
+each one's name, cover, description, and owner, but no song count. Spotify
+does not document this service, and it names the search by a fingerprint
+Spotify may retire; when the session cannot answer, or answers in a way
+Spotifast does not recognise, the shared grant is asked, or else the personal
+app, which leaves Spotify's own playlists out. Each half is shown the moment it
 arrives, so a shared app waiting out a rate limit no longer holds up the songs,
 and playlists appear underneath when that wait ends. A half belonging to an
 earlier search is discarded rather than shown beside a newer one. A newer or cleared search cancels the previous requests, including waits

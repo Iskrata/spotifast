@@ -48,6 +48,7 @@ pub mod power;
 pub mod prerelease;
 pub mod resample;
 pub mod session_reads;
+pub mod session_search;
 pub mod settings;
 pub mod single_instance;
 pub mod sink;

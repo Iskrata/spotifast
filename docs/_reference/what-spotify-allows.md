@@ -52,7 +52,7 @@ library views come from the librespot session's rootlist while local playback
 is signed in, and from a shared grant made before 0.14.2 while one is still
 signed in. Playlists other people own, and every playlist when there is no
 personal app, are read over the librespot session while local playback is
-signed in. See [How It Connects](/how-it-connects/).
+signed in, and so is the playlist half of a search. See [How It Connects](/how-it-connects/).
 
 ## librespot session
 
@@ -88,6 +88,13 @@ clients. Spotifast uses its session for:
   service Spotify's own clients edit, so the other copies keep their place
   and dates. Without local playback it refuses that removal instead of taking
   every copy.
+- **Playlist search.** The session's authorization reaches the search
+  service Spotify's own clients use, whose playlist results include
+  Spotify's own playlists and the account's personal mixes, so the playlist
+  half of a search, which a personal app splits off, needs no Web API
+  request. Spotify does not document this
+  service; when it does not answer, the Web API does. It gives no song
+  count, and Spotifast reads only its first page of playlists.
 - **Lyrics** when Spotify has them.
 - **Artist popular tracks.** The account's market-specific ranking and batched
   track details, with the Web API as fallback when the session cannot

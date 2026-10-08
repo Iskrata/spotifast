@@ -30,6 +30,7 @@ use crate::player::{
     Engine, EngineConfig, EngineEvent, Heard, KeptPlayer, LocalState, PlaybackResume, PlayerCommand,
 };
 use crate::session_reads;
+use crate::session_search;
 use crate::settings::ProxyConfig;
 
 pub type ApiResult<T> = Result<T, ApiError>;
@@ -4816,9 +4817,11 @@ impl Worker {
         if query.is_empty() {
             return;
         }
-        // Splitting moves playlists to shared access; without it, one request
-        // to the personal app asks for everything.
-        let split = self.api.personal_ready() && self.api.has_shared();
+        // Splitting moves playlists to the playback session, which finds
+        // Spotify's own playlists, or to shared access; without either, one
+        // request to the personal app asks for everything.
+        let split =
+            self.api.personal_ready() && (self.api.has_shared() || self.engine.is_some());
         self.emit(Event::Api(Box::new(ApiResponse::SearchStarted {
             query: query.clone(),
             serial,
@@ -6075,6 +6078,9 @@ async fn over_session(
             SessionRead::Library => {
                 SessionAnswer::Library(settle(session_reads::library(session).await)?)
             }
+            SessionRead::PlaylistSearch { query } => {
+                SessionAnswer::Playlists(settle(session_search::playlists(session, query).await)?)
+            }
         })
     };
     let Ok(answer) = tokio::time::timeout(SESSION_READ_TIMEOUT, read).await else {
@@ -6085,9 +6091,10 @@ async fn over_session(
 }
 
 /// The read a request asks of the session: artist cards or popular tracks,
-/// a playlist's header, a page of rows, or a sample of who added them.
-/// Anything else, a duplicate check among them, is the Web API's even
-/// where the session serves the operation.
+/// a playlist's header, a page of rows, a sample of who added them, or the
+/// playlists a search finds. Anything else, a duplicate check or a search
+/// for every kind at once among them, is the Web API's even where the
+/// session serves the operation.
 #[derive(Debug, PartialEq)]
 enum SessionRead<'a> {
     RelatedArtists {
@@ -6109,6 +6116,10 @@ enum SessionRead<'a> {
     },
     /// The whole playlist library, whichever page was asked for.
     Library,
+    /// The first page of playlists a search finds.
+    PlaylistSearch {
+        query: &'a str,
+    },
 }
 
 fn session_read(request: &ApiRequest) -> Option<SessionRead<'_>> {
@@ -6125,18 +6136,21 @@ fn session_read(request: &ApiRequest) -> Option<SessionRead<'_>> {
             offset: *offset,
         },
         ApiRequest::MyPlaylists { .. } => SessionRead::Library,
+        ApiRequest::SearchPlaylists { query, .. } => SessionRead::PlaylistSearch { query },
         _ => return None,
     })
 }
 
 /// What the session read: artist cards or tracks, a playlist's header,
-/// a page of its rows, or the whole playlist library.
+/// a page of its rows, the whole playlist library, or the playlists a
+/// search found.
 enum SessionAnswer {
     RelatedArtists(ApiResult<Vec<Artist>>),
     ArtistTop(ApiResult<Vec<Track>>),
     Header(Box<ApiResult<Playlist>>),
     Rows(ApiResult<Page<PlaylistItem>>),
     Library(ApiResult<Vec<Playlist>>),
+    Playlists(ApiResult<Page<Playlist>>),
 }
 
 /// The response a session answer becomes, carrying the request's own id,
@@ -6190,6 +6204,13 @@ fn session_response(request: &ApiRequest, answer: SessionAnswer) -> Option<ApiRe
                 offset: 0,
                 generation: *generation,
                 result: result.map(Page::whole),
+            }
+        }
+        (ApiRequest::SearchPlaylists { query, serial }, SessionAnswer::Playlists(result)) => {
+            ApiResponse::SearchPlaylists {
+                query: query.clone(),
+                serial: *serial,
+                result,
             }
         }
         _ => return None,
@@ -9513,6 +9534,41 @@ mod session_tests {
             session_response(&ApiRequest::Me, header()).is_none(),
             "nothing else is served here"
         );
+    }
+
+    /// The playlist half of a search asks the session and answers under
+    /// the search's own query and serial; a search for every kind at once,
+    /// made without a personal app, stays with the Web API whole.
+    #[test]
+    fn the_session_answers_the_playlist_half_of_a_search() {
+        let request = ApiRequest::SearchPlaylists {
+            query: "daily mix".into(),
+            serial: 7,
+        };
+        assert_eq!(
+            session_read(&request),
+            Some(SessionRead::PlaylistSearch { query: "daily mix" })
+        );
+        let answer = SessionAnswer::Playlists(Ok(Page::whole(vec![Playlist {
+            id: "dm".into(),
+            ..Playlist::default()
+        }])));
+        let Some(ApiResponse::SearchPlaylists {
+            query,
+            serial: 7,
+            result: Ok(page),
+        }) = session_response(&request, answer)
+        else {
+            panic!("expected the search's playlists");
+        };
+        assert_eq!(query, "daily mix");
+        assert_eq!(page.items[0].id, "dm");
+        let whole = ApiRequest::Search {
+            query: "daily mix".into(),
+            serial: 7,
+        };
+        assert_eq!(session_read(&whole), None);
+        assert!(session_response(&whole, SessionAnswer::Playlists(Ok(Page::default()))).is_none());
     }
 }
 

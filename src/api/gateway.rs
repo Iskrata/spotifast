@@ -104,11 +104,12 @@ pub enum Operation {
 /// playlist the shared app would have been asked for: other people's, which
 /// no personal app may read, and the account's own when it has no personal
 /// app. A personal app keeps its own playlists, which it reads quickly and
-/// with every field.
+/// with every field. The session also searches for playlists, Spotify's own
+/// included, which no personal app is shown.
 fn session_serves(operation: Operation, personal_ready: bool) -> bool {
     if matches!(
         operation,
-        Operation::ArtistTopTracks | Operation::RelatedArtists
+        Operation::ArtistTopTracks | Operation::RelatedArtists | Operation::PlaylistSearch
     ) {
         return true;
     }
@@ -564,6 +565,9 @@ mod tests {
                 Operation::PlaylistItems(PlaylistAccess::Collaborative),
                 false,
             ),
+            // Its search finds Spotify's own playlists too.
+            (Operation::PlaylistSearch, true),
+            (Operation::PlaylistSearch, false),
         ] {
             assert!(session_serves(operation, personal), "{operation:?}");
         }
@@ -576,6 +580,7 @@ mod tests {
             (Operation::PlaylistMutation(PlaylistAccess::External), true),
             (Operation::Catalog, false),
             (Operation::PlaylistLibrary, false),
+            (Operation::CatalogSearch, true),
         ] {
             assert!(!session_serves(operation, personal), "{operation:?}");
         }

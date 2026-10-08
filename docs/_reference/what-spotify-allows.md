@@ -104,6 +104,9 @@ clients. Spotifast uses its session for:
 - **Display names and avatars** for the user IDs attached to songs in a
   playlist and for a playlist's owner, from the profile view Spotify's own
   clients read.
+- **Artist biographies.** The artist's catalogue metadata carries the
+  biography Spotify's own clients show, which the Web API does not. The
+  now playing panel's About the artist card shows it.
 - **Precise EP types** for releases that the Web API groups with singles.
 - **Made for you** through Spotify's personalized Home section. This private
   request uses the playback session and an already verified Web API grant;
@@ -245,3 +248,7 @@ The Web API and librespot do not provide these features:
 - **Private-session status and similar social features.** Spotify has no
   public API for them.
 - **Canvas videos and video podcasts.** librespot does not provide them.
+- **Monthly listeners.** Spotify shows them only through a private endpoint
+  its own apps use. The Web API's artist has, at most, a follower count, and
+  librespot's artist metadata has neither. The About the artist card shows
+  followers when the Web API includes them.

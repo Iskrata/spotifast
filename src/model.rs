@@ -569,6 +569,9 @@ pub struct Library {
     /// The later playlist page on its way, so a second answer for a page
     /// already taken adds nothing.
     pub playlists_asked: Option<u32>,
+    /// The list came from a personal app, which leaves out Spotify's own
+    /// playlists, so a complete read replaces it when one can be made.
+    pub playlists_partial: bool,
     pub liked: PagedList<SavedTrack>,
     pub albums: PagedList<SavedAlbum>,
     pub artists: CursorList<Artist>,

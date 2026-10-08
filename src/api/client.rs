@@ -542,9 +542,16 @@ impl ApiClient {
             }
             let text = response.text().await?;
             log::debug!(
-                "Spotify request source={} method={} status={} duration_ms={}",
+                "Spotify request source={} method={} path={} status={} duration_ms={}",
                 self.source,
                 method,
+                // Without the host or query: enough to tell which endpoint
+                // spends which app's quota.
+                path.strip_prefix(BASE_URL)
+                    .unwrap_or(path)
+                    .split('?')
+                    .next()
+                    .unwrap_or_default(),
                 status.as_u16(),
                 started.elapsed().as_millis()
             );

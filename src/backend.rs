@@ -370,6 +370,9 @@ pub enum ApiResponse {
     Discover {
         term: String,
         generation: u64,
+        /// Read through a personal app, whose Development Mode search
+        /// leaves out Spotify's own playlists.
+        partial: bool,
         result: ApiResult<Vec<Playlist>>,
     },
     MyPlaylists {
@@ -3484,9 +3487,8 @@ fn operation_for(api: &ApiGateway, request: &ApiRequest) -> Operation {
         ApiRequest::MyPlaylists { offset: 0, .. } => Operation::PlaylistLibrary,
         ApiRequest::MyPlaylists { .. } => Operation::PlaylistLibraryContinuation,
         ApiRequest::CreatePlaylist { .. } => Operation::PlaylistCreation,
-        ApiRequest::Discover { .. } | ApiRequest::SearchPlaylists { .. } => {
-            Operation::PlaylistSearch
-        }
+        ApiRequest::Discover { .. } => Operation::PlaylistDiscovery,
+        ApiRequest::SearchPlaylists { .. } => Operation::PlaylistSearch,
         ApiRequest::SearchCatalogue { .. } => Operation::CatalogSearch,
         ApiRequest::Search { .. } => Operation::PlaylistSearch,
         ApiRequest::Playlist { id, .. } => Operation::PlaylistMetadata(api.playlist_access(id)),
@@ -3664,6 +3666,7 @@ async fn handle(
             ApiResponse::Discover {
                 term,
                 generation,
+                partial: matches!(&selected, Ok(client) if client.source() == ApiSource::Personal),
                 result,
             }
         }
@@ -4123,7 +4126,9 @@ fn session_read(request: &ApiRequest) -> Option<SessionRead<'_>> {
             offset: *offset,
         },
         ApiRequest::MyPlaylists { .. } => SessionRead::Library,
-        ApiRequest::SearchPlaylists { query, .. } => SessionRead::PlaylistSearch { query },
+        ApiRequest::SearchPlaylists { query, .. } | ApiRequest::Discover { term: query, .. } => {
+            SessionRead::PlaylistSearch { query }
+        }
         _ => return None,
     })
 }
@@ -4184,6 +4189,16 @@ fn session_response(request: &ApiRequest, answer: SessionAnswer) -> Option<ApiRe
                 query: query.clone(),
                 serial: *serial,
                 result,
+            }
+        }
+        // The session's search finds Spotify's own playlists, so its
+        // answer is the whole one.
+        (ApiRequest::Discover { term, generation }, SessionAnswer::Playlists(result)) => {
+            ApiResponse::Discover {
+                term: term.clone(),
+                generation: *generation,
+                partial: false,
+                result: result.map(|page| page.items),
             }
         }
         _ => return None,
@@ -6425,6 +6440,40 @@ mod session_tests {
         };
         assert_eq!(session_read(&whole), None);
         assert!(session_response(&whole, SessionAnswer::Playlists(Ok(Page::default()))).is_none());
+    }
+
+    /// A Made for you search asks the session the same way, and its answer,
+    /// which has Spotify's own playlists, is complete.
+    #[test]
+    fn the_session_answers_a_made_for_you_search_in_full() {
+        let request = ApiRequest::Discover {
+            term: "Daily Mix".into(),
+            generation: 4,
+        };
+        let api = ApiGateway::new(
+            reqwest::Client::new(),
+            std::sync::Arc::new(NetActivity::default()),
+        );
+        assert_eq!(operation_for(&api, &request), Operation::PlaylistDiscovery);
+        assert_eq!(
+            session_read(&request),
+            Some(SessionRead::PlaylistSearch { query: "Daily Mix" })
+        );
+        let answer = SessionAnswer::Playlists(Ok(Page::whole(vec![Playlist {
+            id: "dm1".into(),
+            ..Playlist::default()
+        }])));
+        let Some(ApiResponse::Discover {
+            term,
+            generation: 4,
+            partial: false,
+            result: Ok(playlists),
+        }) = session_response(&request, answer)
+        else {
+            panic!("expected the whole shelf");
+        };
+        assert_eq!(term, "Daily Mix");
+        assert_eq!(playlists[0].id, "dm1");
     }
 
     /// Only the page that starts a library load may fall to a personal

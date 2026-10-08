@@ -96,6 +96,9 @@ pub enum Operation {
     PlaylistLibraryContinuation,
     PlaylistCreation,
     PlaylistSearch,
+    /// A search for the playlists Spotify makes for the account, which
+    /// Home's Made for you shelf picks from.
+    PlaylistDiscovery,
     CatalogSearch,
     Catalog,
     PlaylistMetadata(PlaylistAccess),
@@ -114,7 +117,8 @@ fn session_serves(operation: Operation, personal_ready: bool) -> bool {
     match operation {
         Operation::PlaylistLibrary
         | Operation::PlaylistLibraryContinuation
-        | Operation::PlaylistSearch => true,
+        | Operation::PlaylistSearch
+        | Operation::PlaylistDiscovery => true,
         Operation::PlaylistMetadata(_) | Operation::PlaylistItems(_) => {
             plan(operation, personal_ready) == ApiSource::Shared
         }
@@ -123,15 +127,26 @@ fn session_serves(operation: Operation, personal_ready: bool) -> bool {
 }
 
 /// Where a request goes, given whether the shared app can answer now: it
-/// is signed in and not waiting out a rate limit. A library load the
-/// session cannot serve starts on a personal app rather than wait for a
-/// shared app that cannot answer, at the cost of Spotify's own playlists,
-/// which Development Mode leaves out. Everything else keeps its plan.
+/// is signed in and not waiting out a rate limit. A library load or a
+/// Made for you search the session cannot serve starts on a personal app
+/// rather than wait for a shared app that cannot answer, at the cost of
+/// Spotify's own playlists, which Development Mode leaves out. Everything
+/// else keeps its plan.
 fn route(operation: Operation, personal_ready: bool, shared_available: bool) -> ApiSource {
-    match operation {
-        Operation::PlaylistLibrary if personal_ready && !shared_available => ApiSource::Personal,
-        _ => plan(operation, personal_ready),
+    if falls_to_personal(operation) && personal_ready && !shared_available {
+        ApiSource::Personal
+    } else {
+        plan(operation, personal_ready)
     }
+}
+
+/// The shared-only reads a personal app may answer, partially, while the
+/// shared app cannot.
+fn falls_to_personal(operation: Operation) -> bool {
+    matches!(
+        operation,
+        Operation::PlaylistLibrary | Operation::PlaylistDiscovery
+    )
 }
 
 /// A playlist with unknown access dispatches to the shared app, which can
@@ -143,6 +158,7 @@ fn plan(operation: Operation, personal_ready: bool) -> ApiSource {
         | PlaylistLibrary
         | PlaylistLibraryContinuation
         | PlaylistSearch
+        | PlaylistDiscovery
         | UnsupportedDevelopmentMode => ApiSource::Shared,
         PlaylistMetadata(PlaylistAccess::External | PlaylistAccess::Unknown)
         | PlaylistItems(PlaylistAccess::External | PlaylistAccess::Unknown)
@@ -315,10 +331,9 @@ impl ApiGateway {
 
     pub async fn client_for(&self, operation: Operation) -> Result<Arc<ApiClient>, ApiError> {
         let personal_ready = self.personal_ready();
-        // Only a library load with a personal app to fall back on asks.
-        let shared_available = operation != Operation::PlaylistLibrary
-            || !personal_ready
-            || self.shared_available().await;
+        // Only a read with a personal app to fall back on asks.
+        let shared_available =
+            !falls_to_personal(operation) || !personal_ready || self.shared_available().await;
         let source = route(operation, personal_ready, shared_available);
         let session = self.session(source);
         let mut state = session.state.subscribe();
@@ -479,6 +494,8 @@ mod tests {
             // Its search finds Spotify's own playlists too.
             (Operation::PlaylistSearch, true),
             (Operation::PlaylistSearch, false),
+            (Operation::PlaylistDiscovery, true),
+            (Operation::PlaylistDiscovery, false),
         ] {
             assert!(session_serves(operation, personal), "{operation:?}");
         }
@@ -518,6 +535,7 @@ mod tests {
             Operation::PlaylistLibrary,
             Operation::PlaylistLibraryContinuation,
             Operation::PlaylistSearch,
+            Operation::PlaylistDiscovery,
             Operation::UnsupportedDevelopmentMode,
             Operation::PlaylistMetadata(PlaylistAccess::External),
             Operation::PlaylistMetadata(PlaylistAccess::Unknown),
@@ -534,6 +552,7 @@ mod tests {
             Operation::PlaylistLibrary,
             Operation::PlaylistCreation,
             Operation::PlaylistSearch,
+            Operation::PlaylistDiscovery,
             Operation::Catalog,
             Operation::CatalogSearch,
             Operation::PlaylistMetadata(PlaylistAccess::Unknown),
@@ -543,24 +562,29 @@ mod tests {
         }
     }
 
-    /// A library load the session cannot serve starts on a personal app
-    /// only when the shared app cannot answer now; a later page of a load
-    /// the shared app started, and every other shared-only read, stays.
+    /// A library load or a Made for you search the session cannot serve
+    /// starts on a personal app only when the shared app cannot answer now;
+    /// a later page of a load the shared app started, a search typed by the
+    /// user, and every other shared-only read, stays.
     #[test]
     fn a_library_load_falls_to_a_personal_app_only_while_the_shared_app_cannot_answer() {
-        assert_eq!(
-            route(Operation::PlaylistLibrary, true, false),
-            ApiSource::Personal
-        );
-        assert_eq!(
-            route(Operation::PlaylistLibrary, true, true),
-            ApiSource::Shared
-        );
-        assert_eq!(
-            route(Operation::PlaylistLibrary, false, false),
-            ApiSource::Shared,
-            "nothing to fall back on"
-        );
+        for operation in [Operation::PlaylistLibrary, Operation::PlaylistDiscovery] {
+            assert_eq!(
+                route(operation, true, false),
+                ApiSource::Personal,
+                "{operation:?}"
+            );
+            assert_eq!(
+                route(operation, true, true),
+                ApiSource::Shared,
+                "{operation:?}"
+            );
+            assert_eq!(
+                route(operation, false, false),
+                ApiSource::Shared,
+                "{operation:?} has nothing to fall back on"
+            );
+        }
         for operation in [
             Operation::PlaylistLibraryContinuation,
             Operation::CanonicalAccount,
@@ -600,6 +624,11 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(client.source(), ApiSource::Personal);
+        let discovery = gateway
+            .client_for(Operation::PlaylistDiscovery)
+            .await
+            .unwrap();
+        assert_eq!(discovery.source(), ApiSource::Personal, "nor Made for you");
         let mut continuation = Box::pin(gateway.client_for(Operation::PlaylistLibraryContinuation));
         std::future::poll_fn(|cx| {
             assert!(continuation.as_mut().poll(cx).is_pending());

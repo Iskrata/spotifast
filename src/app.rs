@@ -2281,6 +2281,7 @@ impl App {
                     self.play_request(request, false);
                 }
                 self.reread_playlists_over_session();
+                self.reread_discover_over_session();
                 self.reread_friends_over_session();
                 self.reread_artist_profiles_over_session();
             }
@@ -4050,6 +4051,66 @@ impl App {
         }
     }
 
+    /// Asks for the Made for you shelf's playlists, one search per term.
+    /// The shelf on screen stays until every term has answered.
+    fn request_discover(&mut self) {
+        self.home.discover_generation += 1;
+        let generation = self.home.discover_generation;
+        self.home.discover_pending.clear();
+        self.home.discover_pending_partial.clear();
+        for term in DISCOVER_TERMS {
+            self.home
+                .discover_pending
+                .insert((*term).to_string(), Loadable::Loading);
+            if !self.home.discover.contains_key(*term) {
+                self.home
+                    .discover
+                    .insert((*term).to_string(), Loadable::Loading);
+            }
+            self.backend.api(ApiRequest::Discover {
+                term: (*term).to_string(),
+                generation,
+            });
+        }
+    }
+
+    /// Shows the Made for you answers once every term has one.
+    fn finish_discover(&mut self) {
+        let complete = DISCOVER_TERMS.iter().all(|term| {
+            self.home
+                .discover_pending
+                .get(*term)
+                .is_some_and(|result| !result.is_loading())
+        });
+        if complete {
+            self.home.discover = std::mem::take(&mut self.home.discover_pending);
+            self.home.discover_partial = std::mem::take(&mut self.home.discover_pending_partial);
+        }
+    }
+
+    /// Local playback's session finds Spotify's own playlists without the
+    /// shared app's quota. When it comes up while Made for you still waits
+    /// on the Web API, failed there, or shows a personal app's partial
+    /// answer, the shelf is asked for again through it.
+    fn reread_discover_over_session(&mut self) {
+        if !self.is_connected() || !self.home.requested {
+            return;
+        }
+        let waiting = self
+            .home
+            .discover_pending
+            .values()
+            .any(|result| result.is_loading());
+        let failed = self
+            .home
+            .discover
+            .values()
+            .any(|result| matches!(result, Loadable::Failed(_)));
+        if waiting || failed || !self.home.discover_partial.is_empty() {
+            self.request_discover();
+        }
+    }
+
     fn load_home(&mut self, force: bool) {
         if self.home.requested
             && !force
@@ -4085,21 +4146,7 @@ impl App {
             full: false,
             generation,
         });
-        self.home.discover_pending.clear();
-        for term in DISCOVER_TERMS {
-            self.home
-                .discover_pending
-                .insert((*term).to_string(), Loadable::Loading);
-            if !self.home.discover.contains_key(*term) {
-                self.home
-                    .discover
-                    .insert((*term).to_string(), Loadable::Loading);
-            }
-            self.backend.api(ApiRequest::Discover {
-                term: (*term).to_string(),
-                generation,
-            });
-        }
+        self.request_discover();
         // The podcast shelf reads from the saved shows. The first page of
         // them is the one the Podcasts shelf of the library asks for.
         if self.library.shows.loaded_once {
@@ -5445,10 +5492,33 @@ impl App {
             ApiResponse::Discover {
                 term,
                 generation,
+                partial,
                 result,
             } => {
-                if generation != self.home.generation {
+                if generation != self.home.discover_generation {
                     return;
+                }
+                // A personal app's search has none of Spotify's own
+                // playlists, which are all this shelf shows, so its answer
+                // never takes a complete term's rows off the screen.
+                let shown_in_full = !self.home.discover_partial.contains(&term)
+                    && self
+                        .home
+                        .discover
+                        .get(&term)
+                        .and_then(Loadable::get)
+                        .is_some_and(|playlists| !playlists.is_empty());
+                if partial && shown_in_full {
+                    let shown = self.home.discover[&term].clone();
+                    self.home.discover_pending_partial.remove(&term);
+                    self.home.discover_pending.insert(term, shown);
+                    self.finish_discover();
+                    return;
+                }
+                if partial {
+                    self.home.discover_pending_partial.insert(term.clone());
+                } else {
+                    self.home.discover_pending_partial.remove(&term);
                 }
                 let filtered = result.map(|playlists| {
                     let mut seen = std::collections::HashSet::new();
@@ -5467,15 +5537,7 @@ impl App {
                 self.home
                     .discover_pending
                     .insert(term, Loadable::from_result(filtered));
-                let complete = DISCOVER_TERMS.iter().all(|term| {
-                    self.home
-                        .discover_pending
-                        .get(*term)
-                        .is_some_and(|result| !result.is_loading())
-                });
-                if complete {
-                    self.home.discover = std::mem::take(&mut self.home.discover_pending);
-                }
+                self.finish_discover();
             }
             // A reload reads the playlists from the top again under a new
             // generation, so a page any earlier load asked for no longer
@@ -12160,6 +12222,113 @@ mod tests {
         app.handle_api(whole_library(&app, &["a", "daily", "b"], false));
         assert_eq!(listed_playlists(&app), playlist_ids(&["a", "daily", "b"]));
         assert!(!app.library.playlists_partial);
+    }
+
+    /// Answers for every Made for you term under the current generation:
+    /// `daily` names the Daily Mixes found, read `partial`ly or not.
+    fn answer_discover(app: &mut App, daily: &[&str], partial: bool) {
+        let generation = app.home.discover_generation;
+        for term in DISCOVER_TERMS {
+            let playlists = if *term == "Daily Mix" {
+                daily
+                    .iter()
+                    .map(|name| Playlist {
+                        id: name.replace(' ', "-"),
+                        name: (*name).into(),
+                        owner: crate::api::models::Owner {
+                            id: Some("spotify".into()),
+                            ..Default::default()
+                        },
+                        ..Playlist::default()
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            app.handle_api(ApiResponse::Discover {
+                term: (*term).into(),
+                generation,
+                partial,
+                result: Ok(playlists),
+            });
+        }
+    }
+
+    fn daily_mixes(app: &App) -> Vec<String> {
+        app.home.discover["Daily Mix"]
+            .get()
+            .map(|list| list.iter().map(|p| p.name.clone()).collect())
+            .unwrap_or_default()
+    }
+
+    /// A personal app's Made for you answer, which has none of Spotify's
+    /// own playlists, never takes rows off the shelf; it fills a shelf
+    /// with nothing better, and the playback session's complete answer
+    /// replaces it once the session comes up.
+    #[test]
+    fn a_partial_made_for_you_answer_never_empties_the_shelf() {
+        let mut app = headless_app();
+        app.backend.set_offline(true);
+        app.auth = AuthStatus::Connected {
+            username: "me".into(),
+        };
+        let ready = || LocalPlayback::Ready {
+            device_id: "here".into(),
+        };
+
+        // Nothing better yet: the partial answer is shown, and marked.
+        app.load_home(true);
+        answer_discover(&mut app, &[], true);
+        assert!(daily_mixes(&app).is_empty());
+        assert!(app.home.discover_partial.contains("Daily Mix"));
+
+        // The session comes up and asks again; a late answer to the
+        // earlier generation is not taken, the complete one is.
+        let partial = app.home.discover_generation;
+        app.handle_playback(ready());
+        assert_ne!(app.home.discover_generation, partial);
+        app.handle_api(ApiResponse::Discover {
+            term: "Daily Mix".into(),
+            generation: partial,
+            partial: false,
+            result: Ok(Vec::new()),
+        });
+        answer_discover(&mut app, &["Daily Mix 1", "Daily Mix 2"], false);
+        assert_eq!(daily_mixes(&app), ["Daily Mix 1", "Daily Mix 2"]);
+        assert!(app.home.discover_partial.is_empty());
+
+        // A complete shelf is not asked for again when the session returns.
+        let complete = app.home.discover_generation;
+        app.handle_playback(ready());
+        assert_eq!(app.home.discover_generation, complete);
+
+        // A refresh a personal app answers keeps the complete rows, even
+        // when it fails.
+        app.load_home(true);
+        answer_discover(&mut app, &[], true);
+        assert_eq!(daily_mixes(&app), ["Daily Mix 1", "Daily Mix 2"]);
+        assert!(
+            !app.home.discover_partial.contains("Daily Mix"),
+            "the kept rows are still complete"
+        );
+        assert!(
+            app.home.discover_partial.contains("Release Radar"),
+            "a term with no rows took the partial answer"
+        );
+        app.load_home(true);
+        app.handle_api(ApiResponse::Discover {
+            term: "Daily Mix".into(),
+            generation: app.home.discover_generation,
+            partial: true,
+            result: Err(crate::api::ApiError::RateLimited),
+        });
+        answer_discover(&mut app, &[], true);
+        assert_eq!(daily_mixes(&app), ["Daily Mix 1", "Daily Mix 2"]);
+
+        // A later complete answer may change the shelf.
+        app.load_home(true);
+        answer_discover(&mut app, &["Daily Mix 3"], false);
+        assert_eq!(daily_mixes(&app), ["Daily Mix 3"]);
     }
 
     /// The session's list names no owner; the account's own name stands

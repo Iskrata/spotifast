@@ -1,6 +1,6 @@
 //! UI state, loaded data, and pending actions.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -593,6 +593,13 @@ pub struct HomeData {
     pub recommendations: Loadable<Vec<Track>>,
     pub discover: HashMap<String, Loadable<Vec<Playlist>>>,
     pub discover_pending: HashMap<String, Loadable<Vec<Playlist>>>,
+    /// The terms whose shelf rows came from a personal app, whose search
+    /// leaves out Spotify's own playlists, shown and on their way.
+    pub discover_partial: HashSet<String>,
+    pub discover_pending_partial: HashSet<String>,
+    /// Made for you reads under their own generation, so reading them again
+    /// leaves the rest of Home's requests alone.
+    pub discover_generation: u64,
     /// Saved podcasts with their newest episodes, in library order, for the
     /// podcast shelf. A refresh replaces them only once it answers.
     pub podcasts: Vec<(Show, Vec<Episode>)>,

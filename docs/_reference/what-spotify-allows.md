@@ -42,7 +42,10 @@ in, and otherwise on the shared app. A personal app reads it only when the
 shared app cannot answer, and its list then lacks Spotify-owned playlists.
 Playlists other people own, and every playlist when there is no personal app,
 are read over the librespot session while local playback is signed in, and
-so is the playlist half of a search when a personal app takes the rest. See
+so is the playlist half of a search when a personal app takes the rest, and
+Home's Made for you shelf. Without the session, a personal app answers for
+that shelf only while the shared app cannot, and then finds none of
+Spotify's own playlists. See
 [How It Connects](/how-it-connects/).
 
 ## librespot session
@@ -74,8 +77,8 @@ clients. Spotifast uses its session for:
 - **Playlist search.** The session's authorization reaches the search
   service Spotify's own clients use, whose playlist results include
   Spotify's own playlists and the account's personal mixes, so the playlist
-  half of a search, which a personal app splits off, needs no Web API
-  request. Spotify does not document this
+  half of a search, which a personal app splits off, and Home's Made for
+  you shelf need no Web API request. Spotify does not document this
   service; when it does not answer, the Web API does. It gives no song
   count, and Spotifast reads only its first page of playlists.
 - **Lyrics** when Spotify has them.

@@ -259,6 +259,25 @@ or the request fails, the page keeps the edits and offers a retry. Refreshing
 again retries confirmation without losing the local changes. This uses the
 existing playlist requests and adds no periodic polling.
 
+## Made for you on Home
+
+Home's **Made for you** shelf searches for playlists four times, once each
+for Discover Weekly, Release Radar, Daily Mix, and daylist, and keeps the
+ones Spotify made under those names. It asks when Home refreshes. While
+local playback is signed in, the playback session runs these searches, as
+it does the playlist half of a search, and no Web API app is asked.
+
+Without that session, or when it cannot answer, the shared app searches.
+When the shared app cannot answer, because it is still verifying sign-in or
+waiting out a rate limit, and a personal app is ready, the personal app
+searches instead of waiting. Development Mode leaves Spotify's own
+playlists out of its results, so the shelf has nothing to show from them
+until the playback session or the shared app can answer, but an answer
+read this way never takes playlists off a shelf that already shows them.
+If the session comes up while the shelf still waits on the Web API, failed
+there, or holds a personal app's answer, the shelf is asked for again
+through the session.
+
 ## Podcasts on Home
 
 Since 0.10.0, Home's **Your podcasts** shelf reads the first page of

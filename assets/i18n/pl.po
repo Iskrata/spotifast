@@ -3277,3 +3277,15 @@ msgstr ""
 #: src/ui/friends.rs
 msgid "Spotify did not return friend activity."
 msgstr "Spotify nie zwróciło aktywności znajomych."
+
+#: src/ui/now_playing_panel.rs
+msgid "Show lyrics"
+msgstr "Pokaż tekst"
+
+#: src/ui/now_playing_panel.rs
+msgid "Next in queue"
+msgstr "Następne w kolejce"
+
+#: src/ui/now_playing_panel.rs
+msgid "Open queue"
+msgstr "Otwórz kolejkę"

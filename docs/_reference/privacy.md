@@ -40,8 +40,8 @@ Spotifast connects only to the services below.
   Connect all go to Spotify, under your account. Spotify's own
   [privacy policy](https://www.spotify.com/legal/privacy-policy/) applies to
   that data.
-- **LRCLIB.** When the lyrics panel is open and Spotify has no lyrics for the
-  song, Spotifast sends its artist, title, album and length to
+- **LRCLIB.** When the lyrics panel or the Friend Activity panel is open and
+  Spotify has no lyrics for the song, Spotifast sends its artist, title, album and length to
   [lrclib.net](https://lrclib.net). Nothing identifying you is included.
 - **GitHub.** Once a day, Spotifast asks GitHub for the latest release. You
   can turn automatic checks off in Settings. Downloading an update, and the

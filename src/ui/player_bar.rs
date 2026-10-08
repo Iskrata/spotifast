@@ -442,11 +442,7 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
     let offer_expand = art_available && !app.settings.art_expanded && app.settings.sidebar_visible;
     let over_expand = offer_expand && ui.rect_contains_pointer(expand_rect);
     if cover_response.clicked() && !over_expand {
-        if let Some(id) = &now.album_id {
-            app.actions.push(Action::Open(Page::Album(id.clone())));
-        } else if let Some(id) = &now.show_id {
-            app.actions.push(Action::Open(Page::Show(id.clone())));
-        }
+        open_playing(app, now);
     }
     if offer_expand && (cover_response.hovered() || over_expand) {
         let expand = ui.interact(
@@ -479,28 +475,10 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
     text_ui.spacing_mut().item_spacing.y = 2.0;
     let title_response = theme::link(&mut text_ui, &now.title, theme::medium(14.0), palette.text);
     if title_response.clicked() {
-        if let Some(id) = &now.album_id {
-            app.actions.push(Action::Open(Page::Album(id.clone())));
-        } else if let Some(id) = &now.show_id {
-            app.actions.push(Action::Open(Page::Show(id.clone())));
-        }
+        open_playing(app, now);
     }
     text_ui.horizontal_top(|ui| {
-        if now.artists.is_empty() {
-            if theme::link(ui, &now.subtitle, theme::regular(12.0), palette.secondary).clicked()
-                && let Some(id) = &now.show_id
-            {
-                app.actions.push(Action::Open(Page::Show(id.clone())));
-            }
-        } else {
-            super::widgets::artist_links(
-                ui,
-                app,
-                &now.artists,
-                theme::regular(12.0),
-                palette.secondary,
-            );
-        }
+        byline(ui, app, now, theme::regular(12.0), palette.secondary);
     });
     if (cover_response.drag_started_by(egui::PointerButton::Primary)
         || info_response.drag_started_by(egui::PointerButton::Primary))
@@ -530,20 +508,6 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
     }
 
     if !now.is_episode {
-        let saved = app.is_saved(&now.uri).unwrap_or(false);
-        let (icon, color, tooltip) = if saved {
-            (
-                Icon::HeartFilled,
-                palette.accent,
-                gettext(app.locale, "Remove from Liked Songs"),
-            )
-        } else {
-            (
-                Icon::Heart,
-                palette.secondary,
-                gettext(app.locale, "Save to Liked Songs"),
-            )
-        };
         // Sit the heart just past the actual text, not at the region's far
         // edge, so it stays visually attached to the title.
         let natural = {
@@ -564,9 +528,36 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
                 .max_rect(heart_rect)
                 .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
         );
-        if theme::icon_button(&mut heart_ui, icon, 17.0, color, palette.text, &tooltip).clicked() {
-            app.actions.push(Action::ToggleSaved(now.uri.clone()));
+        super::widgets::heart_button(&mut heart_ui, app, &now.uri, 17.0);
+    }
+}
+
+/// Opens the playing song's album, or the playing episode's show.
+pub(super) fn open_playing(app: &mut App, now: &NowPlaying) {
+    if let Some(id) = &now.album_id {
+        app.actions.push(Action::Open(Page::Album(id.clone())));
+    } else if let Some(id) = &now.show_id {
+        app.actions.push(Action::Open(Page::Show(id.clone())));
+    }
+}
+
+/// The playing song's artists, each opening its page, or the playing
+/// episode's show.
+pub(super) fn byline(
+    ui: &mut egui::Ui,
+    app: &mut App,
+    now: &NowPlaying,
+    font: egui::FontId,
+    color: Color32,
+) {
+    if now.artists.is_empty() {
+        if theme::link(ui, &now.subtitle, font, color).clicked()
+            && let Some(id) = &now.show_id
+        {
+            app.actions.push(Action::Open(Page::Show(id.clone())));
         }
+    } else {
+        super::widgets::artist_links(ui, app, &now.artists, font, color);
     }
 }
 

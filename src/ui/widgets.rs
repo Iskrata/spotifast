@@ -636,23 +636,83 @@ fn add_to_playlist_menu(ui: &mut Ui, app: &mut App, items: &[PlayableItem]) {
         &palette,
         Some(Icon::ListPlus),
         &gettext(app.locale, "Add to playlist"),
-        |ui| {
-            let frame = ui.ctx().cumulative_frame_nr();
-            let previous = ui
-                .data(|data| data.get_temp::<(u64, String)>(query_id))
-                .filter(|(last_frame, _)| frame.saturating_sub(*last_frame) <= 1);
-            let fresh = previous.is_none();
-            let mut query = previous.map(|(_, query)| query).unwrap_or_default();
-            let field = playlist_picker(ui, app, items, &mut query);
-            if fresh {
-                field.request_focus();
-            }
-            ui.data_mut(|data| data.insert_temp(query_id, (frame, query)));
-        },
+        |ui| remembered_playlist_picker(ui, app, items, query_id),
     );
     if opened.is_none() {
         ui.data_mut(|data| data.remove::<(u64, String)>(query_id));
     }
+}
+
+/// A button that opens the playlist picker for `items` on its own, for
+/// places that offer Add to playlist without a whole song menu.
+pub(crate) fn add_to_playlist_button(
+    ui: &mut Ui,
+    app: &mut App,
+    items: &[PlayableItem],
+    size: f32,
+) {
+    let palette = app.palette;
+    let button = theme::icon_button(
+        ui,
+        Icon::ListPlus,
+        size,
+        palette.secondary,
+        palette.text,
+        &gettext(app.locale, "Add to playlist"),
+    );
+    let query_id = button.id.with("add-to-playlist-query");
+    let opened = egui::Popup::menu(&button)
+        .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+        .frame(menu_frame(&palette))
+        .show(|ui| remembered_playlist_picker(ui, app, items, query_id));
+    if opened.is_none() {
+        ui.data_mut(|data| data.remove::<(u64, String)>(query_id));
+    }
+}
+
+/// [`playlist_picker`] with its filter kept between frames while it is
+/// drawn, and focused when it first appears.
+fn remembered_playlist_picker(
+    ui: &mut Ui,
+    app: &mut App,
+    items: &[PlayableItem],
+    query_id: egui::Id,
+) {
+    let frame = ui.ctx().cumulative_frame_nr();
+    let previous = ui
+        .data(|data| data.get_temp::<(u64, String)>(query_id))
+        .filter(|(last_frame, _)| frame.saturating_sub(*last_frame) <= 1);
+    let fresh = previous.is_none();
+    let mut query = previous.map(|(_, query)| query).unwrap_or_default();
+    let field = playlist_picker(ui, app, items, &mut query);
+    if fresh {
+        field.request_focus();
+    }
+    ui.data_mut(|data| data.insert_temp(query_id, (frame, query)));
+}
+
+/// The Like heart for `uri`, filled while the song is in Liked Songs.
+pub(crate) fn heart_button(ui: &mut Ui, app: &mut App, uri: &str, size: f32) -> egui::Response {
+    let palette = app.palette;
+    let saved = app.is_saved(uri).unwrap_or(false);
+    let (icon, color, tooltip) = if saved {
+        (
+            Icon::HeartFilled,
+            palette.accent,
+            gettext(app.locale, "Remove from Liked Songs"),
+        )
+    } else {
+        (
+            Icon::Heart,
+            palette.secondary,
+            gettext(app.locale, "Save to Liked Songs"),
+        )
+    };
+    let response = theme::icon_button(ui, icon, size, color, palette.text, &tooltip);
+    if response.clicked() {
+        app.actions.push(Action::ToggleSaved(uri.to_string()));
+    }
+    response
 }
 
 /// Shared by single-item and selection menus. Filtering is local and keeps
@@ -1732,20 +1792,7 @@ fn track_row_contents(
             {
                 child.set_opacity(0.0);
             }
-            let (icon, color) = if saved == Some(true) {
-                (Icon::HeartFilled, palette.accent)
-            } else {
-                (Icon::Heart, palette.secondary)
-            };
-            let tooltip = if saved == Some(true) {
-                gettext(app.locale, "Remove from Liked Songs")
-            } else {
-                gettext(app.locale, "Save to Liked Songs")
-            };
-            if theme::icon_button(&mut child, icon, 16.0, color, palette.text, &tooltip).clicked() {
-                app.actions
-                    .push(Action::ToggleSaved(row.item.uri().to_string()));
-            }
+            heart_button(&mut child, app, row.item.uri(), 16.0);
         }
         x += cols.heart;
     }

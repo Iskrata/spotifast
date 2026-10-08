@@ -152,7 +152,8 @@ current-track pickup.
   while the saved rows remain visible. Manual refresh starts immediately.
   Like and Unlike are kept over lagging reads until Spotify confirms them.
 - Spotifast has no telemetry, analytics, or hosted service. When the lyrics
-  panel is open and Spotify has no lyrics, it sends the track's artist, title,
+  panel or the Friend Activity panel is open and Spotify has no lyrics, it
+  sends the track's artist, title,
   album, and length to [lrclib.net](https://lrclib.net). It also checks
   api.github.com once a day for updates. This fork reads the releases of
   Iskrata/spotifast, not crmne/spotifast. You can turn off automatic checks in
@@ -384,7 +385,13 @@ over the local playback session: one request when it opens, then about once
 a minute while it stays open, and on **Refresh**. Nothing is read while the
 panel is closed, and nothing about the account's own listening is sent.
 Without local playback signed in, the panel asks for it instead of making a
-request. Spotify does not document this service, so a refusal or an answer
+request.
+
+While a song plays, the panel shows it above the friends with the line of
+its lyrics being sung and the next songs in the queue. It reads both the way
+the Lyrics and Queue panels do: the lyrics once per song, from the cache when
+they are there, and the queue when the panel opens and when the song
+changes. It does not poll the queue while the song plays. Spotify does not document this service, so a refusal or an answer
 the app does not recognise shows a short notice and leaves the rest of the
 app alone.
 

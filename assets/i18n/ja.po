@@ -3223,3 +3223,15 @@ msgstr "フレンドアクティビティはローカル再生を通じて読み
 #: src/ui/friends.rs
 msgid "Spotify did not return friend activity."
 msgstr "Spotifyからフレンドアクティビティが返されませんでした。"
+
+#: src/ui/now_playing_panel.rs
+msgid "Show lyrics"
+msgstr "歌詞を表示"
+
+#: src/ui/now_playing_panel.rs
+msgid "Next in queue"
+msgstr "再生待ちリストの次の曲"
+
+#: src/ui/now_playing_panel.rs
+msgid "Open queue"
+msgstr "再生待ちリストを開く"

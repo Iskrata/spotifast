@@ -775,6 +775,16 @@ fn fullscreen_contents(app: &mut App, ui: &mut egui::Ui) {
     if manual_scroll && app.lyrics_following {
         app.actions.push(Action::PauseLyricsFollow);
     }
+    repaint_at_next_line(ui.ctx(), &lyrics, &now);
+}
+
+/// Wakes the window when the next timed line starts, so a view that shows
+/// the sung line moves on without drawing every frame.
+pub(super) fn repaint_at_next_line(
+    ctx: &egui::Context,
+    lyrics: &crate::lyrics::Lyrics,
+    now: &crate::app::NowPlaying,
+) {
     if now.playing
         && lyrics.synced
         && let Some(next) = lyrics
@@ -783,10 +793,9 @@ fn fullscreen_contents(app: &mut App, ui: &mut egui::Ui) {
             .filter_map(|line| line.at_ms)
             .find(|at| *at > now.position_ms)
     {
-        ui.ctx()
-            .request_repaint_after(std::time::Duration::from_millis(u64::from(
-                next - now.position_ms,
-            )));
+        ctx.request_repaint_after(std::time::Duration::from_millis(u64::from(
+            next - now.position_ms,
+        )));
     }
 }
 

@@ -14,6 +14,7 @@ mod keys;
 pub mod library;
 pub mod login;
 mod lyrics;
+mod now_playing_panel;
 pub mod player_bar;
 pub mod queue;
 pub mod radio;

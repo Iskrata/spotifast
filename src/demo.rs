@@ -844,6 +844,9 @@ pub fn apply_flags(app: &mut App, page: Option<&str>, show: Option<&str>) {
             "friends" => {
                 app.show_friends_panel = true;
                 app.friends = crate::model::Loadable::Loaded(sample_friends());
+                // The playing song's words, for the lyrics card above them.
+                app.lyrics_uri = app.now_playing().map(|now| now.uri);
+                app.lyrics = Loadable::Loaded(Some(sample_lyrics()));
             }
             "art-background" => {
                 app.settings.art_background = true;
@@ -2495,6 +2498,169 @@ mod tests {
             vec![accessible_action(close, AccessibleAction::Click, None)],
         );
         assert!(!app.show_friends_panel);
+        app.backend.shutdown();
+    }
+
+    /// Opens Friend Activity with its sample friends and the playing song's
+    /// words.
+    fn open_friends_panel(app: &mut App) {
+        app.show_friends_panel = true;
+        app.friends = Loadable::Loaded(sample_friends());
+        app.lyrics_uri = app.now_playing().map(|now| now.uri);
+        app.lyrics = Loadable::Loaded(Some(sample_lyrics()));
+    }
+
+    /// What the side panel on the right shows, above the player bar, once
+    /// its layout settles: the words it draws and the names its controls
+    /// give a screen reader.
+    fn panel_labels(ctx: &egui::Context, app: &mut App) -> Vec<String> {
+        fn texts(shape: &egui::epaint::Shape, out: &mut Vec<(String, egui::Rect)>) {
+            match shape {
+                egui::epaint::Shape::Text(text) => out.push((
+                    text.galley.job.text.clone(),
+                    text.galley.rect.translate(text.pos.to_vec2()),
+                )),
+                egui::epaint::Shape::Vec(shapes) => {
+                    shapes.iter().for_each(|shape| texts(shape, out));
+                }
+                _ => {}
+            }
+        }
+        let mut output = None;
+        for _ in 0..2 {
+            let mut frame = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(1280.0, 800.0),
+                    )),
+                    ..Default::default()
+                },
+                |ui| app.frame_ui(ui),
+            );
+            frame.textures_delta.clear();
+            output = Some(frame);
+        }
+        let output = output.unwrap();
+        let panel = egui::Rect::from_min_max(
+            egui::pos2(1280.0 - app.settings.friends_width - 1.0, 0.0),
+            egui::pos2(1280.0, 800.0 - crate::theme::PLAYER_BAR_HEIGHT),
+        );
+        let mut drawn = Vec::new();
+        output
+            .shapes
+            .iter()
+            .for_each(|shape| texts(&shape.shape, &mut drawn));
+        let tree = output.platform_output.accesskit_update.unwrap();
+        drawn
+            .into_iter()
+            .filter(|(_, rect)| panel.contains_rect(*rect))
+            .map(|(text, _)| text)
+            .chain(tree.nodes.iter().filter_map(|(_, node)| {
+                let bounds = node.bounds()?;
+                let rect = egui::Rect::from_min_max(
+                    egui::pos2(bounds.x0 as f32, bounds.y0 as f32),
+                    egui::pos2(bounds.x1 as f32, bounds.y1 as f32),
+                );
+                panel
+                    .contains_rect(rect)
+                    .then(|| node.label())?
+                    .map(str::to_string)
+            }))
+            .collect()
+    }
+
+    #[test]
+    fn friend_activity_shows_the_playing_song_above_the_friends() {
+        let (ctx, mut app) = accessible_app("friends-now-playing");
+        let now = app.now_playing().expect("the demo plays a song");
+        open_friends_panel(&mut app);
+        let labels = panel_labels(&ctx, &mut app);
+        let has = |label: &str| labels.iter().any(|shown| shown == label);
+        assert!(has("Now playing"), "the panel's heading: {labels:?}");
+        assert!(has(&now.title), "the title: {labels:?}");
+        for artist in &now.artists {
+            assert!(has(&artist.name), "the artist {}", artist.name);
+        }
+        assert!(has("Save to Liked Songs") || has("Remove from Liked Songs"));
+        assert!(has("Add to playlist"));
+        // The demo is 83 seconds in, where this line is sung.
+        let sung = sample_lyrics()
+            .lines
+            .iter()
+            .rev()
+            .find(|line| line.at_ms.is_some_and(|at| at <= now.position_ms))
+            .unwrap()
+            .text
+            .clone();
+        assert!(has(&sung), "the sung line {sung:?}: {labels:?}");
+        assert!(has("Show lyrics"));
+        let head = app.queue.get().unwrap().queue[0].name().to_string();
+        assert!(has("Next in queue") && has("Open queue"));
+        assert!(has(&head), "the queue's head {head:?}");
+        assert!(!labels.iter().any(|label| label.contains("Credits")));
+        // The friends follow under their own heading.
+        assert!(has("Friend Activity"));
+        assert!(has(&sample_friends()[0].track.name));
+        app.backend.shutdown();
+    }
+
+    #[test]
+    fn friend_activity_without_a_song_shows_only_the_friends() {
+        let (ctx, mut app) = accessible_app("friends-nothing-playing");
+        app.remote = None;
+        assert!(app.now_playing().is_none());
+        open_friends_panel(&mut app);
+        let labels = panel_labels(&ctx, &mut app);
+        let has = |label: &str| labels.iter().any(|shown| shown == label);
+        assert!(has("Friend Activity"), "{labels:?}");
+        assert!(!has("Now playing") && !has("Show lyrics") && !has("Next in queue"));
+        assert!(has(&sample_friends()[0].track.name));
+        app.backend.shutdown();
+    }
+
+    #[test]
+    fn friend_activity_has_no_lyrics_card_without_the_songs_words() {
+        let (ctx, mut app) = accessible_app("friends-no-lyrics");
+        open_friends_panel(&mut app);
+        app.lyrics = Loadable::Loaded(None);
+        let labels = panel_labels(&ctx, &mut app);
+        assert!(!labels.iter().any(|label| label == "Show lyrics"));
+        assert!(labels.iter().any(|label| label == "Next in queue"));
+        app.backend.shutdown();
+    }
+
+    #[test]
+    fn friend_activity_opens_the_lyrics_and_the_queue() {
+        use egui::accesskit::{Action as AccessibleAction, Role};
+        for (label, role) in [("Show lyrics", Role::Button), ("Open queue", Role::Link)] {
+            let (ctx, mut app) = accessible_app("friends-open");
+            open_friends_panel(&mut app);
+            accessible_frame(&ctx, &mut app, vec![]);
+            let tree = accessible_frame(&ctx, &mut app, vec![]);
+            let target = accessible_node(&tree, label, role);
+            accessible_frame(
+                &ctx,
+                &mut app,
+                vec![accessible_action(target, AccessibleAction::Click, None)],
+            );
+            assert!(!app.show_friends_panel, "{label}: one panel at a time");
+            if label == "Show lyrics" {
+                assert!(app.show_lyrics_panel);
+            } else {
+                assert!(app.show_queue_panel);
+            }
+            app.backend.shutdown();
+        }
+    }
+
+    #[test]
+    fn opening_friend_activity_asks_for_the_playing_songs_lyrics() {
+        let (ctx, mut app) = accessible_app("friends-lyrics-request");
+        let now = app.now_playing().unwrap();
+        assert_eq!(app.lyrics_uri, None);
+        app.apply(Action::ToggleFriendsPanel, &ctx);
+        assert_eq!(app.lyrics_uri.as_deref(), Some(now.uri.as_str()));
         app.backend.shutdown();
     }
 

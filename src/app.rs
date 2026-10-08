@@ -2783,13 +2783,16 @@ impl App {
         if let Some(url) = now.art_small.or(now.art_url) {
             self.tint_for(Some(&url));
         }
+        // Friend Activity shows the playing song's lyrics and the queue's
+        // next songs above the friends.
         if matches!(self.page(), Page::Queue)
             || self.show_queue_panel
+            || self.show_friends_panel
             || (self.settings.winamp_window && self.settings.playlist_open)
         {
             self.refresh_queue(true);
         }
-        if self.show_lyrics_panel {
+        if self.show_lyrics_panel || self.show_friends_panel {
             self.request_lyrics();
         }
     }
@@ -9104,6 +9107,9 @@ impl App {
                     self.show_queue_panel = false;
                     self.show_lyrics_panel = false;
                     self.refresh_friends(false);
+                    // For the playing song above the friends.
+                    self.refresh_queue(false);
+                    self.request_lyrics();
                 }
             }
             Action::RefreshFriends(force) => self.refresh_friends(force),

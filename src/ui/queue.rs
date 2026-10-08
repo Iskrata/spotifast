@@ -575,7 +575,7 @@ fn recents_contents(app: &mut App, ui: &mut egui::Ui) {
 /// One row of the queue, numbered and indexed by its place in the whole
 /// queue, whichever section it sits in. `shift` parts rows around the slot
 /// a dragged row would land in, in the "Playing next" section only.
-fn queue_row(app: &mut App, ui: &mut egui::Ui, index: usize, compact: bool, shift: f32) {
+pub(super) fn queue_row(app: &mut App, ui: &mut egui::Ui, index: usize, compact: bool, shift: f32) {
     let Some(item) = app
         .queue
         .get()

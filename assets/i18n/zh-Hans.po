@@ -3145,3 +3145,15 @@ msgstr "好友动态通过本地播放读取。请在设置中开启此电脑上
 #: src/ui/friends.rs
 msgid "Spotify did not return friend activity."
 msgstr "Spotify 未返回好友动态。"
+
+#: src/ui/now_playing_panel.rs
+msgid "Show lyrics"
+msgstr "显示歌词"
+
+#: src/ui/now_playing_panel.rs
+msgid "Next in queue"
+msgstr "播放队列中的下一首"
+
+#: src/ui/now_playing_panel.rs
+msgid "Open queue"
+msgstr "打开播放队列"

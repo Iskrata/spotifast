@@ -3244,3 +3244,15 @@ msgstr ""
 #: src/ui/friends.rs
 msgid "Spotify did not return friend activity."
 msgstr "Spotify arkadaş etkinliğini döndürmedi."
+
+#: src/ui/now_playing_panel.rs
+msgid "Show lyrics"
+msgstr "Şarkı sözlerini göster"
+
+#: src/ui/now_playing_panel.rs
+msgid "Next in queue"
+msgstr "Sırada sonraki"
+
+#: src/ui/now_playing_panel.rs
+msgid "Open queue"
+msgstr "Sırayı aç"

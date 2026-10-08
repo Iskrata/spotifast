@@ -1,4 +1,5 @@
-//! Friend Activity: what the people the account follows last played.
+//! Friend Activity: what the people the account follows last played, under
+//! the song playing here.
 
 use std::time::Duration;
 
@@ -38,18 +39,21 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
         let window_controls =
             super::window_controls_reservation(ui.ctx(), true, false, ui.available_width());
         ui.add_space(window_controls.queue_top);
+        // While a song plays, it heads the panel and Friend Activity
+        // follows as a section of its own, with its Refresh beside it.
+        let now = app.now_playing();
+        let title = if now.is_some() {
+            gettext(locale, "Now playing")
+        } else {
+            gettext(locale, "Friend Activity")
+        };
         let mut close = false;
         let mut refresh = false;
         egui::Sides::new().shrink_left().show(
             ui,
             |ui| {
                 ui.add_space(4.0);
-                theme::text(
-                    ui,
-                    gettext(locale, "Friend Activity"),
-                    theme::bold(16.0),
-                    palette.text,
-                );
+                theme::text(ui, title, theme::bold(16.0), palette.text);
             },
             |ui| {
                 close = theme::icon_button(
@@ -61,15 +65,9 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
                     &gettext(locale, "Close"),
                 )
                 .clicked();
-                refresh = theme::icon_button(
-                    ui,
-                    Icon::Refresh,
-                    16.0,
-                    palette.secondary,
-                    palette.text,
-                    &gettext(locale, "Refresh"),
-                )
-                .clicked();
+                if now.is_none() {
+                    refresh = refresh_button(ui, &palette, locale);
+                }
             },
         );
         if close {
@@ -93,7 +91,16 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
                         right: 12,
                         ..Margin::ZERO
                     })
-                    .show(ui, |ui| contents(app, ui));
+                    .show(ui, |ui| {
+                        if let Some(now) = &now {
+                            super::now_playing_panel::section(app, ui, now);
+                            if friends_heading(ui, &palette, locale) {
+                                app.actions.push(Action::RefreshFriends(true));
+                            }
+                            ui.add_space(8.0);
+                        }
+                        contents(app, ui);
+                    });
             });
     });
     let width = response.response.rect.width();
@@ -103,6 +110,37 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
         app.settings.friends_width = width;
         app.actions.push(Action::SettingsChanged);
     }
+}
+
+fn refresh_button(ui: &mut egui::Ui, palette: &theme::Palette, locale: Locale) -> bool {
+    theme::icon_button(
+        ui,
+        Icon::Refresh,
+        16.0,
+        palette.secondary,
+        palette.text,
+        &gettext(locale, "Refresh"),
+    )
+    .clicked()
+}
+
+/// Friend Activity's heading below the playing song. Returns whether its
+/// Refresh was clicked.
+fn friends_heading(ui: &mut egui::Ui, palette: &theme::Palette, locale: Locale) -> bool {
+    let mut refresh = false;
+    egui::Sides::new().shrink_left().show(
+        ui,
+        |ui| {
+            theme::text(
+                ui,
+                gettext(locale, "Friend Activity"),
+                theme::semibold(14.0),
+                palette.text,
+            );
+        },
+        |ui| refresh = refresh_button(ui, palette, locale),
+    );
+    refresh
 }
 
 fn contents(app: &mut App, ui: &mut egui::Ui) {

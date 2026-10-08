@@ -279,7 +279,7 @@ fn page_tint(app: &mut App, image: Option<&str>) -> Option<Color32> {
     }
 }
 
-/// The backdrop behind the page: the moving album art gradient, or else the
+/// The backdrop behind the page: the moving album art orbs, or else the
 /// header's wash, scrolled `scrolled` points up with the page's hero.
 fn backdrop(
     app: &mut App,
@@ -295,8 +295,19 @@ fn backdrop(
         None
     };
     if let Some(art) = app.art_background_palette(page_art, hovered.as_deref()) {
-        let playing = app.believed_playing();
-        return art_background::shape(ui, &palette, rect, art, playing);
+        let local = app.now_playing().is_some_and(|now| now.local);
+        // The sound is read only while the orbs show and music plays here.
+        let samples = (app.believed_playing() && local).then(|| {
+            app.winamp
+                .tap
+                .window(crate::vis_energy::SAMPLES, crate::vis::LAG)
+        });
+        let motion = match &samples {
+            Some(samples) => art_background::Motion::Music(samples),
+            None if app.believed_playing() => art_background::Motion::Drift,
+            None => art_background::Motion::Still,
+        };
+        return art_background::shape(ui, &palette, rect, art, motion);
     }
     let overview = matches!(
         app.page(),

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?template=translation.yml\n"
-"POT-Creation-Date: 2026-10-27 16:27+0200\n"
+"POT-Creation-Date: 2026-10-27 16:30+0200\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Polish\n"
@@ -321,7 +321,7 @@ msgid "Recent"
 msgstr "Ostatnie"
 
 #: src/ui/queue.rs:92 src/ui/queue.rs:241 src/ui/lyrics.rs:78
-#: src/ui/friends.rs:69 src/ui/mod.rs:670 src/window.rs:35
+#: src/ui/friends.rs:69 src/ui/mod.rs:681 src/window.rs:35
 msgid "Close"
 msgstr "Zamknij"
 
@@ -1115,7 +1115,7 @@ msgstr "Nie udało się zmienić odtwarzania losowego"
 msgid "Couldn't change repeat"
 msgstr "Nie udało się zmienić powtarzania"
 
-#: src/app.rs:13673 src/ui/mod.rs:437
+#: src/app.rs:13673 src/ui/mod.rs:448
 msgid "Spotify won't let this computer play this song right now."
 msgstr "Spotify nie pozwala teraz odtworzyć tego utworu na tym komputerze."
 
@@ -1633,8 +1633,8 @@ msgid "How often the player bar and mini player visualizers draw. Lower rates us
 msgstr "Jak często rysują wizualizacje paska odtwarzacza i miniodtwarzacza. Niższe wartości zużywają mniej zasobów. MilkDrop ma własne ustawienie."
 
 #: src/ui/settings.rs:1232
-msgid "Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
-msgstr "Wypełnia strony powoli poruszającym się gradientem z okładki pod kursorem, okładki samej strony lub okładki odtwarzanego utworu."
+msgid "Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here."
+msgstr "Wypełnia strony miękkimi kulami koloru z okładki pod kursorem, okładki samej strony lub okładki odtwarzanego utworu. Poruszają się w rytm muzyki odtwarzanej tutaj."
 
 #: src/ui/settings.rs:1394
 msgid "Off"
@@ -2318,7 +2318,7 @@ msgstr "Przejdź na własną aplikację Spotify"
 msgid "You're signed in through the shared app Spotifast used before. Spotifast no longer offers it, and Spotify can stop accepting it at any time. Set up your own free Spotify app so nothing stops your music. It takes a few minutes."
 msgstr "Logujesz się przez wspólną aplikację, której Spotifast używał wcześniej. Spotifast już jej nie oferuje, a Spotify może w każdej chwili przestać ją akceptować. Skonfiguruj własną, darmową aplikację Spotify, aby nic nie przerwało Twojej muzyki. To zajmie kilka minut."
 
-#: src/ui/dialogs.rs:50 src/ui/mod.rs:412
+#: src/ui/dialogs.rs:50 src/ui/mod.rs:423
 msgid "Set up personal app"
 msgstr "Skonfiguruj osobistą aplikację"
 
@@ -2811,41 +2811,41 @@ msgstr "Wklej Client ID aplikacji w pole i zaloguj się."
 msgid "Copied"
 msgstr "Skopiowano"
 
-#: src/ui/mod.rs:405
+#: src/ui/mod.rs:416
 msgid "Spotify is being slow on the shared app."
 msgstr "Spotify działa wolno we wspólnej aplikacji."
 
-#: src/ui/mod.rs:408
+#: src/ui/mod.rs:419
 msgid "Spotifast no longer offers the shared app, and Spotify can stop accepting it at any time. Set up your own free Spotify app and you won't have to wait."
 msgstr "Spotifast nie oferuje już wspólnej aplikacji, a Spotify może w każdej chwili przestać ją akceptować. Skonfiguruj własną, darmową aplikację Spotify, a nie trzeba będzie czekać."
 
 #. Translators: a button that opens a page explaining why
 #. the banner it sits in appeared.
-#: src/ui/mod.rs:418 src/ui/mod.rs:449
+#: src/ui/mod.rs:429 src/ui/mod.rs:460
 msgid "Why?"
 msgstr "Dlaczego?"
 
-#: src/ui/mod.rs:441
+#: src/ui/mod.rs:452
 msgid "Spotify refused the key that unlocks the audio. Spotifast can't fix that, but it sometimes clears up on its own. You can still play on your phone or another Spotify device."
 msgstr "Spotify odmówił klucza, który odblokowuje dźwięk. Spotifast nie może tego naprawić, ale czasem samo przechodzi. Nadal możesz słuchać na telefonie lub innym urządzeniu ze Spotify."
 
-#: src/ui/mod.rs:445
+#: src/ui/mod.rs:456
 msgid "Play on another device"
 msgstr "Odtwórz na innym urządzeniu"
 
-#: src/ui/mod.rs:496
+#: src/ui/mod.rs:507
 msgid "Close banner"
 msgstr "Zamknij baner"
 
-#: src/ui/mod.rs:667
+#: src/ui/mod.rs:678
 msgid "Minimize"
 msgstr "Minimalizuj"
 
-#: src/ui/mod.rs:668
+#: src/ui/mod.rs:679
 msgid "Maximize"
 msgstr "Maksymalizuj"
 
-#: src/ui/mod.rs:669
+#: src/ui/mod.rs:680
 msgid "Restore"
 msgstr "Przywróć"
 
@@ -3467,6 +3467,9 @@ msgstr "W systemie Windows na ARM OpenGL, którego Spotifast używa do rysowania
 #, rust-format
 msgid "Spotifast needs a graphics driver with OpenGL 2.0 or newer, and this PC or virtual machine does not provide one. Install the graphics driver, or turn on GPU acceleration for the virtual machine. Open {url} to read more?"
 msgstr "Spotifast potrzebuje sterownika graficznego z OpenGL 2.0 lub nowszym, a ten komputer lub ta maszyna wirtualna go nie zapewnia. Zainstaluj sterownik graficzny albo włącz akcelerację GPU maszyny wirtualnej. Otworzyć {url}, aby dowiedzieć się więcej?"
+
+#~ msgid "Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
+#~ msgstr "Wypełnia strony powoli poruszającym się gradientem z okładki pod kursorem, okładki samej strony lub okładki odtwarzanego utworu."
 
 #~ msgid "Fill pages with a slowly moving gradient from the playing song's cover."
 #~ msgstr "Wypełnia strony powoli poruszającym się gradientem z okładki odtwarzanego utworu."

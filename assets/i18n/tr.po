@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?template=translation.yml\n"
-"POT-Creation-Date: 2026-10-27 16:27+0200\n"
+"POT-Creation-Date: 2026-10-27 16:30+0200\n"
 "PO-Revision-Date: 2026-10-02 20:30+0300\n"
 "Last-Translator: Barış Berke Çetin <brsberkectn@gmail.com>\n"
 "Language-Team: Turkish\n"
@@ -317,7 +317,7 @@ msgid "Recent"
 msgstr "Geçmiş"
 
 #: src/ui/queue.rs:92 src/ui/queue.rs:241 src/ui/lyrics.rs:78
-#: src/ui/friends.rs:69 src/ui/mod.rs:670 src/window.rs:35
+#: src/ui/friends.rs:69 src/ui/mod.rs:681 src/window.rs:35
 msgid "Close"
 msgstr "Kapat"
 
@@ -1105,7 +1105,7 @@ msgstr "Karışık çalma modu değiştirilemedi"
 msgid "Couldn't change repeat"
 msgstr "Tekrarlama modu değiştirilemedi"
 
-#: src/app.rs:13673 src/ui/mod.rs:437
+#: src/app.rs:13673 src/ui/mod.rs:448
 msgid "Spotify won't let this computer play this song right now."
 msgstr "Spotify şu anda bu bilgisayarın bu şarkıyı çalmasına izin vermiyor."
 
@@ -1622,8 +1622,8 @@ msgid "How often the player bar and mini player visualizers draw. Lower rates us
 msgstr "Çalar çubuğu ve mini çalar görselleştiricilerinin ne sıklıkla çizildiği. Daha düşük kare hızları daha az kaynak kullanır. MilkDrop'un kendi ayarı vardır."
 
 #: src/ui/settings.rs:1232
-msgid "Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
-msgstr "Sayfaları, işaretçinin altındaki kapaktan, sayfanın kendi kapağından ya da çalan şarkının kapağından alınan yavaşça hareket eden bir geçişle doldurur."
+msgid "Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here."
+msgstr "Sayfaları, işaretçinin altındaki kapaktan, sayfanın kendi kapağından ya da çalan şarkının kapağından alınan yumuşak renk küreleriyle doldurur. Burada çalan müzikle birlikte hareket ederler."
 
 #: src/ui/settings.rs:1394
 msgid "Off"
@@ -2302,7 +2302,7 @@ msgstr "Kendi Spotify uygulamanıza geçin"
 msgid "You're signed in through the shared app Spotifast used before. Spotifast no longer offers it, and Spotify can stop accepting it at any time. Set up your own free Spotify app so nothing stops your music. It takes a few minutes."
 msgstr "Spotifast'ın önceden kullandığı paylaşılan uygulama üzerinden giriş yaptınız. Spotifast artık bu uygulamayı sunmuyor ve Spotify onu her an kabul etmeyi bırakabilir. Müziğinizin kesilmemesi için kendi ücretsiz Spotify uygulamanızı kurun. Yalnızca birkaç dakika sürer."
 
-#: src/ui/dialogs.rs:50 src/ui/mod.rs:412
+#: src/ui/dialogs.rs:50 src/ui/mod.rs:423
 msgid "Set up personal app"
 msgstr "Kişisel uygulamayı ayarla"
 
@@ -2793,41 +2793,41 @@ msgstr "Uygulamanın İstemci Kimliği'ni alana yapıştırın ve giriş yapın.
 msgid "Copied"
 msgstr "Kopyalandı"
 
-#: src/ui/mod.rs:405
+#: src/ui/mod.rs:416
 msgid "Spotify is being slow on the shared app."
 msgstr "Spotify paylaşılan uygulamada yavaş çalışıyor."
 
-#: src/ui/mod.rs:408
+#: src/ui/mod.rs:419
 msgid "Spotifast no longer offers the shared app, and Spotify can stop accepting it at any time. Set up your own free Spotify app and you won't have to wait."
 msgstr "Spotifast artık paylaşılan uygulamayı sunmuyor ve Spotify onu her an kabul etmeyi bırakabilir. Kendi ücretsiz Spotify uygulamanızı kurarsanız beklemeniz gerekmez."
 
 #. Translators: a button that opens a page explaining why
 #. the banner it sits in appeared.
-#: src/ui/mod.rs:418 src/ui/mod.rs:449
+#: src/ui/mod.rs:429 src/ui/mod.rs:460
 msgid "Why?"
 msgstr "Neden?"
 
-#: src/ui/mod.rs:441
+#: src/ui/mod.rs:452
 msgid "Spotify refused the key that unlocks the audio. Spotifast can't fix that, but it sometimes clears up on its own. You can still play on your phone or another Spotify device."
 msgstr "Spotify, sesin kilidini açan anahtarı vermeyi reddetti. Spotifast bunu düzeltemez, ama bazen kendiliğinden düzelir. Telefonunuzda veya başka bir Spotify cihazında yine de çalabilirsiniz."
 
-#: src/ui/mod.rs:445
+#: src/ui/mod.rs:456
 msgid "Play on another device"
 msgstr "Başka bir cihazda çal"
 
-#: src/ui/mod.rs:496
+#: src/ui/mod.rs:507
 msgid "Close banner"
 msgstr "Bildirimi kapat"
 
-#: src/ui/mod.rs:667
+#: src/ui/mod.rs:678
 msgid "Minimize"
 msgstr "Simge durumuna küçült"
 
-#: src/ui/mod.rs:668
+#: src/ui/mod.rs:679
 msgid "Maximize"
 msgstr "Ekranı kapla"
 
-#: src/ui/mod.rs:669
+#: src/ui/mod.rs:680
 msgid "Restore"
 msgstr "Önceki boyuta getir"
 
@@ -3443,6 +3443,9 @@ msgstr "ARM üzerinde Windows'ta Spotifast'in çizim için kullandığı OpenGL,
 #, rust-format
 msgid "Spotifast needs a graphics driver with OpenGL 2.0 or newer, and this PC or virtual machine does not provide one. Install the graphics driver, or turn on GPU acceleration for the virtual machine. Open {url} to read more?"
 msgstr "Spotifast, OpenGL 2.0 veya daha yenisini destekleyen bir grafik sürücüsüne ihtiyaç duyar ve bu bilgisayar ya da sanal makine bunu sağlamıyor. Grafik sürücüsünü yükleyin veya sanal makine için GPU hızlandırmayı açın. Daha fazlasını okumak için {url} açılsın mı?"
+
+#~ msgid "Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
+#~ msgstr "Sayfaları, işaretçinin altındaki kapaktan, sayfanın kendi kapağından ya da çalan şarkının kapağından alınan yavaşça hareket eden bir geçişle doldurur."
 
 #~ msgid "Fill pages with a slowly moving gradient from the playing song's cover."
 #~ msgstr "Sayfaları, çalan şarkının kapağından alınan yavaşça hareket eden bir geçişle doldurur."

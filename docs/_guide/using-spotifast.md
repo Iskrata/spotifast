@@ -475,6 +475,14 @@ effects** turned off in Windows, **Reduce motion** on macOS, or GNOME's
 the player bar's colour changes without fading, lyrics jump to the sung line,
 and a new theme replaces the old one without the reveal. Spinners still turn.
 
+**Moving album art background** in **Settings > Appearance** fills pages with
+soft orbs of colour from the cover under the pointer, the page's own cover, or
+the playing song's. While a song plays on this computer, they glow larger and
+wander faster when it is loud and quick, and swell gently on its beats. Like
+the visualizers, they follow the equalizer, not the volume. A song playing on
+another device gives them a slow drift of their own, and they hold still while
+paused. It is on by default.
+
 In **Settings > Appearance**, **Compact track list** puts each song on one
 line. In narrow lists, the added date follows the artist credits with a spaced
 bullet; each artist name remains a separate link.

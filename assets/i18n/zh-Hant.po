@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Spotifast\n"
 "Report-Msgid-Bugs-To: https://github.com/crmne/spotifast/issues/new?template=translation.yml\n"
-"POT-Creation-Date: 2026-10-27 16:27+0200\n"
+"POT-Creation-Date: 2026-10-27 16:30+0200\n"
 "PO-Revision-Date: 2026-09-09 13:30+0000\n"
 "Last-Translator: Spotifast contributors\n"
 "Language-Team: Traditional Chinese\n"
@@ -313,7 +313,7 @@ msgid "Recent"
 msgstr "最近播放"
 
 #: src/ui/queue.rs:92 src/ui/queue.rs:241 src/ui/lyrics.rs:78
-#: src/ui/friends.rs:69 src/ui/mod.rs:670 src/window.rs:35
+#: src/ui/friends.rs:69 src/ui/mod.rs:681 src/window.rs:35
 msgid "Close"
 msgstr "關閉"
 
@@ -1095,7 +1095,7 @@ msgstr "無法切換隨機播放"
 msgid "Couldn't change repeat"
 msgstr "無法切換重複播放"
 
-#: src/app.rs:13673 src/ui/mod.rs:437
+#: src/app.rs:13673 src/ui/mod.rs:448
 msgid "Spotify won't let this computer play this song right now."
 msgstr "Spotify 現在不讓這台電腦播放這首歌。"
 
@@ -1611,8 +1611,8 @@ msgid "How often the player bar and mini player visualizers draw. Lower rates us
 msgstr "播放列和迷你播放器視覺化效果的繪製頻率。影格速率越低，使用的資源越少。MilkDrop 有獨立的設定。"
 
 #: src/ui/settings.rs:1232
-msgid "Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
-msgstr "以指標下方的封面、頁面本身的封面或正在播放歌曲的封面產生的緩慢流動漸層填滿頁面。"
+msgid "Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here."
+msgstr "以指標下方的封面、頁面本身的封面或正在播放歌曲的封面產生的柔和色彩光球填滿頁面。光球會隨本機播放的音樂而動。"
 
 #: src/ui/settings.rs:1394
 msgid "Off"
@@ -2286,7 +2286,7 @@ msgstr "改用你自己的 Spotify 應用程式"
 msgid "You're signed in through the shared app Spotifast used before. Spotifast no longer offers it, and Spotify can stop accepting it at any time. Set up your own free Spotify app so nothing stops your music. It takes a few minutes."
 msgstr "你正透過 Spotifast 以前使用的共用應用程式登入。Spotifast 已不再提供它，Spotify 也隨時可能停止接受它。請設定你自己的免費 Spotify 應用程式，讓音樂不會中斷。只需要幾分鐘。"
 
-#: src/ui/dialogs.rs:50 src/ui/mod.rs:412
+#: src/ui/dialogs.rs:50 src/ui/mod.rs:423
 msgid "Set up personal app"
 msgstr "設定個人應用程式"
 
@@ -2775,41 +2775,41 @@ msgstr "將應用程式的用戶端 ID 貼到欄位中並登入。"
 msgid "Copied"
 msgstr "已複製"
 
-#: src/ui/mod.rs:405
+#: src/ui/mod.rs:416
 msgid "Spotify is being slow on the shared app."
 msgstr "Spotify 在共用應用程式上回應很慢。"
 
-#: src/ui/mod.rs:408
+#: src/ui/mod.rs:419
 msgid "Spotifast no longer offers the shared app, and Spotify can stop accepting it at any time. Set up your own free Spotify app and you won't have to wait."
 msgstr "Spotifast 已不再提供共用應用程式，Spotify 也隨時可能停止接受它。設定你自己的免費 Spotify 應用程式，就不用再等了。"
 
 #. Translators: a button that opens a page explaining why
 #. the banner it sits in appeared.
-#: src/ui/mod.rs:418 src/ui/mod.rs:449
+#: src/ui/mod.rs:429 src/ui/mod.rs:460
 msgid "Why?"
 msgstr "為什麼？"
 
-#: src/ui/mod.rs:441
+#: src/ui/mod.rs:452
 msgid "Spotify refused the key that unlocks the audio. Spotifast can't fix that, but it sometimes clears up on its own. You can still play on your phone or another Spotify device."
 msgstr "Spotify 拒絕提供解鎖音訊的金鑰。Spotifast 沒辦法解決，但有時過一陣子會自己恢復。你仍然可以在手機或其他 Spotify 裝置上播放。"
 
-#: src/ui/mod.rs:445
+#: src/ui/mod.rs:456
 msgid "Play on another device"
 msgstr "在其他裝置上播放"
 
-#: src/ui/mod.rs:496
+#: src/ui/mod.rs:507
 msgid "Close banner"
 msgstr "關閉橫幅"
 
-#: src/ui/mod.rs:667
+#: src/ui/mod.rs:678
 msgid "Minimize"
 msgstr "最小化"
 
-#: src/ui/mod.rs:668
+#: src/ui/mod.rs:679
 msgid "Maximize"
 msgstr "最大化"
 
-#: src/ui/mod.rs:669
+#: src/ui/mod.rs:680
 msgid "Restore"
 msgstr "還原"
 
@@ -3419,6 +3419,9 @@ msgstr "在 ARM 版 Windows 上，Spotifast 用來繪製介面的 OpenGL 由 Mic
 #, rust-format
 msgid "Spotifast needs a graphics driver with OpenGL 2.0 or newer, and this PC or virtual machine does not provide one. Install the graphics driver, or turn on GPU acceleration for the virtual machine. Open {url} to read more?"
 msgstr "Spotifast 需要支援 OpenGL 2.0 或更新版本的顯示卡驅動程式，而這台電腦或虛擬機器沒有提供。請安裝顯示卡驅動程式，或為虛擬機器開啟 GPU 加速。要開啟 {url} 了解更多嗎？"
+
+#~ msgid "Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
+#~ msgstr "以指標下方的封面、頁面本身的封面或正在播放歌曲的封面產生的緩慢流動漸層填滿頁面。"
 
 #~ msgid "Fill pages with a slowly moving gradient from the playing song's cover."
 #~ msgstr "以正在播放歌曲封面產生的緩慢流動漸層填滿頁面。"

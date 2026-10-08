@@ -1501,8 +1501,8 @@ msgstr "Arrière-plan animé de la pochette"
 
 #: src/ui/settings.rs:889
 msgid ""
-"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
-msgstr "Remplit les pages d’un dégradé qui bouge lentement, tiré de la pochette sous le pointeur, de celle de la page ou de celle du titre en cours."
+"Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here."
+msgstr "Remplit les pages de douces sphères de couleur tirées de la pochette sous le pointeur, de celle de la page ou de celle du titre en cours. Elles bougent avec la musique jouée ici."
 
 #: src/ui/settings.rs:1017
 msgid "Off"

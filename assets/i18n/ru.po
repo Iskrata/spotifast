@@ -1499,8 +1499,8 @@ msgstr "Движущийся фон из обложки альбома"
 
 #: src/ui/settings.rs:889
 msgid ""
-"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
-msgstr "Заполняет страницы медленно движущимся градиентом из обложки под указателем, обложки самой страницы или обложки текущего трека."
+"Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here."
+msgstr "Заполняет страницы мягкими цветными сферами из обложки под указателем, обложки самой страницы или обложки текущего трека. Они движутся в такт музыке, играющей здесь."
 
 #: src/ui/settings.rs:1017
 msgid "Off"

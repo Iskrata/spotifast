@@ -1498,8 +1498,8 @@ msgstr "Sfondo animato dalla copertina"
 
 #: src/ui/settings.rs:889
 msgid ""
-"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
-msgstr "Riempie le pagine con una sfumatura che si muove lentamente, presa dalla copertina sotto il puntatore, da quella della pagina o da quella del brano in riproduzione."
+"Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here."
+msgstr "Riempie le pagine di morbide sfere di colore prese dalla copertina sotto il puntatore, da quella della pagina o da quella del brano in riproduzione. Si muovono con la musica riprodotta qui."
 
 #: src/ui/settings.rs:1017
 msgid "Off"

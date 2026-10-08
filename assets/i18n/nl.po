@@ -1496,8 +1496,8 @@ msgstr "Bewegende achtergrond van albumhoes"
 
 #: src/ui/settings.rs:889
 msgid ""
-"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
-msgstr "Vult pagina's met een langzaam bewegend verloop uit de hoes onder de aanwijzer, de eigen hoes van de pagina of die van het spelende nummer."
+"Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here."
+msgstr "Vult pagina's met zachte kleurbollen uit de hoes onder de aanwijzer, de eigen hoes van de pagina of die van het spelende nummer. Ze bewegen mee met de muziek die hier speelt."
 
 #: src/ui/settings.rs:1017
 msgid "Off"

@@ -1485,8 +1485,8 @@ msgstr "Rörlig bakgrund från skivomslaget"
 
 #: src/ui/settings.rs:889
 msgid ""
-"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
-msgstr "Fyller sidorna med en långsamt rörlig toning från omslaget under pekaren, sidans eget omslag eller den spelande låtens omslag."
+"Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here."
+msgstr "Fyller sidorna med mjuka färgklot från omslaget under pekaren, sidans eget omslag eller den spelande låtens omslag. De rör sig med musiken som spelas här."
 
 #: src/ui/settings.rs:1017
 msgid "Off"

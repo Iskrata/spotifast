@@ -1448,8 +1448,8 @@ msgstr "動態專輯封面背景"
 
 #: src/ui/settings.rs:889
 msgid ""
-"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
-msgstr "以指標下方的封面、頁面本身的封面或正在播放歌曲的封面產生的緩慢流動漸層填滿頁面。"
+"Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here."
+msgstr "以指標下方的封面、頁面本身的封面或正在播放歌曲的封面產生的柔和色彩光球填滿頁面。光球會隨本機播放的音樂而動。"
 
 #: src/ui/settings.rs:1017
 msgid "Off"

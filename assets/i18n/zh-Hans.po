@@ -1444,8 +1444,8 @@ msgstr "动态专辑封面背景"
 
 #: src/ui/settings.rs:889
 msgid ""
-"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
-msgstr "用指针下方的封面、页面自身的封面或正在播放歌曲的封面生成的缓慢流动渐变填充页面。"
+"Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here."
+msgstr "用指针下方的封面、页面自身的封面或正在播放歌曲的封面生成的柔和色彩光球填充页面。光球会随本机播放的音乐而动。"
 
 #: src/ui/settings.rs:1017
 msgid "Off"

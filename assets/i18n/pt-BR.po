@@ -1491,8 +1491,8 @@ msgstr "Fundo animado da capa do álbum"
 
 #: src/ui/settings.rs:889
 msgid ""
-"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
-msgstr "Preenche as páginas com um degradê que se move devagar, a partir da capa sob o ponteiro, da capa da própria página ou da capa da música tocando."
+"Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here."
+msgstr "Preenche as páginas com esferas suaves de cor a partir da capa sob o ponteiro, da capa da própria página ou da capa da música tocando. Elas se movem com a música tocando aqui."
 
 #: src/ui/settings.rs:1017
 msgid "Off"

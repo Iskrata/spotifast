@@ -1485,8 +1485,8 @@ msgstr "アルバムアートの動く背景"
 
 #: src/ui/settings.rs:889
 msgid ""
-"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
-msgstr "ポインターの下のジャケット、ページ自身のジャケット、または再生中の曲のジャケットから作った、ゆっくり動くグラデーションでページを満たします。"
+"Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here."
+msgstr "ポインターの下のジャケット、ページ自身のジャケット、または再生中の曲のジャケットから作った、やわらかな色の球でページを満たします。このデバイスで再生中の音楽に合わせて動きます。"
 
 #: src/ui/settings.rs:1017
 msgid "Off"

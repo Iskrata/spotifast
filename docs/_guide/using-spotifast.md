@@ -351,6 +351,14 @@ song plays on this computer. It is off by default. Clicking the player
 bar's empty space switches it, as Winamp's visualizer did: off, then
 Spectrum, then Waveform, then off again.
 
+**Moving album art background** in **Settings > Appearance** fills pages with
+soft orbs of colour from the cover under the pointer, the page's own cover, or
+the playing song's. While a song plays on this computer, they glow larger and
+wander faster when it is loud and quick, and swell gently on its beats. Like
+the visualizers, they follow the equalizer, not the volume. A song playing on
+another device gives them a slow drift of their own, and they hold still while
+paused. It is on by default.
+
 In **Settings > Appearance**, **Compact track list** puts each song on one
 line. In narrow lists, the added date follows the artist credits with a spaced
 bullet; each artist name remains a separate link.

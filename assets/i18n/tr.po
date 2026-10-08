@@ -1492,8 +1492,8 @@ msgstr "Hareketli albüm kapağı arka planı"
 
 #: src/ui/settings.rs:889
 msgid ""
-"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
-msgstr "Sayfaları, işaretçinin altındaki kapaktan, sayfanın kendi kapağından ya da çalan şarkının kapağından alınan yavaşça hareket eden bir geçişle doldurur."
+"Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here."
+msgstr "Sayfaları, işaretçinin altındaki kapaktan, sayfanın kendi kapağından ya da çalan şarkının kapağından alınan yumuşak renk küreleriyle doldurur. Burada çalan müzikle birlikte hareket ederler."
 
 #: src/ui/settings.rs:1017
 msgid "Off"

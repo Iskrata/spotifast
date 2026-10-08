@@ -1495,8 +1495,8 @@ msgstr "Fondo animado de la portada"
 
 #: src/ui/settings.rs:889
 msgid ""
-"Fill pages with a slowly moving gradient from the cover under the pointer, the page's own cover, or the playing song's."
-msgstr "Llena las páginas con un degradado que se mueve despacio, a partir de la portada bajo el puntero, la portada de la propia página o la de la canción en reproducción."
+"Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here."
+msgstr "Llena las páginas de suaves esferas de color a partir de la portada bajo el puntero, la portada de la propia página o la de la canción en reproducción. Se mueven con la música que suena aquí."
 
 #: src/ui/settings.rs:1017
 msgid "Off"

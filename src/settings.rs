@@ -1888,6 +1888,8 @@ pub struct SessionState {
     pub window_maximized: bool,
     /// Whether the queue panel was open.
     pub queue_open: Option<bool>,
+    /// Whether the Friend Activity panel was open. Absent opens it.
+    pub friends_open: Option<bool>,
     /// Which tab the queue panel showed: `queue` or `recents`.
     pub queue_tab: Option<String>,
     /// Last outer position of the Winamp window.

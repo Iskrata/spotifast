@@ -3,7 +3,7 @@
 use egui::{Align, CornerRadius, Frame, Layout, Margin, Stroke};
 
 use crate::app::App;
-use crate::i18n::{Locale, gettext, ngettext};
+use crate::i18n::{Locale, gettext, ngettext, pgettext};
 use crate::model::{Action, Dialog};
 use crate::theme;
 
@@ -58,17 +58,11 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                 Dialog::CreatePlaylist { .. } => create_playlist(app, ui),
                 Dialog::EditPlaylist { .. } => edit_playlist(app, ui),
                 Dialog::ConfirmDeletePlaylist { id, name, owned } => {
-                    theme::text(
-                        ui,
-                        if owned {
-                            gettext(locale, "Delete playlist?")
-                        } else {
-                            gettext(locale, "Remove from Your Library?")
-                        },
-                        theme::bold(20.0),
-                        palette.text,
-                    );
-                    ui.add_space(8.0);
+                    let title = if owned {
+                        gettext(locale, "Delete playlist?")
+                    } else {
+                        gettext(locale, "Remove from Your Library?")
+                    };
                     let body = if owned {
                         // Translators: {name} is a playlist name.
                         gettext(locale, "Delete “{name}”? You can recover it from Spotify for 90 days.")
@@ -77,34 +71,22 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                         gettext(locale, "“{name}” will no longer appear in Your Library.")
                     }
                     .replace("{name}", &name);
-                    ui.add(
-                        egui::Label::new(
-                            egui::RichText::new(body)
-                                .font(theme::regular(14.0))
-                                .color(palette.secondary),
-                        )
-                        .wrap(),
+                    let confirm_label = if owned {
+                        gettext(locale, "Delete")
+                    } else {
+                        gettext(locale, "Remove")
+                    };
+                    confirm(app, ui, &title, &body, &confirm_label, Action::DeletePlaylist(id));
+                }
+                Dialog::ConfirmUnfollowFriend { uri, name } => {
+                    // Translators: {name} is a person in Friend Activity.
+                    let title = gettext(locale, "Unfollow {name}?").replace("{name}", &name);
+                    let body = gettext(
+                        locale,
+                        "You will stop following them on Spotify, and their listening leaves Friend Activity.",
                     );
-                    ui.add_space(20.0);
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if theme::pill_button(
-                            ui,
-                            &palette,
-                            &if owned {
-                                gettext(locale, "Delete")
-                            } else {
-                                gettext(locale, "Remove")
-                            },
-                            true,
-                        )
-                        .clicked()
-                        {
-                            app.actions.push(Action::DeletePlaylist(id.clone()));
-                        }
-                        if theme::pill_button(ui, &palette, &gettext(locale, "Cancel"), false).clicked() {
-                            app.actions.push(Action::CloseDialog);
-                        }
-                    });
+                    let confirm_label = pgettext(locale, "user", "Unfollow");
+                    confirm(app, ui, &title, &body, &confirm_label, Action::UnfollowFriend(uri));
                 }
                 Dialog::ConfirmPlaylistDuplicates {
                     playlist_id,
@@ -595,6 +577,31 @@ fn edit_playlist(app: &mut App, ui: &mut egui::Ui) {
             if theme::pill_button(ui, &palette, &gettext(locale, "Cancel"), false).clicked() {
                 app.actions.push(Action::CloseDialog);
             }
+        }
+    });
+}
+
+/// A question with its explanation, a Cancel button, and one that applies
+/// `action`.
+fn confirm(app: &mut App, ui: &mut egui::Ui, title: &str, body: &str, label: &str, action: Action) {
+    let palette = app.palette;
+    theme::text(ui, title, theme::bold(20.0), palette.text);
+    ui.add_space(8.0);
+    ui.add(
+        egui::Label::new(
+            egui::RichText::new(body)
+                .font(theme::regular(14.0))
+                .color(palette.secondary),
+        )
+        .wrap(),
+    );
+    ui.add_space(20.0);
+    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+        if theme::pill_button(ui, &palette, label, true).clicked() {
+            app.actions.push(action);
+        }
+        if theme::pill_button(ui, &palette, &gettext(app.locale, "Cancel"), false).clicked() {
+            app.actions.push(Action::CloseDialog);
         }
     });
 }

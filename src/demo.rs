@@ -2654,6 +2654,88 @@ mod tests {
         }
     }
 
+    /// A friend's row offers Unfollow from a right-click and from the More
+    /// button that shows while it is pointed at. Unfollow asks first, then
+    /// takes the row away.
+    #[test]
+    fn a_friend_is_unfollowed_from_their_row_after_confirming() {
+        use egui::accesskit::{Action as AccessibleAction, Role};
+        fn labelled(tree: &egui::accesskit::TreeUpdate, label: &str) -> egui::accesskit::NodeId {
+            tree.nodes
+                .iter()
+                .find(|(_, node)| node.label() == Some(label))
+                .unwrap_or_else(|| panic!("missing {label:?}"))
+                .0
+        }
+        for right_click in [true, false] {
+            let (ctx, mut app) = accessible_app("friends-unfollow-row");
+            app.remote = None;
+            open_friends_panel(&mut app);
+            let jonas = sample_friends()[1].clone();
+            accessible_frame(&ctx, &mut app, vec![]);
+            let tree = accessible_frame(&ctx, &mut app, vec![]);
+            // The second line of the row is the song; the avatar is left of it.
+            let song = tree
+                .nodes
+                .iter()
+                .find(|(_, node)| node.label() == Some(jonas.track.name.as_str()))
+                .and_then(|(_, node)| node.bounds())
+                .expect("Jonas's song");
+            let avatar = egui::pos2(song.x0 as f32 - 25.0, song.y0 as f32 + 4.0);
+            if right_click {
+                accessible_frame(
+                    &ctx,
+                    &mut app,
+                    pointer_click(avatar, egui::PointerButton::Secondary),
+                );
+            } else {
+                accessible_frame(&ctx, &mut app, vec![egui::Event::PointerMoved(avatar)]);
+                accessible_frame(&ctx, &mut app, vec![egui::Event::PointerMoved(avatar)]);
+                let tree = accessible_frame(&ctx, &mut app, vec![]);
+                let more = accessible_node(
+                    &tree,
+                    &format!("More options for {}", jonas.name),
+                    Role::Button,
+                );
+                accessible_frame(
+                    &ctx,
+                    &mut app,
+                    vec![accessible_action(more, AccessibleAction::Click, None)],
+                );
+            }
+            let tree = accessible_frame(&ctx, &mut app, vec![]);
+            let unfollow = labelled(&tree, "Unfollow");
+            accessible_frame(
+                &ctx,
+                &mut app,
+                vec![accessible_action(unfollow, AccessibleAction::Click, None)],
+            );
+            assert!(
+                matches!(&app.dialog, Some(Dialog::ConfirmUnfollowFriend { uri, .. }) if *uri == jonas.uri),
+                "asks first"
+            );
+            assert!(app.backend.take_saved_requests().is_empty());
+            accessible_frame(&ctx, &mut app, vec![]);
+            let tree = accessible_frame(&ctx, &mut app, vec![]);
+            let confirm = accessible_node(&tree, "Unfollow", Role::Button);
+            accessible_frame(
+                &ctx,
+                &mut app,
+                vec![accessible_action(confirm, AccessibleAction::Click, None)],
+            );
+            assert!(app.dialog.is_none());
+            assert!(
+                app.friends
+                    .get()
+                    .unwrap()
+                    .iter()
+                    .all(|friend| friend.uri != jonas.uri)
+            );
+            assert_eq!(app.backend.take_saved_requests().len(), 1);
+            app.backend.shutdown();
+        }
+    }
+
     #[test]
     fn opening_friend_activity_asks_for_the_playing_songs_lyrics() {
         let (ctx, mut app) = accessible_app("friends-lyrics-request");
@@ -6768,6 +6850,10 @@ mod tests {
                 id: "pl1".into(),
                 name: "x".into(),
                 owned: true,
+            },
+            Dialog::ConfirmUnfollowFriend {
+                uri: "spotify:user:x".into(),
+                name: "x".into(),
             },
             Dialog::ConfirmPlaylistDuplicates {
                 position: None,

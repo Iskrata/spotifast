@@ -3269,3 +3269,39 @@ msgstr "Volgende in wachtrij"
 #: src/ui/now_playing_panel.rs
 msgid "Open queue"
 msgstr "Wachtrij openen"
+
+#. Translators: Stop following a person in Friend Activity.
+#: src/ui/friends.rs src/ui/dialogs.rs
+msgctxt "user"
+msgid "Unfollow"
+msgstr "Ontvolgen"
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/ui/friends.rs
+#, rust-format
+msgid "More options for {name}"
+msgstr "Meer opties voor {name}"
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/ui/dialogs.rs
+#, rust-format
+msgid "Unfollow {name}?"
+msgstr "{name} ontvolgen?"
+
+#: src/ui/dialogs.rs
+msgid ""
+"You will stop following them on Spotify, and their listening leaves Friend "
+"Activity."
+msgstr "Je volgt deze persoon niet meer op Spotify, en wat die luistert verdwijnt uit Vriendenactiviteit."
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/app.rs
+#, rust-format
+msgid "Unfollowed {name}"
+msgstr "{name} ontvolgd"
+
+#. Translators: {name} is a person in Friend Activity. {error} is an error message.
+#: src/app.rs
+#, rust-format
+msgid "Couldn't unfollow {name}: {error}"
+msgstr "Kan {name} niet ontvolgen: {error}"

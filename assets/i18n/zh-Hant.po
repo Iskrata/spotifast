@@ -3164,3 +3164,39 @@ msgstr "待播清單中的下一首"
 #: src/ui/now_playing_panel.rs
 msgid "Open queue"
 msgstr "開啟待播清單"
+
+#. Translators: Stop following a person in Friend Activity.
+#: src/ui/friends.rs src/ui/dialogs.rs
+msgctxt "user"
+msgid "Unfollow"
+msgstr "取消追蹤"
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/ui/friends.rs
+#, rust-format
+msgid "More options for {name}"
+msgstr "{name} 的更多選項"
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/ui/dialogs.rs
+#, rust-format
+msgid "Unfollow {name}?"
+msgstr "取消追蹤 {name}?"
+
+#: src/ui/dialogs.rs
+msgid ""
+"You will stop following them on Spotify, and their listening leaves Friend "
+"Activity."
+msgstr "你將在 Spotify 上取消追蹤此人,其收聽動態也會從好友動態中移除。"
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/app.rs
+#, rust-format
+msgid "Unfollowed {name}"
+msgstr "已取消追蹤 {name}"
+
+#. Translators: {name} is a person in Friend Activity. {error} is an error message.
+#: src/app.rs
+#, rust-format
+msgid "Couldn't unfollow {name}: {error}"
+msgstr "無法取消追蹤 {name}:{error}"

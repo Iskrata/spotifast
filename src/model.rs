@@ -892,6 +892,11 @@ pub enum Dialog {
         name: String,
         owned: bool,
     },
+    /// Stop following a person listed in Friend Activity.
+    ConfirmUnfollowFriend {
+        uri: String,
+        name: String,
+    },
     ConfirmPlaylistDuplicates {
         playlist_id: String,
         playlist_name: String,
@@ -1042,6 +1047,8 @@ pub enum Action {
         public: Option<bool>,
     },
     DeletePlaylist(String),
+    /// Stops following the person with this `spotify:user:` URI.
+    UnfollowFriend(String),
     Transfer(String),
     /// Send the account to a receiver found on the local network.
     ActivateReceiver(Box<crate::zeroconf::Receiver>),

@@ -1554,19 +1554,17 @@ mod tests {
         assert!(!personal.cooling_down().await);
     }
 
-    /// A personal app reads the whole library page after page and answers
-    /// it as one page with nothing after it.
-    #[tokio::test]
-    async fn the_whole_library_is_read_page_after_page() {
+    /// A local server that answers one request with each of `bodies` and
+    /// returns their request lines, and a personal app client signed in to it.
+    async fn answering(
+        bodies: Vec<&'static str>,
+    ) -> (ApiClient, tokio::task::JoinHandle<Vec<String>>) {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = listener.local_addr().unwrap();
         let server = tokio::spawn(async move {
             let mut paths = Vec::new();
-            for body in [
-                r#"{"items":[{"id":"a"},{"id":"b"}],"total":3,"limit":2,"offset":0,"next":"more"}"#,
-                r#"{"items":[{"id":"c"}],"total":3,"limit":2,"offset":2,"next":null}"#,
-            ] {
+            for body in bodies {
                 let (mut socket, _) = listener.accept().await.unwrap();
                 let mut request = Vec::new();
                 while !request.ends_with(b"\r\n\r\n") {
@@ -1612,6 +1610,18 @@ mod tests {
             ApiSource::Personal,
             Arc::new(|_| {}),
         ))));
+        (client, server)
+    }
+
+    /// A personal app reads the whole library page after page and answers
+    /// it as one page with nothing after it.
+    #[tokio::test]
+    async fn the_whole_library_is_read_page_after_page() {
+        let (client, server) = answering(vec![
+            r#"{"items":[{"id":"a"},{"id":"b"}],"total":3,"limit":2,"offset":0,"next":"more"}"#,
+            r#"{"items":[{"id":"c"}],"total":3,"limit":2,"offset":2,"next":null}"#,
+        ])
+        .await;
         let page = client.all_my_playlists().await.unwrap();
         let ids: Vec<_> = page
             .items
@@ -1623,6 +1633,23 @@ mod tests {
         let paths = server.await.unwrap();
         assert!(paths[0].contains("offset=0"), "{}", paths[0]);
         assert!(paths[1].contains("offset=2"), "{}", paths[1]);
+    }
+
+    /// Unfollowing a person is the library removal that unfollows artists,
+    /// with the person's user URI. Spotify deprecated DELETE /me/following
+    /// in its favour.
+    #[tokio::test]
+    async fn unfollowing_a_person_removes_their_user_uri_from_the_library() {
+        let (client, server) = answering(vec![""]).await;
+        client
+            .unsave(&["spotify:user:jonas".to_string()])
+            .await
+            .unwrap();
+        let paths = server.await.unwrap();
+        assert_eq!(
+            paths[0],
+            "DELETE /me/library?uris=spotify%3Auser%3Ajonas HTTP/1.1"
+        );
     }
 
     /// A background check of a grant is not activity the interface shows;

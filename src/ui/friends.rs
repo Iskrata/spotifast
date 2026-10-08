@@ -3,12 +3,12 @@
 
 use std::time::Duration;
 
-use egui::{Align, Frame, Layout, Margin, Sense, vec2};
+use egui::{Align, Frame, Layout, Margin, Sense, UiBuilder, vec2};
 
 use crate::app::App;
 use crate::friends::{Age, Friend};
-use crate::i18n::{Locale, gettext};
-use crate::model::{Action, Loadable, Page};
+use crate::i18n::{Locale, gettext, pgettext};
+use crate::model::{Action, Dialog, Loadable, Page};
 use crate::theme::{self, Icon};
 
 use super::widgets;
@@ -234,9 +234,44 @@ fn note(ui: &mut egui::Ui, palette: &theme::Palette, text: &str) {
 
 fn row(app: &mut App, ui: &mut egui::Ui, friend: &Friend, now: i64) {
     let palette = app.palette;
+    let age = crate::friends::age_label(now, friend.timestamp_ms);
+    let menu_id = ui.make_persistent_id(("friend-menu", &friend.uri));
+    // The row answers a right-click, and its More button stands in for the
+    // age while the row is pointed at or its menu is open. Sensed before its
+    // contents, so the links inside keep their own clicks.
+    let scope = ui.scope_builder(UiBuilder::new().sense(Sense::click()), |ui| {
+        let show_more = ui.response().hovered() || egui::Popup::is_id_open(ui.ctx(), menu_id);
+        row_contents(app, ui, friend, age, show_more.then_some(menu_id));
+    });
+    egui::Popup::context_menu(&scope.response)
+        .frame(widgets::menu_frame(&palette))
+        .show(|ui| friend_menu(ui, app, friend));
+}
+
+fn friend_menu(ui: &mut egui::Ui, app: &mut App, friend: &Friend) {
+    ui.set_min_width(180.0);
+    let palette = app.palette;
+    // Translators: Stop following a person in Friend Activity.
+    let unfollow = pgettext(app.locale, "user", "Unfollow");
+    if widgets::menu_item(ui, &palette, Some(Icon::CircleX), &unfollow) {
+        app.actions
+            .push(Action::ShowDialog(Dialog::ConfirmUnfollowFriend {
+                uri: friend.uri.clone(),
+                name: friend.name.clone(),
+            }));
+    }
+}
+
+fn row_contents(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    friend: &Friend,
+    age: Age,
+    more: Option<egui::Id>,
+) {
+    let palette = app.palette;
     let locale = app.locale;
     let art = app.backend.art().clone();
-    let age = crate::friends::age_label(now, friend.timestamp_ms);
     ui.horizontal_top(|ui| {
         ui.spacing_mut().item_spacing = vec2(10.0, 1.0);
         let (avatar, _) = ui.allocate_exact_size(vec2(AVATAR, AVATAR), Sense::hover());
@@ -273,7 +308,9 @@ fn row(app: &mut App, ui: &mut egui::Ui, friend: &Friend, now: i64) {
                     },
                 );
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    if age == Age::Now {
+                    if let Some(menu_id) = more {
+                        more_button(app, ui, friend, menu_id, label_width);
+                    } else if age == Age::Now {
                         theme::text(ui, label, theme::medium(12.0), palette.accent);
                     } else {
                         theme::text(ui, label, theme::regular(12.0), palette.dim);
@@ -331,6 +368,35 @@ fn row(app: &mut App, ui: &mut egui::Ui, friend: &Friend, now: i64) {
             }
         });
     });
+}
+
+/// The row's More button, in the age's place and no taller than its line,
+/// so showing it moves nothing.
+fn more_button(app: &mut App, ui: &mut egui::Ui, friend: &Friend, menu_id: egui::Id, width: f32) {
+    let palette = app.palette;
+    let (slot, _) = ui.allocate_exact_size(vec2(width, 18.0), Sense::hover());
+    let rect = egui::Rect::from_center_size(
+        egui::pos2(slot.right() - 12.0, slot.center().y),
+        vec2(24.0, 24.0),
+    );
+    let mut child = ui.new_child(
+        UiBuilder::new()
+            .max_rect(rect)
+            .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
+    );
+    let button = theme::icon_button(
+        &mut child,
+        Icon::Ellipsis,
+        12.0,
+        palette.secondary,
+        palette.text,
+        // Translators: {name} is a person in Friend Activity.
+        &gettext(app.locale, "More options for {name}").replace("{name}", &friend.name),
+    );
+    egui::Popup::menu(&button)
+        .id(menu_id)
+        .frame(widgets::menu_frame(&palette))
+        .show(|ui| friend_menu(ui, app, friend));
 }
 
 fn context_icon(uri: Option<&str>) -> Icon {

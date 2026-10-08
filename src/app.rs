@@ -426,6 +426,10 @@ pub struct App {
     friends_open_by_default: bool,
     /// What the account's friends last played, newest first.
     pub friends: Loadable<Vec<crate::friends::Friend>>,
+    /// The people unfollowed from Friend Activity this session, by URI.
+    /// Spotify's buddy list can go on listing them for a while, so they
+    /// stay hidden from it; a failed write puts them back.
+    unfollowed_friends: HashMap<String, crate::friends::Friend>,
     /// The buddy list needs the local playback session, which is missing.
     pub friends_need_session: bool,
     /// When the buddy list was last asked for, to space out refreshes.
@@ -885,6 +889,7 @@ impl App {
             show_friends_panel: friends_open_at_start(&session, false),
             friends_open_by_default: friends_open_at_start(&session, true),
             friends: Loadable::NotLoaded,
+            unfollowed_friends: HashMap::new(),
             friends_need_session: false,
             friends_requested_at: None,
             lyrics_fullscreen: None,
@@ -1735,12 +1740,66 @@ impl App {
         use crate::friends::Unavailable;
         self.friends_need_session = matches!(result, Err(Unavailable::NoSession));
         self.friends = match result {
-            Ok(friends) => Loadable::Loaded(friends),
+            Ok(mut friends) => {
+                friends.retain(|friend| !self.unfollowed_friends.contains_key(&friend.uri));
+                Loadable::Loaded(friends)
+            }
             // A failed refresh keeps the list already shown.
             Err(_) if self.friends.get().is_some() => return,
             Err(Unavailable::NoSession) => Loadable::Failed(String::new()),
             Err(Unavailable::Failed(error)) => Loadable::Failed(error),
         };
+    }
+
+    /// Takes the friend off the list at once and asks Spotify to stop
+    /// following them, through the library write that unfollows artists.
+    fn unfollow_friend(&mut self, uri: String) {
+        let Some(friends) = self.friends.get_mut() else {
+            return;
+        };
+        let Some(index) = friends.iter().position(|friend| friend.uri == uri) else {
+            return;
+        };
+        let friend = friends.remove(index);
+        self.unfollowed_friends.insert(uri.clone(), friend);
+        self.backend.api(ApiRequest::SetSaved {
+            uris: vec![uri],
+            saved: false,
+        });
+    }
+
+    /// Spotify's answer to [`App::unfollow_friend`]. A refusal puts the
+    /// friend back in their place on the list.
+    fn friend_unfollowed(&mut self, uri: &str, result: Result<(), String>) {
+        let name = self
+            .unfollowed_friends
+            .get(uri)
+            .map(|friend| friend.name.clone())
+            .unwrap_or_default();
+        match result {
+            // Translators: {name} is a person in Friend Activity.
+            Ok(()) => {
+                self.toast(gettext(self.locale, "Unfollowed {name}").replace("{name}", &name))
+            }
+            Err(error) => {
+                if let Some(friend) = self.unfollowed_friends.remove(uri)
+                    && let Some(friends) = self.friends.get_mut()
+                    && !friends.iter().any(|shown| shown.uri == friend.uri)
+                {
+                    let at = friends
+                        .iter()
+                        .position(|shown| shown.timestamp_ms < friend.timestamp_ms)
+                        .unwrap_or(friends.len());
+                    friends.insert(at, friend);
+                }
+                self.toast_error(
+                    // Translators: {name} is a person in Friend Activity. {error} is an error message.
+                    gettext(self.locale, "Couldn't unfollow {name}: {error}")
+                        .replace("{name}", &name)
+                        .replace("{error}", &error),
+                );
+            }
+        }
     }
 
     pub fn tint_for(&mut self, url: Option<&str>) -> Option<Color32> {
@@ -5975,6 +6034,13 @@ impl App {
             },
             ApiResponse::SavedChanged {
                 uris,
+                saved: false,
+                result,
+            } if uris.len() == 1 && self.unfollowed_friends.contains_key(&uris[0]) => {
+                self.friend_unfollowed(&uris[0], result.map_err(|error| error.to_string()));
+            }
+            ApiResponse::SavedChanged {
+                uris,
                 saved,
                 result,
             } => {
@@ -8942,6 +9008,10 @@ impl App {
                         public: changes.public,
                     });
                 }
+            }
+            Action::UnfollowFriend(uri) => {
+                self.dialog = None;
+                self.unfollow_friend(uri);
             }
             Action::DeletePlaylist(id) => {
                 self.dialog = None;
@@ -12481,6 +12551,73 @@ mod tests {
         let session = SessionState::load(&app.dirs.session_file());
         assert_eq!(session.friends_open, Some(false));
         assert!(!friends_open_at_start(&session, true));
+    }
+
+    fn friend_uris(app: &App) -> Vec<String> {
+        app.friends
+            .get()
+            .unwrap()
+            .iter()
+            .map(|friend| friend.uri.clone())
+            .collect()
+    }
+
+    /// Unfollowing a friend takes their row away at once and asks Spotify
+    /// to remove their user URI from the library. A buddy list that still
+    /// lists them, as Spotify's does for a while, leaves them hidden, and a
+    /// confirmed unfollow keeps them so.
+    #[test]
+    fn an_unfollowed_friend_leaves_at_once_and_stays_gone() {
+        let mut app = test_app("friends-unfollow");
+        let ctx = egui::Context::default();
+        let friends = crate::demo::sample_friends();
+        let jonas = friends[1].uri.clone();
+        app.friends = Loadable::Loaded(friends.clone());
+        app.apply(Action::UnfollowFriend(jonas.clone()), &ctx);
+        assert!(!friend_uris(&app).contains(&jonas), "gone at once");
+        let requests = app.backend.take_saved_requests();
+        assert!(
+            matches!(
+                requests.as_slice(),
+                [ApiRequest::SetSaved { uris, saved: false }] if uris == std::slice::from_ref(&jonas)
+            ),
+            "{requests:?}"
+        );
+        app.handle_friends(Ok(friends.clone()));
+        assert!(!friend_uris(&app).contains(&jonas), "a stale list");
+        app.handle_api(ApiResponse::SavedChanged {
+            uris: vec![jonas.clone()],
+            saved: false,
+            result: Ok(()),
+        });
+        app.handle_friends(Ok(friends));
+        assert!(!friend_uris(&app).contains(&jonas), "after Spotify agreed");
+        assert_eq!(friend_uris(&app).len(), 4);
+    }
+
+    /// A refused unfollow puts the friend back in their place and says so.
+    #[test]
+    fn a_refused_unfollow_brings_the_friend_back() {
+        let mut app = test_app("friends-unfollow-refused");
+        let ctx = egui::Context::default();
+        let friends = crate::demo::sample_friends();
+        let order: Vec<String> = friends.iter().map(|friend| friend.uri.clone()).collect();
+        let jonas = order[1].clone();
+        app.friends = Loadable::Loaded(friends);
+        app.apply(Action::UnfollowFriend(jonas.clone()), &ctx);
+        app.handle_api(ApiResponse::SavedChanged {
+            uris: vec![jonas.clone()],
+            saved: false,
+            result: Err(crate::api::client::ApiError::Status {
+                status: 403,
+                message: "Forbidden".into(),
+            }),
+        });
+        assert_eq!(friend_uris(&app), order, "back where they were");
+        let toast = app.toasts.last().expect("an error toast");
+        assert_eq!(toast.kind, ToastKind::Error);
+        assert!(toast.message.contains("Jonas Weber"), "{}", toast.message);
+        assert!(app.unfollowed_friends.is_empty());
     }
 
     /// The session remembers fullscreen lyrics and the mode they left, and a

@@ -3284,3 +3284,39 @@ msgstr "Далее в очереди"
 #: src/ui/now_playing_panel.rs
 msgid "Open queue"
 msgstr "Открыть очередь"
+
+#. Translators: Stop following a person in Friend Activity.
+#: src/ui/friends.rs src/ui/dialogs.rs
+msgctxt "user"
+msgid "Unfollow"
+msgstr "Отписаться"
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/ui/friends.rs
+#, rust-format
+msgid "More options for {name}"
+msgstr "Другие действия для {name}"
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/ui/dialogs.rs
+#, rust-format
+msgid "Unfollow {name}?"
+msgstr "Отписаться от {name}?"
+
+#: src/ui/dialogs.rs
+msgid ""
+"You will stop following them on Spotify, and their listening leaves Friend "
+"Activity."
+msgstr "Вы перестанете подписываться на этого человека в Spotify, и его прослушивания пропадут из активности друзей."
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/app.rs
+#, rust-format
+msgid "Unfollowed {name}"
+msgstr "Вы отписались от {name}"
+
+#. Translators: {name} is a person in Friend Activity. {error} is an error message.
+#: src/app.rs
+#, rust-format
+msgid "Couldn't unfollow {name}: {error}"
+msgstr "Не удалось отписаться от {name}: {error}"

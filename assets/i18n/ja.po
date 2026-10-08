@@ -3235,3 +3235,39 @@ msgstr "再生待ちリストの次の曲"
 #: src/ui/now_playing_panel.rs
 msgid "Open queue"
 msgstr "再生待ちリストを開く"
+
+#. Translators: Stop following a person in Friend Activity.
+#: src/ui/friends.rs src/ui/dialogs.rs
+msgctxt "user"
+msgid "Unfollow"
+msgstr "フォロー解除"
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/ui/friends.rs
+#, rust-format
+msgid "More options for {name}"
+msgstr "{name}のその他のオプション"
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/ui/dialogs.rs
+#, rust-format
+msgid "Unfollow {name}?"
+msgstr "{name}のフォローを解除しますか?"
+
+#: src/ui/dialogs.rs
+msgid ""
+"You will stop following them on Spotify, and their listening leaves Friend "
+"Activity."
+msgstr "Spotifyでこの人のフォローを解除し、その再生状況は友達のアクティビティに表示されなくなります。"
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/app.rs
+#, rust-format
+msgid "Unfollowed {name}"
+msgstr "{name}のフォローを解除しました"
+
+#. Translators: {name} is a person in Friend Activity. {error} is an error message.
+#: src/app.rs
+#, rust-format
+msgid "Couldn't unfollow {name}: {error}"
+msgstr "{name}のフォローを解除できませんでした: {error}"

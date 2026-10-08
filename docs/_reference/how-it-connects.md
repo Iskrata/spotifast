@@ -391,7 +391,16 @@ While a song plays, the panel shows it above the friends with the line of
 its lyrics being sung and the next songs in the queue. It reads both the way
 the Lyrics and Queue panels do: the lyrics once per song, from the cache when
 they are there, and the queue when the panel opens and when the song
-changes. It does not poll the queue while the song plays. Spotify does not document this service, so a refusal or an answer
+changes. It does not poll the queue while the song plays.
+
+**Unfollow**, from a friend's right-click menu or More button, asks first and
+then removes the person's `spotify:user:` URI from the library through the
+Web API (`DELETE /me/library`, the write that also unfollows artists; Spotify
+deprecated `DELETE /me/following` in its favour). It goes through the same
+app as other library writes, the personal app when one is ready. The row
+leaves at once and stays hidden for the rest of the session, however long
+the buddy list goes on listing the person. If Spotify refuses, the row comes
+back and a notice says why. Spotify does not document this service, so a refusal or an answer
 the app does not recognise shows a short notice and leaves the rest of the
 app alone.
 

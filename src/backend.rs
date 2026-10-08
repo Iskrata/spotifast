@@ -902,6 +902,8 @@ pub struct Backend {
     #[cfg(test)]
     queue_requests: std::sync::Mutex<Vec<ApiRequest>>,
     #[cfg(test)]
+    saved_requests: std::sync::Mutex<Vec<ApiRequest>>,
+    #[cfg(test)]
     queued_tracks: std::sync::Mutex<Vec<String>>,
     #[cfg(test)]
     player_commands: std::sync::Mutex<Vec<PlayerCommand>>,
@@ -988,6 +990,8 @@ impl Backend {
             #[cfg(test)]
             queue_requests: std::sync::Mutex::new(Vec::new()),
             #[cfg(test)]
+            saved_requests: std::sync::Mutex::new(Vec::new()),
+            #[cfg(test)]
             queued_tracks: std::sync::Mutex::new(Vec::new()),
             #[cfg(test)]
             player_commands: std::sync::Mutex::new(Vec::new()),
@@ -1053,6 +1057,13 @@ impl Backend {
                 | ApiRequest::AddManyToQueue { .. }
         ) {
             self.queue_requests.lock().unwrap().push(request.clone());
+        }
+        #[cfg(test)]
+        if matches!(request, ApiRequest::SetSaved { .. }) {
+            self.saved_requests
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .push(request.clone());
         }
         #[cfg(test)]
         if matches!(
@@ -1187,6 +1198,16 @@ impl Backend {
     #[cfg(test)]
     pub(crate) fn take_queue_requests(&self) -> Vec<ApiRequest> {
         std::mem::take(&mut *self.queue_requests.lock().unwrap())
+    }
+
+    #[cfg(test)]
+    pub(crate) fn take_saved_requests(&self) -> Vec<ApiRequest> {
+        std::mem::take(
+            &mut *self
+                .saved_requests
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()),
+        )
     }
 
     #[cfg(test)]

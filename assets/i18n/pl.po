@@ -3289,3 +3289,39 @@ msgstr "Następne w kolejce"
 #: src/ui/now_playing_panel.rs
 msgid "Open queue"
 msgstr "Otwórz kolejkę"
+
+#. Translators: Stop following a person in Friend Activity.
+#: src/ui/friends.rs src/ui/dialogs.rs
+msgctxt "user"
+msgid "Unfollow"
+msgstr "Przestań obserwować"
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/ui/friends.rs
+#, rust-format
+msgid "More options for {name}"
+msgstr "Więcej opcji dla {name}"
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/ui/dialogs.rs
+#, rust-format
+msgid "Unfollow {name}?"
+msgstr "Przestać obserwować {name}?"
+
+#: src/ui/dialogs.rs
+msgid ""
+"You will stop following them on Spotify, and their listening leaves Friend "
+"Activity."
+msgstr "Przestaniesz obserwować tę osobę w Spotify, a jej słuchanie zniknie z aktywności znajomych."
+
+#. Translators: {name} is a person in Friend Activity.
+#: src/app.rs
+#, rust-format
+msgid "Unfollowed {name}"
+msgstr "Przestano obserwować {name}"
+
+#. Translators: {name} is a person in Friend Activity. {error} is an error message.
+#: src/app.rs
+#, rust-format
+msgid "Couldn't unfollow {name}: {error}"
+msgstr "Nie udało się przestać obserwować {name}: {error}"

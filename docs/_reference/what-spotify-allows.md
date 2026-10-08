@@ -20,7 +20,7 @@ Spotifast uses the Web API for:
   the last fifty plays. Spotifast keeps a longer local
   [history](/using-spotifast/#recent).
 - **Library:** playlists, saved tracks, albums, shows, and episodes. It can
-  also save and remove items.
+  also save and remove items, and unfollow a person from Friend Activity.
 - **Playlists:** reading, creating, renaming, changing the description and
   visibility, adding and removing songs, reordering songs, and following and
   unfollowing. Custom playlist cover uploads are available since 0.9.0.

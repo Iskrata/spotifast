@@ -1733,6 +1733,20 @@ impl App {
         }
     }
 
+    /// A buddy list asked for before local playback's session came up was
+    /// refused for want of it. Ask again now the session is here, rather than
+    /// leave the panel empty until the next minute's read.
+    fn reread_friends_over_session(&mut self) {
+        if !self.friends_need_session {
+            return;
+        }
+        self.friends_need_session = false;
+        self.friends_requested_at = None;
+        if self.show_friends_panel {
+            self.refresh_friends(true);
+        }
+    }
+
     fn handle_friends(
         &mut self,
         result: Result<Vec<crate::friends::Friend>, crate::friends::Unavailable>,
@@ -2259,6 +2273,7 @@ impl App {
                     self.play_request(request, false);
                 }
                 self.reread_playlists_over_session();
+                self.reread_friends_over_session();
             }
             LocalPlayback::Unavailable => {
                 self.local_ready = false;
@@ -12520,6 +12535,30 @@ mod tests {
             assert_eq!(app.session_lyrics_fullscreen_from, None);
             app.backend.shutdown();
         }
+    }
+
+    /// A buddy list asked for before local playback connected is asked for
+    /// again as soon as it does, not a minute later.
+    #[test]
+    fn friend_activity_reads_again_when_playback_connects() {
+        let mut app = test_app("friends-after-session");
+        app.show_friends_panel = true;
+        app.refresh_friends(false);
+        app.handle_friends(Err(crate::friends::Unavailable::NoSession));
+        assert!(app.friends_need_session);
+        assert!(
+            !app.friends_stale(false),
+            "no retry before the minute is up"
+        );
+        app.handle_playback(LocalPlayback::Ready {
+            device_id: "local".into(),
+        });
+        assert!(!app.friends_need_session);
+        assert!(
+            matches!(app.friends, Loadable::Loading),
+            "asked again at once"
+        );
+        app.backend.shutdown();
     }
 
     /// Friend Activity opens on launch until it is closed once, and a queue

@@ -40,6 +40,10 @@ const SEARCH_MIN: f32 = 80.0;
 /// are measured on top of it because they come and go.
 const RIGHT_CONTROLS_WIDTH: f32 =
     super::widgets::PAGE_PADDING + AVATAR_SIZE + 4.0 + 3.0 * ICON_BUTTON_SIZE + 3.0 * ITEM_SPACING;
+/// What the Winamp, MilkDrop and Settings buttons take, gaps included. In a
+/// bar too narrow to hold them beside the narrowest field they fold into the
+/// account menu, which already has Settings.
+const FOLDING_WIDTH: f32 = 3.0 * (ICON_BUTTON_SIZE + ITEM_SPACING);
 
 /// What precedes the field until the bar has drawn once: the page padding,
 /// the back and forward buttons and the gaps after them.
@@ -77,11 +81,17 @@ struct TopbarFit {
     search: f32,
     /// Whether the badges have the room to spell themselves out.
     labels: bool,
+    /// Whether the Winamp, MilkDrop and Settings buttons move into the
+    /// account menu, so the rest of the bar keeps clear of the field.
+    fold: bool,
 }
 
 /// Divide the bar. The search field keeps the half it has always had, but
 /// never so much that the right end has to reach over it, and the badges
 /// fall back to their icons before the field shrinks past reading size.
+/// Only a window narrower than its minimum, as a tiling window manager
+/// makes one, leaves too little for the narrowest field beside them; the
+/// Winamp, MilkDrop and Settings buttons fold into the account menu then.
 ///
 /// `labelled` and `icons` are what the badges ask for with and without their
 /// text, each already including the spacing that precedes it.
@@ -90,9 +100,16 @@ fn topbar_fit(room: f32, controls: f32, labelled: f32, icons: f32) -> TopbarFit 
     let ideal = (room * 0.5).clamp(SEARCH_IDEAL, SEARCH_MAX);
     let labels = room - controls - labelled >= SEARCH_FLOOR;
     let badges = if labels { labelled } else { icons };
+    let fold = room - controls - badges < SEARCH_MIN;
+    let controls = if fold {
+        controls - FOLDING_WIDTH
+    } else {
+        controls
+    };
     TopbarFit {
         search: (room - controls - badges).clamp(SEARCH_MIN, ideal),
         labels,
+        fold,
     }
 }
 
@@ -436,6 +453,9 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                             });
                         }
                         super::widgets::menu_separator(ui, &palette);
+                        if fit.fold {
+                            folded_items(app, ui);
+                        }
                         if super::widgets::menu_item(
                             ui,
                             &palette,
@@ -464,51 +484,8 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                         }
                     });
                 ui.add_space(4.0);
-                if theme::icon_button(
-                    ui,
-                    Icon::Settings,
-                    ICON_BUTTON_ICON,
-                    palette.secondary,
-                    palette.text,
-                    &gettext(locale, "Settings"),
-                )
-                .clicked()
-                {
-                    app.actions.push(Action::Open(Page::Settings));
-                }
-                if theme::icon_button(
-                    ui,
-                    Icon::AudioLines,
-                    ICON_BUTTON_ICON,
-                    if app.settings.milkdrop_open {
-                        palette.accent
-                    } else {
-                        palette.secondary
-                    },
-                    palette.text,
-                    super::keys::platform_shortcut(
-                        &gettext(locale, "MilkDrop visualiser (Ctrl+Shift+K)"),
-                        &gettext(locale, "MilkDrop visualiser (Cmd+Shift+K)"),
-                    ),
-                )
-                .clicked()
-                {
-                    app.actions.push(Action::ToggleWinampMilkdrop);
-                }
-                if theme::icon_button(
-                    ui,
-                    Icon::Shrink,
-                    ICON_BUTTON_ICON,
-                    palette.secondary,
-                    palette.text,
-                    super::keys::platform_shortcut(
-                        &gettext(locale, "Winamp mini player (Ctrl+M)"),
-                        &gettext(locale, "Winamp mini player (Cmd+Shift+M)"),
-                    ),
-                )
-                .clicked()
-                {
-                    app.actions.push(Action::ToggleWinampWindow);
+                if !fit.fold {
+                    folding_buttons(app, ui);
                 }
                 // A quiet spinner once the app has been talking to Spotify for a
                 // while, long enough that fast requests never flash it.
@@ -563,6 +540,88 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     );
 }
 
+/// The Winamp, MilkDrop and Settings buttons beside the account menu, laid
+/// out right to left.
+fn folding_buttons(app: &mut App, ui: &mut egui::Ui) {
+    let palette = app.palette;
+    let locale = app.locale;
+    if theme::icon_button(
+        ui,
+        Icon::Settings,
+        ICON_BUTTON_ICON,
+        palette.secondary,
+        palette.text,
+        &gettext(locale, "Settings"),
+    )
+    .clicked()
+    {
+        app.actions.push(Action::Open(Page::Settings));
+    }
+    if theme::icon_button(
+        ui,
+        Icon::AudioLines,
+        ICON_BUTTON_ICON,
+        if app.settings.milkdrop_open {
+            palette.accent
+        } else {
+            palette.secondary
+        },
+        palette.text,
+        super::keys::platform_shortcut(
+            &gettext(locale, "MilkDrop visualiser (Ctrl+Shift+K)"),
+            &gettext(locale, "MilkDrop visualiser (Cmd+Shift+K)"),
+        ),
+    )
+    .clicked()
+    {
+        app.actions.push(Action::ToggleWinampMilkdrop);
+    }
+    if theme::icon_button(
+        ui,
+        Icon::Shrink,
+        ICON_BUTTON_ICON,
+        palette.secondary,
+        palette.text,
+        super::keys::platform_shortcut(
+            &gettext(locale, "Winamp mini player (Ctrl+M)"),
+            &gettext(locale, "Winamp mini player (Cmd+Shift+M)"),
+        ),
+    )
+    .clicked()
+    {
+        app.actions.push(Action::ToggleWinampWindow);
+    }
+}
+
+/// The same three controls as items of the account menu, once the bar is
+/// too narrow for their buttons. Settings is there already.
+fn folded_items(app: &mut App, ui: &mut egui::Ui) {
+    let palette = app.palette;
+    let locale = app.locale;
+    if super::widgets::menu_item(
+        ui,
+        &palette,
+        Some(Icon::Shrink),
+        super::keys::platform_shortcut(
+            &gettext(locale, "Winamp mini player (Ctrl+M)"),
+            &gettext(locale, "Winamp mini player (Cmd+Shift+M)"),
+        ),
+    ) {
+        app.actions.push(Action::ToggleWinampWindow);
+    }
+    if super::widgets::menu_item(
+        ui,
+        &palette,
+        Some(Icon::AudioLines),
+        super::keys::platform_shortcut(
+            &gettext(locale, "MilkDrop visualiser (Ctrl+Shift+K)"),
+            &gettext(locale, "MilkDrop visualiser (Cmd+Shift+K)"),
+        ),
+    ) {
+        app.actions.push(Action::ToggleWinampMilkdrop);
+    }
+}
+
 fn capitalize(text: &str) -> String {
     let mut chars = text.chars();
     match chars.next() {
@@ -589,7 +648,12 @@ mod topbar_fit_tests {
     fn right_end(room: f32, labelled: f32, icons: f32) -> f32 {
         let fit = topbar_fit(room, RIGHT_CONTROLS_WIDTH, labelled, icons);
         let badges = if fit.labels { labelled } else { icons };
-        RIGHT_CONTROLS_WIDTH + badges - (room - fit.search)
+        let controls = if fit.fold {
+            RIGHT_CONTROLS_WIDTH - FOLDING_WIDTH
+        } else {
+            RIGHT_CONTROLS_WIDTH
+        };
+        controls + badges - (room - fit.search)
     }
 
     #[test]
@@ -629,6 +693,37 @@ mod topbar_fit_tests {
         assert!(!fit.labels);
         assert_eq!(fit.search, 100.0);
         assert_eq!(right_end(room, DEVICE + UPDATE, CHIP * 2.0), 0.0);
+    }
+
+    /// A tiling window manager can make the window narrower than its
+    /// minimum, and a right panel then leaves the page less than the bar
+    /// needs (B1 of the UX audit). The three buttons beside the account
+    /// fold into its menu before anything reaches over the field.
+    #[test]
+    fn a_bar_below_its_least_width_folds_the_buttons_into_the_account_menu() {
+        let mut room = 240.0;
+        while room < NARROWEST_BAR {
+            for (labelled, icons) in [(0.0, 0.0), (DEVICE + UPDATE, CHIP * 2.0)] {
+                let fit = topbar_fit(room, RIGHT_CONTROLS_WIDTH, labelled, icons);
+                let over = right_end(room, labelled, icons);
+                if RIGHT_CONTROLS_WIDTH - FOLDING_WIDTH + icons + SEARCH_MIN <= room {
+                    assert!(over <= 0.0, "{over} px over the field on a {room} px bar");
+                }
+                assert_eq!(
+                    fit.fold,
+                    RIGHT_CONTROLS_WIDTH + icons + SEARCH_MIN > room,
+                    "on a {room} px bar"
+                );
+            }
+            room += 1.0;
+        }
+        // Down to the narrowest bar the app lays out at its minimum, nothing
+        // folds.
+        let mut room = NARROWEST_BAR;
+        while room <= 2400.0 {
+            assert!(!topbar_fit(room, RIGHT_CONTROLS_WIDTH, DEVICE + UPDATE, CHIP * 2.0).fold);
+            room += 1.0;
+        }
     }
 
     #[test]

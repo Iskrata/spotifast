@@ -9774,9 +9774,23 @@ mod tests {
         const FIELD_RIGHT_INSET: f32 = 30.0;
         let (ctx, mut app) = accessible_app("topbar-badges");
         app.open(Page::Playlist("pl1".into()));
-        for panel in [None, Some("queue"), Some("lyrics")] {
+        for (panel, sidebar) in [
+            (None, true),
+            (Some("queue"), true),
+            (Some("lyrics"), true),
+            (Some("friends"), true),
+            // Without the sidebar the bar also holds Show sidebar and Home,
+            // and a tiling window manager can leave the window at 760 points
+            // with a panel open.
+            (None, false),
+            (Some("queue"), false),
+            (Some("lyrics"), false),
+            (Some("friends"), false),
+        ] {
             app.show_queue_panel = panel == Some("queue");
             app.show_lyrics_panel = panel == Some("lyrics");
+            app.show_friends_panel = panel == Some("friends");
+            app.settings.sidebar_visible = sidebar;
             for (label, state) in [
                 (None, DownloadState::Idle),
                 (Some("Update to 9.9.9"), DownloadState::Idle),
@@ -9806,7 +9820,7 @@ mod tests {
                 // Keep the original 760-point coverage without a right panel,
                 // and the reported 1080-point size with one. Full-height panel
                 // placement at 760 points is checked independently below.
-                let widths: &[f32] = if panel.is_some() {
+                let widths: &[f32] = if panel.is_some() && sidebar {
                     &[1080.0, 1120.0, 1200.0, 1280.0, 1440.0, 1600.0, 1920.0]
                 } else {
                     &[
@@ -9860,6 +9874,17 @@ mod tests {
                         "the device badge covers {} px of the search field at {width} px",
                         field - device
                     );
+                    // The buttons beside the account sit clear of the field,
+                    // or have folded into its menu.
+                    for name in ["Settings", "MilkDrop visualiser", "Winamp mini player"] {
+                        if let Some(left) = badge(name) {
+                            assert!(
+                                left >= field,
+                                "{name} covers {} px of the search field at {width} px",
+                                field - left
+                            );
+                        }
+                    }
                     if let Some(label) = label {
                         let release = badge(label).expect("the update badge");
                         assert!(

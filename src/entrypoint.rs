@@ -81,6 +81,12 @@ struct Cli {
     #[cfg(feature = "demo")]
     #[arg(long, value_name = "X,Y:X,Y", value_parser = parse_demo_drag)]
     demo_drag: Option<[egui::Pos2; 2]>,
+
+    /// Click once for `--demo-shot`, at `X,Y` in points, so the shot shows
+    /// what the click opens, such as a menu.
+    #[cfg(feature = "demo")]
+    #[arg(long, value_name = "X,Y", value_parser = parse_demo_point, conflicts_with = "demo_drag")]
+    demo_click: Option<egui::Pos2>,
 }
 
 /// Remote control of the running instance, for Raycast scripts, launchers,
@@ -536,7 +542,18 @@ pub(crate) fn run() -> eframe::Result<()> {
     #[cfg(feature = "demo")]
     let demo_drag = cli
         .demo_drag
-        .map(|[from, to]| DemoDrag { from, to, frame: 0 });
+        .map(|[from, to]| DemoDrag {
+            from,
+            to,
+            frame: 0,
+            release: false,
+        })
+        .or(cli.demo_click.map(|at| DemoDrag {
+            from: at,
+            to: at,
+            frame: 0,
+            release: true,
+        }));
     #[cfg(feature = "demo")]
     let demo_inner = cli.demo_size;
     #[cfg(feature = "demo")]
@@ -735,25 +752,27 @@ fn parse_demo_size(spec: &str) -> Result<[f32; 2], String> {
 }
 
 #[cfg(feature = "demo")]
+fn parse_demo_point(point: &str) -> Result<egui::Pos2, String> {
+    let (x, y) = point
+        .split_once(',')
+        .ok_or_else(|| format!("expected X,Y, got {point}"))?;
+    let x: f32 = x
+        .trim()
+        .parse()
+        .map_err(|_| format!("invalid x in {point}"))?;
+    let y: f32 = y
+        .trim()
+        .parse()
+        .map_err(|_| format!("invalid y in {point}"))?;
+    Ok(egui::pos2(x, y))
+}
+
+#[cfg(feature = "demo")]
 fn parse_demo_drag(spec: &str) -> Result<[egui::Pos2; 2], String> {
-    let point = |point: &str| -> Result<egui::Pos2, String> {
-        let (x, y) = point
-            .split_once(',')
-            .ok_or_else(|| format!("expected X,Y, got {point}"))?;
-        let x: f32 = x
-            .trim()
-            .parse()
-            .map_err(|_| format!("invalid x in {point}"))?;
-        let y: f32 = y
-            .trim()
-            .parse()
-            .map_err(|_| format!("invalid y in {point}"))?;
-        Ok(egui::pos2(x, y))
-    };
     let (from, to) = spec
         .split_once(':')
         .ok_or_else(|| format!("expected X,Y:X,Y, got {spec}"))?;
-    Ok([point(from)?, point(to)?])
+    Ok([parse_demo_point(from)?, parse_demo_point(to)?])
 }
 
 // Windows can stop drawing a window created outside the current monitors.
@@ -1054,7 +1073,12 @@ mod native_window_tests {
         );
         assert!(parse_demo_drag("10,20").is_err());
         assert!(parse_demo_drag("10:20").is_err());
-        let mut drag = DemoDrag { from, to, frame: 0 };
+        let mut drag = DemoDrag {
+            from,
+            to,
+            frame: 0,
+            release: false,
+        };
         let frames: Vec<_> = (0..=DemoDrag::REST + DemoDrag::GLIDE + 5)
             .map(|_| drag.events())
             .collect();
@@ -1072,6 +1096,27 @@ mod native_window_tests {
         );
         assert_eq!(frames[0][0], egui::Event::PointerMoved(from));
         assert_eq!(frames.last().unwrap()[0], egui::Event::PointerMoved(to));
+    }
+
+    #[cfg(feature = "demo")]
+    #[test]
+    fn demo_click_presses_and_releases_once_in_place() {
+        let at = parse_demo_point("40, 30").unwrap();
+        assert_eq!(at, egui::pos2(40.0, 30.0));
+        let mut click = DemoDrag {
+            from: at,
+            to: at,
+            frame: 0,
+            release: true,
+        };
+        let buttons: Vec<_> = (0..=DemoDrag::REST + DemoDrag::GLIDE + 5)
+            .flat_map(|_| click.events())
+            .filter_map(|event| match event {
+                egui::Event::PointerButton { pos, pressed, .. } => Some((pos, pressed)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(buttons, [(at, true), (at, false)]);
     }
 
     #[test]
@@ -1143,13 +1188,15 @@ struct Shell {
 
 /// A scripted pointer for `--demo-drag`: rest on `from`, press there, glide
 /// to `to` and hold, so the shot shows a drag in progress through the same
-/// code a real pointer runs.
+/// code a real pointer runs. For `--demo-click` it releases right after
+/// the press instead, where it pressed.
 #[cfg(feature = "demo")]
 #[derive(Clone, Copy)]
 struct DemoDrag {
     from: egui::Pos2,
     to: egui::Pos2,
     frame: u32,
+    release: bool,
 }
 
 #[cfg(feature = "demo")]
@@ -1174,6 +1221,14 @@ impl DemoDrag {
                 pos,
                 button: egui::PointerButton::Primary,
                 pressed: true,
+                modifiers: egui::Modifiers::NONE,
+            });
+        }
+        if self.release && frame == Self::REST + 1 {
+            events.push(egui::Event::PointerButton {
+                pos,
+                button: egui::PointerButton::Primary,
+                pressed: false,
                 modifiers: egui::Modifiers::NONE,
             });
         }

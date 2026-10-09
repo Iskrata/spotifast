@@ -21,9 +21,13 @@ pub mod radius {
     pub const DIALOG: u8 = 12;
     /// The sign-in card, and dialogs drawn as glass.
     pub const SHEET: u8 = 16;
+    /// The macOS window's own corner, measured from a capture of the
+    /// window (about 35 pixels at 2x).
+    pub const WINDOW: u8 = 18;
     /// Surfaces floating as glass over the album art: the sidebar, the
-    /// side panels and the player bar.
-    pub const FLOATING: u8 = 20;
+    /// side panels and the player bar. Concentric with the window's corner
+    /// across the gutter, so the two curves run alongside each other.
+    pub const FLOATING: u8 = WINDOW - super::glass::GUTTER as u8;
     /// As round as egui draws: a circle for any square up to 254 points.
     pub const ROUND: u8 = 127;
 }
@@ -204,8 +208,18 @@ mod tests {
             radius::PANEL,
             radius::DIALOG,
             radius::SHEET,
-            radius::FLOATING,
         ];
         assert!(radii.windows(2).all(|pair| pair[0] < pair[1]));
+    }
+
+    /// A floating surface's corner plus the gutter around it is the
+    /// window's corner, so their curves share one centre.
+    #[test]
+    fn floating_corners_are_concentric_with_the_window() {
+        assert_eq!(
+            radius::FLOATING + glass::GUTTER as u8,
+            radius::WINDOW,
+            "a floating corner and its gutter make the window's corner"
+        );
     }
 }

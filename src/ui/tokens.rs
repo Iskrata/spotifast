@@ -117,6 +117,8 @@ pub mod motion {
     pub const PANEL: f32 = 0.22;
     /// A new page fading in.
     pub const PAGE: f32 = 0.2;
+    /// How far a new page rises as it fades in, in points.
+    pub const PAGE_RISE: f32 = 8.0;
     /// Content changing in place: the player bar's song, dialogs.
     pub const CONTENT: f32 = 0.25;
     /// Rows joining or leaving a list.

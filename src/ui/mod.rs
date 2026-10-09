@@ -402,6 +402,7 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
                         })
                         .show(ui, |ui| {
                             ui.set_min_width(ui.available_width());
+                            arrive(ui, &page);
                             match page {
                                 Page::Home => home::show(app, ui),
                                 Page::TopSongs => collection::top_songs(app, ui),
@@ -595,6 +596,20 @@ fn header_rect(panel: Rect, scrolled: f32) -> Rect {
         panel.min - vec2(0.0, scrolled.max(0.0)),
         vec2(panel.width(), 340.0),
     )
+}
+
+/// A page just opened fades in, rising into place from a little below.
+fn arrive(ui: &mut egui::Ui, page: &Page) {
+    let arrived = motion::arrival(
+        ui.ctx(),
+        Id::new("page-arrival"),
+        Id::new(page.encode()),
+        tokens::motion::PAGE,
+    );
+    if arrived < 1.0 {
+        ui.multiply_opacity(arrived);
+        ui.add_space((1.0 - arrived) * tokens::motion::PAGE_RISE);
+    }
 }
 
 /// The shadow the header casts on a page scrolled under it, deepening over

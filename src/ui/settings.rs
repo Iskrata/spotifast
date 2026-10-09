@@ -2270,7 +2270,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 if crate::ui::buttons::secondary(
                     ui,
                     &palette,
-                    Some(Icon::Info),
+                    Some(Icon::Keyboard),
                     &keyboard_shortcuts,
                 )
                 .clicked()

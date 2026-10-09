@@ -283,7 +283,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             let search_width = fit.search;
             let id = egui::Id::new("global-search");
             let before = app.search.query.clone();
-            let response = super::widgets::search_field(
+            let response = super::widgets::floating_search_field(
                 ui,
                 &palette,
                 app.locale,
@@ -444,7 +444,7 @@ fn account(app: &mut App, ui: &mut egui::Ui) {
         ),
     ];
     egui::Popup::menu(&response)
-        .frame(super::widgets::menu_frame(&palette))
+        .frame(super::widgets::menu_frame(ui.ctx(), &palette))
         .align(egui::RectAlign::BOTTOM_END)
         .show(|ui| {
             // As wide as the longest label beside its shortcut.

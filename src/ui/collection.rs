@@ -283,7 +283,7 @@ pub fn actions_row(
                 .size(IconSize::Large)
                 .show(ui, &palette);
             egui::Popup::menu(&more)
-                .frame(widgets::menu_frame(&palette))
+                .frame(widgets::menu_frame(ui.ctx(), &palette))
                 .show(|ui| {
                     if let Some(seed) = &actions.save_radio {
                         // As narrow as every other item menu.

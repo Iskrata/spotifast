@@ -12,13 +12,10 @@ use crate::theme;
 /// The dialogs' layer, which fades and grows in as one opens.
 pub(super) const DIALOG_ID: &str = "dialog";
 
-pub fn show(app: &mut App, ctx: &egui::Context) {
-    let Some(dialog) = app.dialog.clone() else {
-        return;
-    };
-    let palette = app.palette;
-    let locale = app.locale;
-    let frame = Frame::new()
+/// The frame of a dialog and of the update window: glass while the
+/// surfaces are.
+pub(super) fn frame(ctx: &egui::Context, palette: &theme::Palette) -> Frame {
+    let solid = Frame::new()
         .fill(palette.overlay)
         .stroke(Stroke::new(1.0, palette.outline))
         .corner_radius(CornerRadius::same(tokens::radius::DIALOG))
@@ -29,6 +26,16 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
             spread: 0,
             color: palette.shadow,
         });
+    super::glass::popover_frame(ctx, palette, solid, tokens::radius::SHEET)
+}
+
+pub fn show(app: &mut App, ctx: &egui::Context) {
+    let Some(dialog) = app.dialog.clone() else {
+        return;
+    };
+    let palette = app.palette;
+    let locale = app.locale;
+    let frame = frame(ctx, &palette);
     let response = egui::Modal::new(egui::Id::new(DIALOG_ID))
         .frame(frame)
         .backdrop_color(egui::Color32::from_black_alpha(if palette.dark {

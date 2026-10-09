@@ -403,7 +403,7 @@ fn top_result(
         app.actions.push(Action::Open(page));
     }
     egui::Popup::context_menu(&response)
-        .frame(widgets::menu_frame(&palette))
+        .frame(widgets::menu_frame(ui.ctx(), &palette))
         .show(|ui| menu(ui, app));
 }
 
@@ -482,7 +482,7 @@ fn artist_card(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
     }
     egui::Popup::context_menu(&card.response)
         .id(ui.make_persistent_id(("search-artist-menu", &artist.uri)))
-        .frame(widgets::menu_frame(&app.palette))
+        .frame(widgets::menu_frame(ui.ctx(), &app.palette))
         .show(|ui| {
             widgets::context_menu_items(ui, app, &artist.uri, &artist.name, None);
         });
@@ -549,7 +549,7 @@ fn album_card(app: &mut App, ui: &mut egui::Ui, album: &crate::api::models::Albu
     }
     egui::Popup::context_menu(&card.response)
         .id(ui.make_persistent_id(("search-album-menu", &album.uri)))
-        .frame(widgets::menu_frame(&app.palette))
+        .frame(widgets::menu_frame(ui.ctx(), &app.palette))
         .show(|ui| {
             widgets::context_menu_items(ui, app, &album.uri, &album.name, None);
         });
@@ -612,7 +612,7 @@ fn playlist_card(app: &mut App, ui: &mut egui::Ui, playlist: &crate::api::models
     }
     egui::Popup::context_menu(&card.response)
         .id(ui.make_persistent_id(("search-playlist-menu", &playlist.uri)))
-        .frame(widgets::menu_frame(&app.palette))
+        .frame(widgets::menu_frame(ui.ctx(), &app.palette))
         .show(|ui| {
             let owned = app.user_id().is_some_and(|id| playlist.owned_by(id));
             widgets::context_menu_items(
@@ -671,7 +671,7 @@ fn show_card(app: &mut App, ui: &mut egui::Ui, show: &crate::api::models::Show) 
     }
     egui::Popup::context_menu(&card.response)
         .id(ui.make_persistent_id(("search-show-menu", &show.uri)))
-        .frame(widgets::menu_frame(&app.palette))
+        .frame(widgets::menu_frame(ui.ctx(), &app.palette))
         .show(|ui| {
             widgets::context_menu_items(ui, app, &show.uri, &show.name, None);
         });

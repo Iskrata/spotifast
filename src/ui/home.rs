@@ -174,7 +174,7 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) {
                 if !liked && let Some(uri) = uri {
                     egui::Popup::context_menu(&response)
                         .id(ui.make_persistent_id(("quick-access-menu", uri)))
-                        .frame(widgets::menu_frame(&palette))
+                        .frame(widgets::menu_frame(ui.ctx(), &palette))
                         .show(|ui| {
                             widgets::context_menu_items(
                                 ui,
@@ -266,7 +266,7 @@ fn made_for_you(app: &mut App, ui: &mut egui::Ui) {
                 }
                 egui::Popup::context_menu(&card.response)
                     .id(ui.make_persistent_id(("home-made_for_you-menu", &playlist.uri)))
-                    .frame(widgets::menu_frame(&palette))
+                    .frame(widgets::menu_frame(ui.ctx(), &palette))
                     .show(|ui| {
                         let owned = app.user_id().is_some_and(|id| playlist.owned_by(id));
                         widgets::context_menu_items(
@@ -355,7 +355,7 @@ fn recently_played(app: &mut App, ui: &mut egui::Ui) {
                 }
                 egui::Popup::context_menu(&card.response)
                     .id(ui.make_persistent_id(("home-recently_played-menu", &track.uri)))
-                    .frame(widgets::menu_frame(&palette))
+                    .frame(widgets::menu_frame(ui.ctx(), &palette))
                     .show(|ui| {
                         widgets::item_menu(
                             ui,
@@ -501,7 +501,7 @@ fn podcasts(app: &mut App, ui: &mut egui::Ui) {
                 }
                 egui::Popup::context_menu(&card.response)
                     .id(ui.make_persistent_id(("home-podcasts-menu", &episode.uri)))
-                    .frame(widgets::menu_frame(&palette))
+                    .frame(widgets::menu_frame(ui.ctx(), &palette))
                     .show(|ui| {
                         widgets::item_menu(
                             ui,
@@ -581,7 +581,7 @@ fn top_artists(app: &mut App, ui: &mut egui::Ui) {
                 }
                 egui::Popup::context_menu(&card.response)
                     .id(ui.make_persistent_id(("home-top_artists-menu", &artist.uri)))
-                    .frame(widgets::menu_frame(&palette))
+                    .frame(widgets::menu_frame(ui.ctx(), &palette))
                     .show(|ui| {
                         widgets::context_menu_items(ui, app, &artist.uri, &artist.name, None);
                     });

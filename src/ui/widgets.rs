@@ -565,9 +565,9 @@ pub fn menu_separator(ui: &mut Ui, palette: &Palette) {
     );
 }
 
-/// The frame every popup menu uses.
-pub fn menu_frame(palette: &Palette) -> egui::Frame {
-    egui::Frame::new()
+/// The frame every popup menu uses: glass while the surfaces are.
+pub fn menu_frame(ctx: &egui::Context, palette: &Palette) -> egui::Frame {
+    let solid = egui::Frame::new()
         .fill(palette.overlay)
         .stroke(Stroke::new(1.0, palette.outline))
         .corner_radius(CornerRadius::same(tokens::radius::CARD))
@@ -577,7 +577,8 @@ pub fn menu_frame(palette: &Palette) -> egui::Frame {
             blur: 20,
             spread: 0,
             color: palette.shadow,
-        })
+        });
+    super::glass::popover_frame(ctx, palette, solid, tokens::radius::PANEL)
 }
 
 /// Context menu for actions on selected tracks.
@@ -693,7 +694,7 @@ pub(crate) fn add_to_playlist_button(
     let query_id = button.id.with("add-to-playlist-query");
     let opened = egui::Popup::menu(&button)
         .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
-        .frame(menu_frame(&palette))
+        .frame(menu_frame(ui.ctx(), &palette))
         .show(|ui| remembered_playlist_picker(ui, app, items, query_id));
     if opened.is_none() {
         ui.data_mut(|data| data.remove::<(u64, String)>(query_id));
@@ -1871,7 +1872,7 @@ fn track_row_contents(
             .show(&mut child, &palette);
         egui::Popup::menu(&more)
             .id(menu_id)
-            .frame(menu_frame(&palette))
+            .frame(menu_frame(ui.ctx(), &palette))
             .show(|ui| item_menu(ui, app, row.item, Some(row.context), Some(row.index)));
     }
 
@@ -1924,7 +1925,7 @@ fn track_row_contents(
         }
     }
     egui::Popup::context_menu(&response)
-        .frame(menu_frame(&palette))
+        .frame(menu_frame(ui.ctx(), &palette))
         .show(|ui| {
             // Right-clicking one of several picked rows acts on all of
             // them; on anything else it is the ordinary single-song menu,
@@ -2875,15 +2876,49 @@ pub fn search_field(
     hint: &str,
     width: f32,
 ) -> egui::Response {
+    search_field_on(ui, palette, locale, id, text, hint, width, false)
+}
+
+/// [`search_field`] floating over the page as a glass capsule while the
+/// surfaces are glass, as the top bar's.
+pub fn floating_search_field(
+    ui: &mut Ui,
+    palette: &Palette,
+    locale: Locale,
+    id: egui::Id,
+    text: &mut String,
+    hint: &str,
+    width: f32,
+) -> egui::Response {
+    let glass = super::glass::on(ui.ctx());
+    search_field_on(ui, palette, locale, id, text, hint, width, glass)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn search_field_on(
+    ui: &mut Ui,
+    palette: &Palette,
+    locale: Locale,
+    id: egui::Id,
+    text: &mut String,
+    hint: &str,
+    width: f32,
+    glass: bool,
+) -> egui::Response {
     let height = 34.0;
     let (rect, _) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
     let has_focus = ui.memory(|memory| memory.has_focus(id));
-    let fill = if has_focus {
-        palette.surface_hover
-    } else {
-        palette.surface
+    let fill = match (glass, has_focus) {
+        (true, false) => palette.glass_panel(),
+        (true, true) => palette.glass_popover(),
+        (false, true) => palette.surface_hover,
+        (false, false) => palette.surface,
     };
     ui.painter().rect_filled(rect, height / 2.0, fill);
+    if glass && !has_focus {
+        ui.painter()
+            .add(super::glass::edge(palette, rect, tokens::capsule(height)));
+    }
     if has_focus {
         ui.painter().rect_stroke(
             rect,

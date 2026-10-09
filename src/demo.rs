@@ -1622,6 +1622,16 @@ mod tests {
             .expect("screen-reader tree")
     }
 
+    /// The room glass leaves between a side panel's list and the player
+    /// bar: the panel's gutter and the bar's.
+    fn glass_gutters(ctx: &egui::Context) -> f32 {
+        if crate::ui::glass::on(ctx) {
+            2.0 * f32::from(crate::ui::tokens::glass::GUTTER)
+        } else {
+            0.0
+        }
+    }
+
     fn accessible_node(
         tree: &egui::accesskit::TreeUpdate,
         label: &str,
@@ -3066,10 +3076,11 @@ mod tests {
             vec![accessible_action(more, AccessibleAction::Click, None)],
         );
         let labels = panel_labels(&ctx, &mut app);
-        assert!(
-            labels.iter().any(|label| label == "Show less"),
-            "the whole biography: {labels:?}"
-        );
+        assert!(has(&biography), "the whole biography: {labels:?}");
+        // The whole biography can reach past the panel's foot; its link
+        // back is there to scroll to.
+        let tree = accessible_frame(&ctx, &mut app, vec![]);
+        accessible_node(&tree, "Show less", Role::Link);
         app.backend.shutdown();
     }
 
@@ -8626,7 +8637,7 @@ mod tests {
             &mut app,
             vec![egui::Event::PointerMoved(egui::pos2(
                 start.x,
-                800.0 - crate::theme::PLAYER_BAR_HEIGHT - 14.0,
+                800.0 - crate::theme::PLAYER_BAR_HEIGHT - glass_gutters(&ctx) - 14.0,
             ))],
         );
         for _ in 0..400 {

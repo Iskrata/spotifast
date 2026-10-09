@@ -192,7 +192,7 @@ pub fn popup(app: &mut App, ctx: &egui::Context) {
         .fixed_pos(position)
         .pivot(egui::Align2::LEFT_BOTTOM)
         .show(ctx, |ui| {
-            super::widgets::menu_frame(&palette).show(ui, |ui| {
+            super::widgets::menu_frame(ui.ctx(), &palette).show(ui, |ui| {
                 ui.set_width(width);
                 ui.horizontal(|ui| {
                     ui.add_space(6.0);

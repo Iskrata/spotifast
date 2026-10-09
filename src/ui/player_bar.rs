@@ -1,6 +1,6 @@
 //! The now-playing bar along the bottom of the window.
 
-use egui::{Align, Color32, Frame, Layout, Margin, Rect, Sense, UiBuilder, Vec2, pos2, vec2};
+use egui::{Align, Color32, Layout, Margin, Rect, Sense, UiBuilder, Vec2, pos2, vec2};
 
 use super::{motion, tokens};
 use crate::app::{App, NowPlaying};
@@ -49,21 +49,29 @@ pub(crate) fn end_tint_session(ctx: &egui::Context) {
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let palette = app.palette;
     let fill = eased_fill(ui.ctx(), palette.panel, app.now_playing_tint());
-    egui::Panel::bottom("player-bar")
+    let glass = super::glass::on(ui.ctx());
+    let floating = super::glass::Floating::begin(ui);
+    let bar = egui::Panel::bottom("player-bar")
         .exact_size(theme::PLAYER_BAR_HEIGHT)
         .resizable(false)
         .show_separator_line(false)
         .frame(
-            Frame::new()
-                .fill(fill)
+            super::glass::panel_frame(ui.ctx(), &palette, fill)
                 .inner_margin(Margin::symmetric(16, 0)),
         )
         .show(ui, |ui| {
             let rect = ui.max_rect();
             let now = app.now_playing();
-            // The whole bar, margins included, behind everything else.
+            // The whole bar, margins included, behind everything else. Glass
+            // rounds the bar's ends, which the square visualizer keeps
+            // clear of.
             let behind = rect.expand2(vec2(16.0, 0.0));
-            if visualizer(app, ui, behind, now.as_ref()) {
+            let painted = if glass {
+                behind.shrink2(vec2(tokens::points(tokens::radius::FLOATING), 0.0))
+            } else {
+                behind
+            };
+            if visualizer(app, ui, painted, now.as_ref()) {
                 ui.ctx().request_repaint_after(VIS_FRAME);
             }
             // Its empty space is the visualizer's control, as Winamp's
@@ -86,11 +94,14 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             if empty.clicked() {
                 app.actions.push(Action::CyclePlayerBarVis);
             }
-            ui.painter().hline(
-                rect.x_range(),
-                rect.top() + 0.5,
-                egui::Stroke::new(1.0, palette.outline),
-            );
+            // As glass, the bar's own edge sets it apart.
+            if !glass {
+                ui.painter().hline(
+                    rect.x_range(),
+                    rect.top() + 0.5,
+                    egui::Stroke::new(1.0, palette.outline),
+                );
+            }
             let width = rect.width();
             let side = (width * 0.3).clamp(200.0, 420.0);
             let cy = rect.center().y;
@@ -119,6 +130,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             );
             extras(app, &mut right_ui, now.as_ref());
         });
+    floating.finish(ui, &palette, bar.response.rect);
 }
 
 /// Draws the chosen spectrum or waveform of the song playing on this
@@ -515,7 +527,7 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
         let context = app.editable_context_playlist();
         for response in [&cover_response, &info_response, &title_response] {
             egui::Popup::context_menu(response)
-                .frame(super::widgets::menu_frame(&palette))
+                .frame(super::widgets::menu_frame(ui.ctx(), &palette))
                 .show(|ui| super::widgets::item_menu(ui, app, &item, context.as_ref(), None));
         }
     }
@@ -645,6 +657,26 @@ pub(super) fn byline(
     }
 }
 
+/// The glass capsule the transport buttons sit in, `width` wide around
+/// `center`.
+fn transport_capsule(ui: &egui::Ui, palette: &theme::Palette, center: egui::Pos2, width: f32) {
+    let height = tokens::disc::TRANSPORT + 2.0 * TRANSPORT_CAPSULE_PADDING;
+    let rect = Rect::from_center_size(
+        center,
+        vec2(width + 2.0 * TRANSPORT_CAPSULE_PADDING, height),
+    );
+    let corner = tokens::capsule(height);
+    // A pane of light set into the bar's glass.
+    let fill = palette
+        .glass_highlight()
+        .gamma_multiply(if palette.dark { 0.25 } else { 0.5 });
+    ui.painter().rect_filled(rect, corner, fill);
+    ui.painter().add(super::glass::edge(palette, rect, corner));
+}
+
+/// The room around the transport buttons inside their capsule.
+const TRANSPORT_CAPSULE_PADDING: f32 = 6.0;
+
 fn transport(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>, region: Rect) {
     let palette = app.palette;
     // Everything here is placed with explicit rects: egui's implicit rows
@@ -668,6 +700,9 @@ fn transport(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>, region:
     let gap = 10.0;
     let total: f32 = widths.iter().sum::<f32>() + gap * 4.0;
     let mut x = region.center().x - total / 2.0;
+    if super::glass::on(ui.ctx()) {
+        transport_capsule(ui, &palette, pos2(region.center().x, cy), total);
+    }
     let mut slot = |width: f32| {
         let rect = Rect::from_center_size(pos2(x + width / 2.0, cy), vec2(width, 36.0));
         x += width + gap;

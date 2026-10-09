@@ -341,7 +341,7 @@ fn sort_menu(app: &mut App, ui: &mut egui::Ui, shelf: Filter, selected: LibraryS
     ui.add_space(4.0);
     let response = buttons::secondary(ui, &app.palette, Some(Icon::ChevronDown), label);
     egui::Popup::menu(&response)
-        .frame(super::widgets::menu_frame(&app.palette))
+        .frame(super::widgets::menu_frame(ui.ctx(), &app.palette))
         .show(|ui| {
             let width = labels
                 .iter()
@@ -474,13 +474,15 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, slide: super::sliding::Slide) {
         .default_size(app.settings.sidebar_width)
         .size_range(fit.range.clone())
         .show_separator_line(false)
-        .frame(Frame::new().fill(palette.panel).inner_margin(Margin {
-            left: 12,
-            right: 8,
-            top,
-            bottom: if expanded_art { 0 } else { 8 },
-        }));
-    let slid = super::sliding::show(ui, panel, PANEL_ID, slide, |ui| {
+        .frame(
+            super::glass::panel_frame(ui.ctx(), &palette, palette.panel).inner_margin(Margin {
+                left: 12,
+                right: 8,
+                top,
+                bottom: if expanded_art { 0 } else { 8 },
+            }),
+        );
+    let slid = super::sliding::show(ui, &palette, panel, PANEL_ID, slide, |ui| {
         let art_rect = expanded_art.then(|| expanded_art_rect(ui));
         if let Some(rect) = art_rect.filter(|_| !floating_art) {
             reserve_expanded_art(ui, rect);
@@ -528,6 +530,7 @@ fn reserve_expanded_art(ui: &mut egui::Ui, rect: Rect) {
 
 /// In grid mode content continues behind the shared fixed artwork.
 fn paint_grid_art_mask(app: &App, ui: &egui::Ui, rect: Rect) {
+    let backing = super::glass::panel_solid(ui.ctx(), &app.palette);
     let bottom_fade_rect = Rect::from_min_max(
         pos2(ui.max_rect().left(), rect.bottom() - 64.0),
         pos2(ui.max_rect().right(), rect.bottom()),
@@ -536,7 +539,7 @@ fn paint_grid_art_mask(app: &App, ui: &egui::Ui, rect: Rect) {
         ui,
         bottom_fade_rect,
         egui::Color32::TRANSPARENT,
-        app.palette.panel,
+        backing,
     );
     ui.painter().rect_filled(
         Rect::from_min_max(
@@ -544,7 +547,7 @@ fn paint_grid_art_mask(app: &App, ui: &egui::Ui, rect: Rect) {
             ui.max_rect().right_bottom(),
         ),
         0.0,
-        app.palette.panel,
+        backing,
     );
 }
 
@@ -1795,7 +1798,7 @@ fn entry_menu(app: &mut App, response: &egui::Response, entry: &Entry, custom_or
                     .cloned()
             });
         egui::Popup::context_menu(response)
-            .frame(super::widgets::menu_frame(&app.palette))
+            .frame(super::widgets::menu_frame(&response.ctx, &app.palette))
             .show(|ui| {
                 super::widgets::context_menu_items(
                     ui,
@@ -1821,7 +1824,7 @@ fn entry_menu(app: &mut App, response: &egui::Response, entry: &Entry, custom_or
             });
     } else if entry.liked {
         egui::Popup::context_menu(response)
-            .frame(super::widgets::menu_frame(&app.palette))
+            .frame(super::widgets::menu_frame(&response.ctx, &app.palette))
             .show(|ui| {
                 // The same width as every other menu; without it the menu
                 // stretches as wide as the window.

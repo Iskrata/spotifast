@@ -3656,6 +3656,12 @@ impl App {
         self.settings.reduce_motion(self.system_reduce_motion)
     }
 
+    /// Whether the panels float as glass over the album art background:
+    /// only while that background shows.
+    pub fn glass(&self) -> bool {
+        self.settings.art_background
+    }
+
     pub fn windows_controls_visible(&self) -> bool {
         #[cfg(any(test, feature = "demo"))]
         {
@@ -10283,6 +10289,7 @@ impl App {
         self.refresh_frame_now();
         self.apply_theme(ctx);
         crate::ui::motion::set_reduced(ctx, self.reduce_motion());
+        crate::ui::glass::set(ctx, self.glass());
         let autoscroll_on = crate::autoscroll::enabled(self.settings.middle_click_autoscroll);
         self.autoscroll.begin(ctx, autoscroll_on);
         if self.autoscroll.active() {

@@ -730,72 +730,6 @@ fn play_here(app: &mut App) {
     app.local.position_ms = now.as_ref().map_or(0, |now| now.position_ms);
 }
 
-/// Half a second of stereo sound shaped like a busy mix, the same every
-/// time: a bass line, chords and their overtones at uneven levels up
-/// through the mids and highs, a bright hi-hat hiss and pink noise
-/// beneath, so a visualizer shows peaks across the whole range rather
-/// than a slope from the bass.
-#[cfg(feature = "demo")]
-fn demo_sound() -> Vec<f64> {
-    // Frequency and level of each partial, uneven on purpose so
-    // neighbouring bands stand at different heights.
-    const PARTIALS: [(f64, f64); 18] = [
-        (55.0, 0.16),
-        (110.0, 0.07),
-        (146.8, 0.1),
-        (196.0, 0.04),
-        (246.9, 0.09),
-        (392.0, 0.03),
-        (523.3, 0.08),
-        (740.0, 0.025),
-        (880.0, 0.07),
-        (1174.7, 0.02),
-        (1568.0, 0.06),
-        (2093.0, 0.018),
-        (2637.0, 0.05),
-        (3520.0, 0.014),
-        (4698.6, 0.04),
-        (6271.9, 0.012),
-        (8372.0, 0.03),
-        (11175.3, 0.01),
-    ];
-    let rate = f64::from(librespot_playback::SAMPLE_RATE);
-    let mut seed = 0x2545_f491_u32;
-    let mut white = move || {
-        seed ^= seed << 13;
-        seed ^= seed >> 17;
-        seed ^= seed << 5;
-        f64::from(seed) / f64::from(u32::MAX) - 0.5
-    };
-    // Paul Kellet's economy filter turns white noise pink; the difference
-    // of two white samples leaves only the treble, like a hi-hat.
-    let (mut b0, mut b1, mut b2, mut last) = (0.0, 0.0, 0.0, 0.0);
-    (0..librespot_playback::SAMPLE_RATE as usize / 2)
-        .flat_map(|index| {
-            let time = index as f64 / rate;
-            let noise = white();
-            b0 = 0.99765 * b0 + noise * 0.099_046;
-            b1 = 0.963 * b1 + noise * 0.296_516_4;
-            b2 = 0.57 * b2 + noise * 1.052_691_3;
-            let pink = (b0 + b1 + b2 + noise * 0.1848) * 0.12;
-            let hiss = (noise - last) * 0.05;
-            last = noise;
-            let sample = PARTIALS
-                .iter()
-                .map(|(hertz, level)| {
-                    // Everything above the bass half again as loud, so the
-                    // skin's bars, four bands each, stand tall too.
-                    let level = if *hertz > 100.0 { level * 1.5 } else { *level };
-                    level * (time * hertz * std::f64::consts::TAU).sin()
-                })
-                .sum::<f64>()
-                + pink
-                + hiss;
-            [sample, sample]
-        })
-        .collect()
-}
-
 /// Friends and what they last played, a few minutes to a few days ago.
 pub fn sample_friends() -> Vec<crate::friends::Friend> {
     use crate::friends::{Friend, FriendTrack, Link};
@@ -947,16 +881,6 @@ fn apply_surfaces(app: &mut App, page: Option<&str>, show: Option<&str>) {
                 // as without this override.
                 play_here(app);
                 app.local.playback = crate::player::Playback::Paused;
-            }
-            "player-bar-spectrum" | "player-bar-waveform" => {
-                app.settings.player_bar_vis = if surface == "player-bar-spectrum" {
-                    crate::settings::PlayerBarVis::Spectrum
-                } else {
-                    crate::settings::PlayerBarVis::Waveform
-                };
-                play_here(app);
-                app.local.playback = crate::player::Playback::Playing;
-                app.winamp.tap.push(&demo_sound(), 1.0);
             }
             // The sign-in card and the card while the session connects.
             "signed-out" => {
@@ -5679,86 +5603,12 @@ mod tests {
         );
     }
 
-    /// The player bar's visualizer draws only when chosen and while the
-    /// song plays on this computer, and asks for frames only then.
+    /// A click on the player bar's empty space does nothing: it no longer
+    /// changes a visualizer, and the bar's controls keep their clicks.
     #[cfg(feature = "demo")]
     #[test]
-    fn the_player_bar_visualizer_moves_only_when_chosen_and_playing() {
-        use crate::settings::PlayerBarVis;
-        let (ctx, mut app) = accessible_app("player-bar-vis");
-        let draw = |app: &mut App| {
-            let mut output = ctx.run_ui(
-                egui::RawInput {
-                    screen_rect: Some(egui::Rect::from_min_size(
-                        egui::Pos2::ZERO,
-                        egui::vec2(1280.0, 800.0),
-                    )),
-                    ..Default::default()
-                },
-                |ui| crate::ui::player_bar::show(app, ui),
-            );
-            output.textures_delta.clear();
-            output
-        };
-        // Both draw an untextured mesh; the waveform also strokes its line
-        // in many short runs.
-        let lines = |output: &egui::FullOutput| {
-            output
-                .shapes
-                .iter()
-                .filter(|shape| matches!(&shape.shape, egui::Shape::Path(_)))
-                .count()
-        };
-        let drawn = |output: &egui::FullOutput| {
-            output.shapes.iter().any(|shape| {
-                matches!(&shape.shape, egui::Shape::Mesh(mesh)
-                    if mesh.texture_id == egui::TextureId::default() && !mesh.vertices.is_empty())
-            })
-        };
-        let spectrum = |output: &egui::FullOutput| drawn(output) && lines(output) < 20;
-        let waveform = |output: &egui::FullOutput| drawn(output) && lines(output) >= 20;
-        let wants_frames = |output: &egui::FullOutput| {
-            output
-                .viewport_output
-                .get(&egui::ViewportId::ROOT)
-                .is_some_and(|viewport| {
-                    viewport.repaint_delay < std::time::Duration::from_millis(100)
-                })
-        };
-
-        // #given a song playing here with the spectrum chosen
-        apply_flags(&mut app, None, Some("player-bar-spectrum"));
-        draw(&mut app);
-        let output = draw(&mut app);
-        assert!(spectrum(&output), "the spectrum is drawn");
-        assert!(wants_frames(&output));
-
-        // #when the waveform is chosen
-        app.settings.player_bar_vis = PlayerBarVis::Waveform;
-        let output = draw(&mut app);
-        assert!(waveform(&output), "the waveform is drawn");
-        assert!(!spectrum(&output));
-
-        // #when it is turned off
-        app.settings.player_bar_vis = PlayerBarVis::Off;
-        let output = draw(&mut app);
-        assert!(!drawn(&output));
-        assert!(!wants_frames(&output), "nothing to animate");
-
-        // #when the song is paused
-        app.settings.player_bar_vis = PlayerBarVis::Waveform;
-        app.local.playback = crate::player::Playback::Paused;
-        let output = draw(&mut app);
-        assert!(!waveform(&output), "a paused song is still");
-        app.backend.shutdown();
-    }
-
-    /// A click on the player bar's empty space moves the visualizer to its
-    /// next mode, and a click on a control does not.
-    #[cfg(feature = "demo")]
-    #[test]
-    fn clicking_the_player_bars_empty_space_cycles_the_visualizer() {
-        let (ctx, mut app) = accessible_app("player-bar-cycle");
+    fn clicking_the_player_bars_empty_space_does_nothing() {
+        let (ctx, mut app) = accessible_app("player-bar-empty-click");
         let draw = |app: &mut App, events: Vec<egui::Event>| {
             let mut output = ctx.run_ui(
                 egui::RawInput {
@@ -5774,86 +5624,16 @@ mod tests {
             output.textures_delta.clear();
         };
         draw(&mut app, vec![]);
-        // The margin at the bar's left edge, beside the cover.
+        app.actions.clear();
+        let before = serde_json::to_string(&app.settings).unwrap();
+
+        // #when the margin at the bar's left edge, beside the cover, is clicked
         let empty = egui::pos2(6.0, 796.0);
         draw(&mut app, pointer_click(empty, egui::PointerButton::Primary));
-        assert!(
-            app.actions
-                .iter()
-                .any(|action| matches!(action, Action::CyclePlayerBarVis))
-        );
 
-        // The play button, in the middle of the bar, is still the play button.
-        app.actions.clear();
-        let play = egui::pos2(640.0, 800.0 - crate::theme::PLAYER_BAR_HEIGHT / 2.0 - 10.0);
-        draw(&mut app, pointer_click(play, egui::PointerButton::Primary));
-        assert!(
-            !app.actions
-                .iter()
-                .any(|action| matches!(action, Action::CyclePlayerBarVis)),
-            "{:?}",
-            app.actions
-        );
-        app.backend.shutdown();
-    }
-
-    /// The empty space's tooltip belongs to the empty space: once shown, it
-    /// closes when the pointer moves onto a control drawn over the bar.
-    #[cfg(feature = "demo")]
-    #[test]
-    fn the_visualizer_tooltip_stays_off_the_player_bar_controls() {
-        let (ctx, mut app) = accessible_app("player-bar-tooltip");
-        ctx.global_style_mut(|style| style.interaction.tooltip_delay = 0.0);
-        let mut time = 0.0;
-        let mut draw = |app: &mut App, pos: egui::Pos2| {
-            time += 1.0;
-            let mut output = ctx.run_ui(
-                egui::RawInput {
-                    screen_rect: Some(egui::Rect::from_min_size(
-                        egui::Pos2::ZERO,
-                        egui::vec2(1280.0, 800.0),
-                    )),
-                    time: Some(time),
-                    events: vec![egui::Event::PointerMoved(pos)],
-                    ..Default::default()
-                },
-                |ui| crate::ui::player_bar::show(app, ui),
-            );
-            output.textures_delta.clear();
-            fn texts(shape: &egui::epaint::Shape, found: &mut Vec<String>) {
-                match shape {
-                    egui::epaint::Shape::Text(text) => found.push(text.galley.job.text.clone()),
-                    egui::epaint::Shape::Vec(shapes) => {
-                        shapes.iter().for_each(|shape| texts(shape, found));
-                    }
-                    _ => {}
-                }
-            }
-            let mut found = Vec::new();
-            output
-                .shapes
-                .iter()
-                .for_each(|clipped| texts(&clipped.shape, &mut found));
-            found
-        };
-        let tip = "Click to change the visualizer";
-
-        // #given the tooltip shown over the empty margin beside the cover
-        let empty = egui::pos2(6.0, 796.0);
-        for _ in 0..3 {
-            draw(&mut app, empty);
-        }
-        assert!(draw(&mut app, empty).iter().any(|text| text == tip));
-
-        // #when the pointer moves onto the play button
-        let play = egui::pos2(640.0, 800.0 - crate::theme::PLAYER_BAR_HEIGHT / 2.0 - 10.0);
-        for _ in 0..3 {
-            draw(&mut app, play);
-        }
-
-        // #then the tooltip is gone
-        let shown = draw(&mut app, play);
-        assert!(!shown.iter().any(|text| text == tip), "{shown:?}");
+        // #then no action follows and no setting changes
+        assert!(app.actions.is_empty(), "{:?}", app.actions);
+        assert_eq!(serde_json::to_string(&app.settings).unwrap(), before);
         app.backend.shutdown();
     }
 

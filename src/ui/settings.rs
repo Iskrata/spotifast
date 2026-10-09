@@ -800,7 +800,6 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let tracklist_compact = gettext(locale, "Compact track list");
     let middle_click = gettext(locale, "Middle-click autoscroll");
     let custom_titlebar = gettext(locale, "Custom title bar");
-    let player_bar_vis = gettext(locale, "Player bar visualizer");
     let appearance_rows = [
         RowText::new(theme_title.clone(), {
             let detail = theme::catalog_detail(
@@ -871,13 +870,6 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             ),
         )
         .when(app.windows_controls_visible()),
-        RowText::new(
-            player_bar_vis.clone(),
-            gettext(
-                locale,
-                "Show the song moving behind the player bar's controls while it plays here.",
-            ),
-        ),
         RowText::new(
             art_background.clone(),
             gettext(
@@ -1026,7 +1018,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 &palette,
                 &needle,
                 &appearance,
-                &appearance_rows[9],
+                &appearance_rows[8],
                 |ui| {
                     if widgets::switch(
                         ui,
@@ -1045,7 +1037,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 &palette,
                 &needle,
                 &appearance,
-                &appearance_rows[10],
+                &appearance_rows[9],
                 |ui| {
                     let mut reduce = app.reduce_motion();
                     if widgets::switch(ui, &palette, &reduce_motion, &mut reduce).changed() {
@@ -1059,7 +1051,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 &palette,
                 &needle,
                 &appearance,
-                &appearance_rows[11],
+                &appearance_rows[10],
                 |ui| {
                     let mut solid = app.reduce_transparency();
                     if widgets::switch(ui, &palette, &reduce_transparency, &mut solid).changed() {
@@ -1068,61 +1060,6 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                     }
                 },
             );
-            {
-                use crate::settings::PlayerBarVis;
-                let choices = [
-                    (PlayerBarVis::Off, gettext(locale, "Off")),
-                    (PlayerBarVis::Spectrum, gettext(locale, "Spectrum")),
-                    (PlayerBarVis::Waveform, gettext(locale, "Waveform")),
-                ];
-                let choice_gap = 6.0;
-                let choices_width = choices
-                    .iter()
-                    .map(|(_, label)| buttons::text_button_width(ui, label))
-                    .sum::<f32>()
-                    + choice_gap * (choices.len() - 1) as f32;
-                filtered_row_sized(
-                    ui,
-                    &palette,
-                    &needle,
-                    &appearance,
-                    &appearance_rows[8],
-                    choices_width,
-                    |ui| {
-                        let mut choose = |ui: &mut egui::Ui, mode: PlayerBarVis, label: &str| {
-                            if buttons::chip(
-                                ui,
-                                &palette,
-                                None,
-                                label,
-                                app.settings.player_bar_vis == mode,
-                            )
-                            .clicked()
-                                && app.settings.player_bar_vis != mode
-                            {
-                                app.settings.player_bar_vis = mode;
-                                changed = true;
-                            }
-                        };
-                        if ui.available_width() >= choices_width {
-                            // Laid right to left, so the last choice goes first.
-                            ui.horizontal(|ui| {
-                                ui.spacing_mut().item_spacing.x = choice_gap;
-                                for (mode, label) in choices.iter().rev() {
-                                    choose(ui, *mode, label);
-                                }
-                            });
-                        } else {
-                            ui.with_layout(Layout::top_down(Align::Max), |ui| {
-                                ui.spacing_mut().item_spacing.y = choice_gap;
-                                for (mode, label) in &choices {
-                                    choose(ui, *mode, label);
-                                }
-                            });
-                        }
-                    },
-                );
-            }
             filtered_row(
                 ui,
                 &palette,

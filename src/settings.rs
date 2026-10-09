@@ -68,28 +68,6 @@ pub struct HomeSettings {
     pub recommendations: HomeShelfSettings,
 }
 
-/// What moves behind the player bar's controls.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum PlayerBarVis {
-    #[default]
-    Off,
-    Spectrum,
-    Waveform,
-}
-
-impl PlayerBarVis {
-    /// The mode a click on the player bar moves to: spectrum, waveform,
-    /// then off, as Winamp's visualizer cycles.
-    pub fn next(self) -> Self {
-        match self {
-            Self::Off => Self::Spectrum,
-            Self::Spectrum => Self::Waveform,
-            Self::Waveform => Self::Off,
-        }
-    }
-}
-
 /// Mini-player visualizer mode.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -284,8 +262,6 @@ pub struct Settings {
         skip_serializing_if = "Option::is_none"
     )]
     pub reduce_transparency_choice: Option<bool>,
-    /// A spectrum or waveform of the playing song behind the player bar.
-    pub player_bar_vis: PlayerBarVis,
     /// Last local volume, 0..=65535.
     pub volume: u16,
     /// Whether the library sidebar is visible.
@@ -458,7 +434,6 @@ impl Default for Settings {
             art_background: true,
             reduce_motion_choice: None,
             reduce_transparency_choice: None,
-            player_bar_vis: PlayerBarVis::Off,
             volume: (u16::MAX as u32 * 70 / 100) as u16,
             sidebar_visible: true,
             art_expanded: false,
@@ -1286,24 +1261,18 @@ mod tests {
     }
 
     #[test]
-    fn the_player_bar_visualizer_is_opt_in_and_round_trips() {
-        use super::PlayerBarVis;
-        let settings: Settings = serde_json::from_str("{}").unwrap();
-        assert_eq!(settings.player_bar_vis, PlayerBarVis::Off);
-        for mode in [PlayerBarVis::Spectrum, PlayerBarVis::Waveform] {
-            let settings = Settings {
-                player_bar_vis: mode,
-                ..Settings::default()
-            };
-            let json = serde_json::to_string(&settings).unwrap();
-            let restored: Settings = serde_json::from_str(&json).unwrap();
-            assert_eq!(restored.player_bar_vis, mode);
-        }
-        let spectrum: Settings = serde_json::from_str(r#"{"player_bar_vis":"spectrum"}"#).unwrap();
-        assert_eq!(spectrum.player_bar_vis, PlayerBarVis::Spectrum);
-        assert_eq!(PlayerBarVis::Off.next(), PlayerBarVis::Spectrum);
-        assert_eq!(PlayerBarVis::Spectrum.next(), PlayerBarVis::Waveform);
-        assert_eq!(PlayerBarVis::Waveform.next(), PlayerBarVis::Off);
+    fn settings_from_the_removed_player_bar_visualizer_still_load() {
+        let settings: Settings = serde_json::from_str(
+            r#"{"player_bar_vis":"spectrum","volume":1234,"sidebar_visible":false}"#,
+        )
+        .unwrap();
+        assert_eq!(settings.volume, 1234);
+        assert!(!settings.sidebar_visible);
+        assert!(
+            !serde_json::to_string(&settings)
+                .unwrap()
+                .contains("player_bar_vis")
+        );
     }
 
     #[test]

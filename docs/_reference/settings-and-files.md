@@ -236,7 +236,6 @@ main fields are:
 | `art_background` | `true` | Soft, slowly drifting orbs of colour behind pages from album art, strongest at the top: the cover of a card the pointer rests on, else the cover of an album, playlist, artist, podcast or radio page, else the playing song's. While a song plays on this computer they follow its loudness, tempo and beats, read from the visualizers' sound after the equalizer and before the volume; a song on another device gives them a gentle drift, and they hold still while paused. While it is on, the sidebar, side panels, player bar, search field, menus and dialogs are drawn as tinted glass over it. Files that store `false` keep it off |
 | `reduce_transparency` | absent | The sidebar, side panels, player bar, search field, menus and dialogs are drawn solid instead of as glass over the moving album art background. Absent until chosen in Settings, and while absent it follows the system: macOS's Reduce transparency accessibility setting, read when Spotifast starts; off elsewhere |
 | `reduce_motion` | absent | Panels, menus, pages and the player bar's song change at once instead of easing in, and the moving album art background holds still. Absent until chosen in Settings, and while absent it follows the system: macOS's Reduce motion accessibility setting, read when Spotifast starts; off elsewhere |
-| `player_bar_vis` | `off` | Since 0.11.0: what moves behind the player bar while a song plays on this computer: `off`, `spectrum` or `waveform` |
 | `library_sort` | `{}` | Per-section Library order overrides, since 0.8.0: `library`, `recently_played`, `name`, `recently_added`, `local`, or `spotify`, where supported |
 | `sidebar_order` | `[]` | Saved local playlist arrangement, including an unpinned Liked Songs, retained when another sort is selected |
 | `pinned_contexts` | `[]` | Local Library pin order; Liked Songs uses `spotifast:liked-songs`, a local key never sent to Spotify |
@@ -311,7 +310,7 @@ and `--demo-show` adds surfaces on top of it: a comma separated list of
 `focus`, `winamp`, `playlist`, `eq`, `eq-shade`, `compact`, `update`, `personal-app`,
 `collection-loading`, `shuffle-selected`, `shuffle-started`, `library-list`,
 `library-list-narrow`, `library-list-wide`, `library-grid`, `library-grid-narrow`,
-`library-grid-wide`, `rtl`, `player-bar-spectrum`, `player-bar-waveform`,
+`library-grid-wide`, `rtl`,
 `lyrics-fullscreen-view`, `lyrics-fullscreen-instrumental`, `signed-out`, and `connecting`. The Library variants show the list or cover grid with
 a normal, narrow, or wide sidebar and collapsed artwork for matching captures.
 `shuffle-selected` and `shuffle-started` capture the selected-mode and
@@ -322,8 +321,6 @@ playing song's lyrics. `no-panel` closes the Friend Activity panel that
 opens on launch, so a capture can watch a side panel open.
 `signed-out` and `connecting` show the sign-in card before and while the
 session connects.
-`player-bar-spectrum` and `player-bar-waveform` play a fixed, music-like
-sound on this computer with that player bar visualizer on.
 `lyrics-fullscreen-view` and `lyrics-fullscreen-instrumental` draw full-screen
 lyrics, with words or without, at the window's own size.
 `rtl` gives the first songs of `playlist:pl1` invented Hebrew and Arabic

@@ -344,14 +344,6 @@ has no place in Spotify's playlist tree. Returning to **Local custom order**
 restores its saved position. Dragging a song onto Liked Songs still saves that
 song, wherever the row sits.
 
-**Player bar visualizer** in **Settings > Appearance** shows the song moving
-behind the player bar's controls: **Spectrum** draws glowing bars from bass
-to treble with peaks that hang and fall, and **Waveform** draws the sound's
-wave as a glowing line, both in colours drawn from the cover. It follows the equalizer, not the volume, and moves only while the
-song plays on this computer. It is off by default. Clicking the player
-bar's empty space switches it, as Winamp's visualizer did: off, then
-Spectrum, then Waveform, then off again.
-
 **Moving album art background** in **Settings > Appearance** fills pages with
 soft orbs of colour from the cover under the pointer, the page's own cover, or
 the playing song's. While a song plays on this computer, they glow larger and

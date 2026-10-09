@@ -77,6 +77,25 @@ pub fn mix(from: Color32, to: Color32, t: f32) -> Color32 {
     }
 }
 
+/// Eases from 0 to 1 over `seconds` each time `key` changes, from the frame
+/// before it changed; the first `key` seen for `id` has already arrived.
+pub fn arrival(ctx: &Context, id: Id, key: Id, seconds: f32) -> f32 {
+    let last = ctx.data(|data| data.get_temp::<(Id, f64)>(id));
+    let started = match last {
+        Some((last, started)) if last == key => started,
+        _ => {
+            let started = if last.is_some() {
+                ctx.input(|input| input.time - f64::from(input.stable_dt))
+            } else {
+                f64::NEG_INFINITY
+            };
+            ctx.data_mut(|data| data.insert_temp(id, (key, started)));
+            started
+        }
+    };
+    since(ctx, started, seconds)
+}
+
 /// How far a transition that began at `since` (in egui's clock) has come
 /// after `seconds`, eased, asking for the next frame until it arrives.
 pub fn since(ctx: &Context, since: f64, seconds: f32) -> f32 {
@@ -210,6 +229,27 @@ mod tests {
         let _ = frame(&ctx, &mut now, dt, |ctx| since(ctx, started, 0.1));
         let (_, repaint) = frame(&ctx, &mut now, dt, |ctx| since(ctx, started, 0.1));
         assert!(!repaint);
+    }
+
+    #[test]
+    fn a_new_key_arrives_over_its_duration() {
+        let ctx = Context::default();
+        let id = Id::new("page");
+        let mut now = 0.0;
+        let dt = 0.05;
+        let arrive = |ctx: &Context, key: &str| arrival(ctx, id, Id::new(key), 0.2);
+        let (first, _) = frame(&ctx, &mut now, dt, |ctx| arrive(ctx, "home"));
+        assert_eq!(first, 1.0, "the first page is already there");
+        let (moving, repaint) = frame(&ctx, &mut now, dt, |ctx| arrive(ctx, "album"));
+        assert!(moving > 0.0 && moving < 1.0, "{moving}");
+        assert!(repaint);
+        let mut last = moving;
+        for _ in 0..3 {
+            let (next, _) = frame(&ctx, &mut now, dt, |ctx| arrive(ctx, "album"));
+            assert!(next >= last);
+            last = next;
+        }
+        assert_eq!(last, 1.0);
     }
 
     #[test]

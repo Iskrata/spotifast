@@ -571,6 +571,17 @@ pub(crate) fn run() -> eframe::Result<()> {
                     options.viewport = std::mem::take(&mut options.viewport)
                         .with_active(false)
                         .with_position(SHOT_POSITION);
+                    // No Dock icon either: an accessory app can still draw
+                    // its window, but never appears in the Dock or app switcher.
+                    #[cfg(target_os = "macos")]
+                    {
+                        options.event_loop_builder = Some(Box::new(|builder| {
+                            use winit::platform::macos::{
+                                ActivationPolicy, EventLoopBuilderExtMacOS,
+                            };
+                            builder.with_activation_policy(ActivationPolicy::Accessory);
+                        }));
+                    }
                 }
                 options
             };

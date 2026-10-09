@@ -1712,6 +1712,7 @@ mod tests {
                 ("Volume (%)", Role::Slider),
                 ("Mute", Role::Button),
                 ("Connect to a device", Role::Button),
+                ("Friend Activity", Role::Button),
                 ("Queue", Role::Button),
                 ("Lyrics", Role::Button),
             ];
@@ -1779,6 +1780,80 @@ mod tests {
             assert!(!app.believed_playing());
             app.backend.shutdown();
         }
+    }
+
+    /// The player bar's right side holds every panel toggle in one group,
+    /// Lyrics, Queue, Friend Activity and Devices, evenly spaced on one
+    /// line, then Mute and the volume slider; at the narrowest window it
+    /// still clears the seek bar.
+    #[test]
+    fn the_player_bar_groups_every_panel_toggle() {
+        use egui::accesskit::Role;
+        let (ctx, mut app) = accessible_app("player-bar-toggles");
+        for width in [1280.0, 760.0] {
+            let mut tree = None;
+            for _ in 0..3 {
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(width, 800.0),
+                        )),
+                        ..Default::default()
+                    },
+                    |ui| app.frame_ui(ui),
+                );
+                output.textures_delta.clear();
+                tree = output.platform_output.accesskit_update;
+            }
+            let tree = tree.expect("screen-reader tree");
+            let bar_top = 800.0 - f64::from(crate::theme::PLAYER_BAR_HEIGHT);
+            let in_bar = |label: &str, role: Role| {
+                tree.nodes
+                    .iter()
+                    .filter(|(_, node)| node.label() == Some(label) && node.role() == role)
+                    .filter_map(|(_, node)| node.bounds())
+                    .find(|rect| rect.y0 >= bar_top)
+                    .unwrap_or_else(|| panic!("{label} is not in the player bar at {width}"))
+            };
+            let row: Vec<_> = [
+                "Lyrics",
+                "Queue",
+                "Friend Activity",
+                "Connect to a device",
+                "Mute",
+            ]
+            .iter()
+            .map(|label| in_bar(label, Role::Button))
+            .collect();
+            let middle = |rect: &egui::accesskit::Rect| (rect.y0 + rect.y1) / 2.0;
+            for pair in row.windows(2) {
+                assert!(pair[0].x1 <= pair[1].x0, "{width}: out of order {row:?}");
+                assert!((middle(&pair[0]) - middle(&pair[1])).abs() < 0.5, "{row:?}");
+            }
+            let gaps: Vec<f64> = row[..4]
+                .windows(2)
+                .map(|pair| pair[1].x0 - pair[0].x1)
+                .collect();
+            assert!(
+                gaps.iter().all(|gap| (gap - gaps[0]).abs() < 0.5),
+                "{width}: the toggles are spaced alike: {gaps:?}"
+            );
+            assert!(
+                row[4].x0 - row[3].x1 > gaps[0],
+                "{width}: Mute starts a group of its own"
+            );
+            let volume = in_bar("Volume (%)", Role::Slider);
+            assert!(volume.x0 >= row[4].x1, "{width}: the slider follows Mute");
+            assert!(volume.x1 <= f64::from(width), "{width}: the slider fits");
+            let seek = in_bar("Playback position (%)", Role::Slider);
+            // The song's length is drawn just past the seek bar.
+            assert!(
+                row[0].x0 - seek.x1 >= 44.0,
+                "{width}: the toggles clear the seek bar and its time: {seek:?} {row:?}"
+            );
+        }
+        app.backend.shutdown();
     }
 
     #[test]

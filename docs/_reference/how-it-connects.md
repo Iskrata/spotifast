@@ -408,7 +408,7 @@ connector. The change adds no destination or background polling.
 
 ## Friend activity
 
-The Friend Activity panel, opened from the sidebar, reads the buddy list
+The Friend Activity panel, opened from the player bar, reads the buddy list
 over the local playback session: one request when it opens, then about once
 a minute while it stays open, and on **Refresh**. Nothing is read while the
 panel is closed, and nothing about the account's own listening is sent.

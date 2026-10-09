@@ -95,9 +95,12 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             let side = (width * 0.3).clamp(200.0, 420.0);
             let cy = rect.center().y;
             let left = Rect::from_min_max(rect.min, pos2(rect.left() + side, rect.bottom()));
+            // The right side never gets less than its controls need; the
+            // transport stays centred by giving up the same on both sides.
+            let reach = side.max(RIGHT_LEAST_WIDTH);
             let center = Rect::from_min_max(
-                pos2(rect.left() + side, rect.top()),
-                pos2(rect.right() - side, rect.bottom()),
+                pos2(rect.left() + reach, rect.top()),
+                pos2(rect.right() - reach, rect.bottom()),
             );
 
             // egui's cross-axis centring is unreliable across nested layouts of
@@ -108,7 +111,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             transport(app, ui, now.as_ref(), center);
 
             let right_band =
-                Rect::from_min_size(pos2(rect.right() - side, cy - 15.0), vec2(side, 30.0));
+                Rect::from_min_size(pos2(rect.right() - reach, cy - 16.0), vec2(reach, 32.0));
             let mut right_ui = ui.new_child(
                 UiBuilder::new()
                     .max_rect(right_band)
@@ -437,9 +440,12 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
     // Hovering the cover offers to dock the art large at the sidebar's
     // bottom, the way Spotify expands it. (#92)
     let art_available = now.art_url.is_some() || now.art_small.is_some();
-    let expand_rect = Rect::from_center_size(
-        pos2(cover_rect.right() - 10.0, cover_rect.top() + 10.0),
-        Vec2::splat(18.0),
+    let expand_rect = Rect::from_min_size(
+        pos2(
+            cover_rect.right() - tokens::hit::OVERLAY - 2.0,
+            cover_rect.top() + 2.0,
+        ),
+        Vec2::splat(tokens::hit::OVERLAY),
     );
     let offer_expand =
         art_available && !app.settings.art_expanded && super::sidebar_shown(app, ui.ctx());
@@ -453,12 +459,22 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
             egui::Id::new("now-playing-art-expand"),
             Sense::click(),
         );
-        ui.painter()
-            .circle_filled(expand_rect.center(), 9.0, palette.panel.gamma_multiply(0.9));
-        Icon::ChevronUp.image(palette.text, 12.0).paint_at(
-            ui,
-            Rect::from_center_size(expand_rect.center(), Vec2::splat(12.0)),
+        let backing = if expand.hovered() {
+            palette.surface_hover
+        } else {
+            palette.panel
+        };
+        ui.painter().circle_filled(
+            expand_rect.center(),
+            tokens::hit::OVERLAY / 2.0,
+            backing.gamma_multiply(0.9),
         );
+        Icon::ChevronUp
+            .image(palette.text, tokens::icon::SMALL)
+            .paint_at(
+                ui,
+                Rect::from_center_size(expand_rect.center(), Vec2::splat(tokens::icon::SMALL)),
+            );
         if expand.clicked() {
             app.settings.art_expanded = true;
             app.actions.push(Action::SettingsChanged);
@@ -737,7 +753,7 @@ fn transport(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>, region:
 
 fn extras(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>) {
     let palette = app.palette;
-    ui.spacing_mut().item_spacing.x = 6.0;
+    ui.spacing_mut().item_spacing.x = tokens::gap::ICONS;
     let volume = now
         .map(|now| now.volume_percent)
         .unwrap_or_else(|| crate::app::volume_to_percent(app.local.volume));
@@ -756,7 +772,7 @@ fn extras(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>) {
             egui::Id::new("volume-slider"),
             &gettext(app.locale, "Volume (%)"),
             shown as f32 / 100.0,
-            92.0,
+            volume_width(ui.max_rect().width()),
             Some(0.05),
         ) {
             SliderEvent::Dragging(value) => {
@@ -805,9 +821,22 @@ fn extras(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>) {
             "This device's volume can't be changed from Spotifast",
         ));
     }
-    ui.add_space(4.0);
+    ui.add_space(tokens::gap::GROUP);
+    panel_toggles(app, ui, now);
+}
+
+/// The four controls that open what sits beside the page, read left to
+/// right as Lyrics, Queue, Friend Activity and Devices. Each shows the
+/// green dot while its panel or popup is open. The bar lays out right to
+/// left, so they are added in reverse.
+fn panel_toggles(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>) {
+    let palette = app.palette;
+    let locale = app.locale;
+    // Devices stays here rather than only in the top bar: the badge there
+    // names a device only while another one plays, and this is the one
+    // control that always offers the list.
     let remote = now.is_some_and(|now| !now.local);
-    let devices = IconButton::new(Icon::Speaker, &gettext(app.locale, "Connect to a device"))
+    let devices = IconButton::new(Icon::Speaker, &gettext(locale, "Connect to a device"))
         .active(remote)
         .show(ui, &palette);
     ui.ctx().data_mut(|data| {
@@ -816,8 +845,15 @@ fn extras(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>) {
     if devices.clicked() {
         app.actions.push(Action::ToggleDevicesPopup);
     }
+    if IconButton::new(Icon::Users, &gettext(locale, "Friend Activity"))
+        .active(app.show_friends_panel)
+        .show(ui, &palette)
+        .clicked()
+    {
+        app.actions.push(Action::ToggleFriendsPanel);
+    }
     let queue_open = app.show_queue_panel || matches!(app.page(), Page::Queue);
-    let queue_button = IconButton::new(Icon::ListMusic, &gettext(app.locale, "Queue"))
+    let queue_button = IconButton::new(Icon::ListMusic, &gettext(locale, "Queue"))
         .active(queue_open)
         .show(ui, &palette);
     if queue_button.clicked() {
@@ -834,13 +870,32 @@ fn extras(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>) {
                 .collect(),
         });
     }
-    if IconButton::new(Icon::Mic, &gettext(app.locale, "Lyrics"))
+    if IconButton::new(Icon::Mic, &gettext(locale, "Lyrics"))
         .active(app.show_lyrics_panel)
         .show(ui, &palette)
         .clicked()
     {
         app.actions.push(Action::ToggleLyricsPanel);
     }
+}
+
+/// The width of the panel toggles: four standard icon buttons.
+const PANEL_TOGGLES_WIDTH: f32 = 4.0 * tokens::hit::STANDARD + 3.0 * tokens::gap::ICONS;
+/// The volume slider's width, and the least it shrinks to in a narrow bar.
+const VOLUME_WIDTH: f32 = 92.0;
+const VOLUME_MIN_WIDTH: f32 = 56.0;
+
+/// The right side without its volume slider: the toggles, then Mute.
+const RIGHT_FIXED_WIDTH: f32 =
+    PANEL_TOGGLES_WIDTH + tokens::gap::GROUP + tokens::hit::STANDARD + tokens::gap::ICONS;
+/// The least the right side takes, with the slider at its narrowest.
+const RIGHT_LEAST_WIDTH: f32 = RIGHT_FIXED_WIDTH + VOLUME_MIN_WIDTH;
+
+/// How wide the volume slider is when the bar's right side is `side`
+/// points wide: full width while the toggles, Mute and slider fit, and
+/// narrower, down to a usable minimum, when they would not.
+fn volume_width(side: f32) -> f32 {
+    (side - RIGHT_FIXED_WIDTH).clamp(VOLUME_MIN_WIDTH, VOLUME_WIDTH)
 }
 
 #[cfg(test)]
@@ -986,5 +1041,18 @@ mod player_bar_tint_tests {
         // A yellow cover stays yellow, only deeper.
         let (low, _) = vis_colours(Color32::from_rgb(255, 240, 80), true);
         assert!(low.r() > low.b() && low.g() > low.b(), "{low:?}");
+    }
+
+    #[test]
+    fn the_volume_slider_narrows_before_the_toggles_crowd_the_seek_bar() {
+        assert_eq!(volume_width(420.0), VOLUME_WIDTH);
+        // The narrowest window's right side.
+        let narrow = volume_width(260.0);
+        assert!(
+            (VOLUME_MIN_WIDTH..VOLUME_WIDTH).contains(&narrow),
+            "{narrow}"
+        );
+        assert_eq!(volume_width(RIGHT_LEAST_WIDTH), VOLUME_MIN_WIDTH);
+        assert_eq!(volume_width(0.0), VOLUME_MIN_WIDTH);
     }
 }

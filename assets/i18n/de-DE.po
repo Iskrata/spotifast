@@ -3326,3 +3326,12 @@ msgstr "{name} konnte nicht entfolgt werden: {error}"
 #: src/ui/artist_about.rs
 msgid "About the artist"
 msgstr "Über den Künstler"
+
+#: src/ui/settings.rs
+msgid "Reduce motion"
+msgstr "Bewegung reduzieren"
+
+#: src/ui/settings.rs
+msgid ""
+"Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
+msgstr "Zeigt Seitenleisten, Menüs und Seiten sofort an, statt sie sanft einzublenden. Folgt der Bedienungshilfen-Einstellung deines Systems, bis du sie änderst."

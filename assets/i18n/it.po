@@ -3318,3 +3318,12 @@ msgstr "Impossibile smettere di seguire {name}: {error}"
 #: src/ui/artist_about.rs
 msgid "About the artist"
 msgstr "Informazioni sull’artista"
+
+#: src/ui/settings.rs
+msgid "Reduce motion"
+msgstr "Riduci movimento"
+
+#: src/ui/settings.rs
+msgid ""
+"Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
+msgstr "Mostra pannelli, menu e pagine subito invece di farli comparire gradualmente. Segue l'impostazione di accessibilità del sistema finché non la cambi."

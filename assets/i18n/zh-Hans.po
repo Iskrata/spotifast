@@ -3198,3 +3198,12 @@ msgstr "无法取消关注 {name}:{error}"
 #: src/ui/artist_about.rs
 msgid "About the artist"
 msgstr "关于艺人"
+
+#: src/ui/settings.rs
+msgid "Reduce motion"
+msgstr "减弱动态效果"
+
+#: src/ui/settings.rs
+msgid ""
+"Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
+msgstr "立即显示面板、菜单和页面，不使用渐入效果。在你更改之前，会跟随系统的辅助功能设置。"

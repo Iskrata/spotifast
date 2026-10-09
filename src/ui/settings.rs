@@ -794,6 +794,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let themes_folder = gettext(locale, "Open themes folder");
     let accent_from_art = gettext(locale, "Colour from album art");
     let art_background = gettext(locale, "Moving album art background");
+    let reduce_motion = gettext(locale, "Reduce motion");
     let sidebar_compact = gettext(locale, "Compact library sidebar");
     let tracklist_compact = gettext(locale, "Compact track list");
     let middle_click = gettext(locale, "Middle-click autoscroll");
@@ -881,6 +882,13 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             gettext(
                 locale,
                 "Fill pages with soft orbs of colour from the cover under the pointer, the page's own cover, or the playing song's. They move with the music playing here.",
+            ),
+        ),
+        RowText::new(
+            reduce_motion.clone(),
+            gettext(
+                locale,
+                "Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it.",
             ),
         ),
     ];
@@ -1020,6 +1028,20 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                     )
                     .changed()
                     {
+                        changed = true;
+                    }
+                },
+            );
+            filtered_row(
+                ui,
+                &palette,
+                &needle,
+                &appearance,
+                &appearance_rows[10],
+                |ui| {
+                    let mut reduce = app.reduce_motion();
+                    if widgets::switch(ui, &palette, &reduce_motion, &mut reduce).changed() {
+                        app.settings.reduce_motion_choice = Some(reduce);
                         changed = true;
                     }
                 },

@@ -3291,3 +3291,12 @@ msgstr "Det gick inte att sluta följa {name}: {error}"
 #: src/ui/artist_about.rs
 msgid "About the artist"
 msgstr "Om artisten"
+
+#: src/ui/settings.rs
+msgid "Reduce motion"
+msgstr "Minska rörelse"
+
+#: src/ui/settings.rs
+msgid ""
+"Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
+msgstr "Visa paneler, menyer och sidor direkt i stället för att tona in dem. Följer systemets hjälpmedelsinställning tills du ändrar den."

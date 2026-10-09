@@ -360,6 +360,12 @@ the visualizers, they follow the equalizer, not the volume. A song playing on
 another device gives them a slow drift of their own, and they hold still while
 paused. It is on by default.
 
+**Reduce motion** in **Settings > Appearance** shows panels, menus, pages
+and the player bar's song at once instead of easing them in, and holds the
+moving album art background still. Until you change it, it follows your
+system: on macOS, the Reduce motion setting under Accessibility > Display
+when Spotifast starts. Elsewhere it starts off.
+
 In **Settings > Appearance**, **Compact track list** puts each song on one
 line. In narrow lists, the added date follows the artist credits with a spaced
 bullet; each artist name remains a separate link.

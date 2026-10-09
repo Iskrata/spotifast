@@ -206,7 +206,8 @@ pub struct AppOptions {
     /// Demo and isolated tests must not read or migrate real Spotify grants.
     pub restore_sign_in: bool,
     /// Register the MPRIS media-control service and follow the desktop's
-    /// light or dark preference (Linux).
+    /// light or dark preference (Linux) and its preference to reduce motion
+    /// (macOS). Demo and tests leave the desktop's preferences alone.
     pub media_controls: bool,
     /// Register the system-tray item (Linux).
     pub tray: bool,
@@ -252,6 +253,9 @@ pub struct App {
     /// The desktop's light or dark preference, for "Follow system".
     #[cfg(target_os = "linux")]
     system_appearance: Option<crate::appearance::SystemAppearance>,
+    /// The system's preference to reduce motion, read at launch, which
+    /// Reduce motion follows until the person chooses.
+    pub(crate) system_reduce_motion: bool,
     /// The artwork the media controls were last given, and the URL it came
     /// from. Finding the file touches the disk and the controls are synced
     /// every frame, so the answer is kept until the artwork changes.
@@ -737,6 +741,8 @@ impl App {
                 .media_controls
                 .then(|| crate::appearance::SystemAppearance::spawn(move || wake.wake()))
         };
+        let system_reduce_motion =
+            options.media_controls && crate::ui::motion::system_prefers_reduced();
         #[cfg(target_os = "macos")]
         let media_controls = {
             let mut media_controls = media_controls;
@@ -780,6 +786,7 @@ impl App {
             media_controls,
             #[cfg(target_os = "linux")]
             system_appearance,
+            system_reduce_motion,
             media_art: None,
             tray,
             tray_playing: false,
@@ -3641,6 +3648,12 @@ impl App {
             can_control: now.as_ref().is_some_and(|now| now.can_control),
             dark,
         }
+    }
+
+    /// Whether the interface holds still: the setting, or the system's
+    /// preference until the person chooses.
+    pub fn reduce_motion(&self) -> bool {
+        self.settings.reduce_motion(self.system_reduce_motion)
     }
 
     pub fn windows_controls_visible(&self) -> bool {
@@ -10269,6 +10282,7 @@ impl App {
         let ctx = &ctx;
         self.refresh_frame_now();
         self.apply_theme(ctx);
+        crate::ui::motion::set_reduced(ctx, self.reduce_motion());
         let autoscroll_on = crate::autoscroll::enabled(self.settings.middle_click_autoscroll);
         self.autoscroll.begin(ctx, autoscroll_on);
         if self.autoscroll.active() {

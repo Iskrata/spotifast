@@ -3311,3 +3311,12 @@ msgstr "No se pudo dejar de seguir a {name}: {error}"
 #: src/ui/artist_about.rs
 msgid "About the artist"
 msgstr "Acerca del artista"
+
+#: src/ui/settings.rs
+msgid "Reduce motion"
+msgstr "Reducir movimiento"
+
+#: src/ui/settings.rs
+msgid ""
+"Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
+msgstr "Muestra los paneles, menús y páginas al instante en lugar de hacerlos aparecer poco a poco. Sigue el ajuste de accesibilidad del sistema hasta que lo cambies."

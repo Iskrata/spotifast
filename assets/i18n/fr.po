@@ -3331,3 +3331,12 @@ msgstr "Impossible de se désabonner de {name} : {error}"
 #: src/ui/artist_about.rs
 msgid "About the artist"
 msgstr "À propos de l’artiste"
+
+#: src/ui/settings.rs
+msgid "Reduce motion"
+msgstr "Réduire les animations"
+
+#: src/ui/settings.rs
+msgid ""
+"Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
+msgstr "Affiche les panneaux, menus et pages immédiatement au lieu de les faire apparaître en douceur. Suit le réglage d'accessibilité de votre système jusqu'à ce que vous le changiez."

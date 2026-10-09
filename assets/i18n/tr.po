@@ -3297,3 +3297,12 @@ msgstr "{name} takipten çıkarılamadı: {error}"
 #: src/ui/artist_about.rs
 msgid "About the artist"
 msgstr "Sanatçı hakkında"
+
+#: src/ui/settings.rs
+msgid "Reduce motion"
+msgstr "Hareketi azalt"
+
+#: src/ui/settings.rs
+msgid ""
+"Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
+msgstr "Panelleri, menüleri ve sayfaları yumuşak geçiş yerine hemen gösterir. Siz değiştirene kadar sistemin erişilebilirlik ayarını izler."

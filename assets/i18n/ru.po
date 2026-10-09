@@ -3325,3 +3325,12 @@ msgstr "Не удалось отписаться от {name}: {error}"
 #: src/ui/artist_about.rs
 msgid "About the artist"
 msgstr "Об исполнителе"
+
+#: src/ui/settings.rs
+msgid "Reduce motion"
+msgstr "Уменьшить движение"
+
+#: src/ui/settings.rs
+msgid ""
+"Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
+msgstr "Панели, меню и страницы появляются сразу, без плавных переходов. Пока ты не изменишь этот параметр, он следует настройке универсального доступа системы."

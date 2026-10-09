@@ -3276,3 +3276,12 @@ msgstr "{name}のフォローを解除できませんでした: {error}"
 #: src/ui/artist_about.rs
 msgid "About the artist"
 msgstr "アーティストについて"
+
+#: src/ui/settings.rs
+msgid "Reduce motion"
+msgstr "動きを減らす"
+
+#: src/ui/settings.rs
+msgid ""
+"Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
+msgstr "パネル、メニュー、ページをアニメーションなしですぐに表示します。変更するまでシステムのアクセシビリティ設定に従います。"

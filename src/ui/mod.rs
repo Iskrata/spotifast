@@ -16,6 +16,7 @@ mod keys;
 pub mod library;
 pub mod login;
 mod lyrics;
+pub mod motion;
 mod now_playing_panel;
 mod panel_header;
 pub mod player_bar;
@@ -299,15 +300,18 @@ fn backdrop(app: &mut App, ui: &egui::Ui, rect: Rect, page_art: Option<&str>) ->
     };
     if let Some(art) = app.art_background_palette(page_art, hovered.as_deref()) {
         let local = app.now_playing().is_some_and(|now| now.local);
+        // Reduce motion holds the orbs still; their colours still follow
+        // the art.
+        let moving = app.believed_playing() && !motion::reduced(ui.ctx());
         // The sound is read only while the orbs show and music plays here.
-        let samples = (app.believed_playing() && local).then(|| {
+        let samples = (moving && local).then(|| {
             app.winamp
                 .tap
                 .window(crate::vis_energy::SAMPLES, crate::vis::LAG)
         });
         let motion = match &samples {
             Some(samples) => art_background::Motion::Music(samples),
-            None if app.believed_playing() => art_background::Motion::Drift,
+            None if moving => art_background::Motion::Drift,
             None => art_background::Motion::Still,
         };
         return art_background::shape(ui, &palette, rect, art, motion);

@@ -102,8 +102,10 @@ pub mod gap {
     pub const BELOW_ACTIONS: f32 = 16.0;
 }
 
-/// Durations in seconds. Everything that moves eases through egui's
-/// `animate_*_with_time`, which stops asking for frames once it settles.
+/// Durations in seconds, and the one curve everything eases along.
+/// Everything that moves goes through [`crate::ui::motion`], which stops
+/// asking for frames once it settles and makes every duration zero with
+/// Reduce motion on.
 pub mod motion {
     /// Hover and press feedback, row reveals, toggled dots.
     pub const FAST: f32 = 0.12;
@@ -119,6 +121,12 @@ pub mod motion {
     pub const CONTENT: f32 = 0.25;
     /// Rows joining or leaving a list.
     pub const LIST: f32 = 0.16;
+
+    /// Ease-out cubic: quick to answer, gentle to settle. Closing runs the
+    /// same curve backwards.
+    pub fn ease(t: f32) -> f32 {
+        egui::emath::easing::cubic_out(t)
+    }
 }
 
 // Closing is never slower than opening, and feedback is quicker than

@@ -3330,3 +3330,12 @@ msgstr "Nie udało się przestać obserwować {name}: {error}"
 #: src/ui/artist_about.rs
 msgid "About the artist"
 msgstr "O wykonawcy"
+
+#: src/ui/settings.rs
+msgid "Reduce motion"
+msgstr "Ogranicz ruch"
+
+#: src/ui/settings.rs
+msgid ""
+"Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
+msgstr "Pokazuj panele, menu i strony od razu zamiast płynnie. Do czasu zmiany działa zgodnie z ustawieniem dostępności systemu."

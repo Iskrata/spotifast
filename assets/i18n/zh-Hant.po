@@ -3205,3 +3205,12 @@ msgstr "無法取消追蹤 {name}:{error}"
 #: src/ui/artist_about.rs
 msgid "About the artist"
 msgstr "關於藝人"
+
+#: src/ui/settings.rs
+msgid "Reduce motion"
+msgstr "減少動態效果"
+
+#: src/ui/settings.rs
+msgid ""
+"Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
+msgstr "立即顯示面板、選單和頁面，不使用漸入效果。在你變更之前，會跟隨系統的輔助使用設定。"

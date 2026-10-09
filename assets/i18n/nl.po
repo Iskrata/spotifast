@@ -3310,3 +3310,12 @@ msgstr "Kan {name} niet ontvolgen: {error}"
 #: src/ui/artist_about.rs
 msgid "About the artist"
 msgstr "Over de artiest"
+
+#: src/ui/settings.rs
+msgid "Reduce motion"
+msgstr "Beweging verminderen"
+
+#: src/ui/settings.rs
+msgid ""
+"Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
+msgstr "Toont panelen, menu's en pagina's meteen in plaats van ze geleidelijk te laten verschijnen. Volgt de toegankelijkheidsinstelling van je systeem tot je dit wijzigt."

@@ -739,7 +739,7 @@ pub fn table(app: &mut App, ui: &mut egui::Ui, table: Table<'_>) {
                 Some(_) => 4.0,
                 None => 0.0,
             },
-            0.12,
+            super::motion::time(ui.ctx(), super::tokens::motion::FAST),
         );
         let (response, asked) = widgets::track_row_response(
             ui,

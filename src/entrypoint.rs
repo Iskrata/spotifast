@@ -83,19 +83,19 @@ struct Cli {
 
     /// Inner window size for `--demo-shot`, as `WIDTHxHEIGHT`.
     #[cfg(feature = "demo")]
-    #[arg(long, value_name = "WIDTHxHEIGHT", value_parser = parse_demo_size)]
+    #[arg(long, value_name = "WIDTHxHEIGHT", value_parser = spotifast::demo::script::parse_size)]
     demo_size: Option<[f32; 2]>,
 
     /// Hold a drag for `--demo-shot`: press the primary button at the first
     /// point, move to the second and keep it held, as `X,Y:X,Y` in points.
     #[cfg(feature = "demo")]
-    #[arg(long, value_name = "X,Y:X,Y", value_parser = parse_demo_drag)]
+    #[arg(long, value_name = "X,Y:X,Y", value_parser = spotifast::demo::script::parse_drag)]
     demo_drag: Option<[egui::Pos2; 2]>,
 
     /// Click the primary button at `X,Y` in points before `--demo-shot`,
     /// for a shot of an open menu.
     #[cfg(feature = "demo")]
-    #[arg(long, value_name = "X,Y", value_parser = parse_demo_point, conflicts_with = "demo_drag")]
+    #[arg(long, value_name = "X,Y", value_parser = spotifast::demo::script::parse_point, conflicts_with = "demo_drag")]
     demo_click: Option<egui::Pos2>,
 }
 
@@ -568,8 +568,7 @@ pub(crate) fn run() -> eframe::Result<()> {
             app.actions.push(spotifast::model::Action::CheckForUpdates);
         }
         if let Some(locale) = cli.demo_language {
-            app.settings.language = spotifast::settings::LanguageChoice::Locale(locale);
-            app.locale = locale;
+            spotifast::demo::script::set_language(&mut app, locale);
         }
     }
     #[cfg(feature = "demo")]
@@ -579,20 +578,7 @@ pub(crate) fn run() -> eframe::Result<()> {
         asked: false,
     });
     #[cfg(feature = "demo")]
-    let demo_drag = cli
-        .demo_drag
-        .map(|[from, to]| DemoDrag {
-            from,
-            to,
-            frame: 0,
-            click: false,
-        })
-        .or(cli.demo_click.map(|at| DemoDrag {
-            from: at,
-            to: at,
-            frame: 0,
-            click: true,
-        }));
+    let demo_drag = spotifast::demo::script::Pointer::from_flags(cli.demo_drag, cli.demo_click);
     #[cfg(feature = "demo")]
     let demo_inner = cli.demo_size;
     #[cfg(feature = "demo")]
@@ -800,49 +786,6 @@ fn main_geometry(app: &app::App) -> Geometry {
 
 const fn main_window_decorated(custom_titlebar: bool) -> bool {
     !custom_titlebar
-}
-
-#[cfg(any(test, feature = "demo"))]
-fn parse_demo_size(spec: &str) -> Result<[f32; 2], String> {
-    let (width, height) = spec
-        .split_once(['x', 'X'])
-        .ok_or_else(|| format!("expected WIDTHxHEIGHT, got {spec}"))?;
-    let width: f32 = width
-        .trim()
-        .parse()
-        .map_err(|_| format!("invalid width in {spec}"))?;
-    let height: f32 = height
-        .trim()
-        .parse()
-        .map_err(|_| format!("invalid height in {spec}"))?;
-    if width < 1.0 || height < 1.0 {
-        return Err(format!("size must be at least 1x1, got {spec}"));
-    }
-    Ok([width, height])
-}
-
-#[cfg(feature = "demo")]
-fn parse_demo_point(point: &str) -> Result<egui::Pos2, String> {
-    let (x, y) = point
-        .split_once(',')
-        .ok_or_else(|| format!("expected X,Y, got {point}"))?;
-    let x: f32 = x
-        .trim()
-        .parse()
-        .map_err(|_| format!("invalid x in {point}"))?;
-    let y: f32 = y
-        .trim()
-        .parse()
-        .map_err(|_| format!("invalid y in {point}"))?;
-    Ok(egui::pos2(x, y))
-}
-
-#[cfg(feature = "demo")]
-fn parse_demo_drag(spec: &str) -> Result<[egui::Pos2; 2], String> {
-    let (from, to) = spec
-        .split_once(':')
-        .ok_or_else(|| format!("expected X,Y:X,Y, got {spec}"))?;
-    Ok([parse_demo_point(from)?, parse_demo_point(to)?])
 }
 
 /// The window to open: the mini player when `mini` says so, else the main
@@ -1187,75 +1130,8 @@ mod native_window_tests {
         }
     }
 
-    #[cfg(feature = "demo")]
     #[test]
-    fn demo_drag_presses_at_the_first_point_and_holds_at_the_second() {
-        let [from, to] = parse_demo_drag("10,20:110, 220").unwrap();
-        assert_eq!(
-            (from, to),
-            (egui::pos2(10.0, 20.0), egui::pos2(110.0, 220.0))
-        );
-        assert!(parse_demo_drag("10,20").is_err());
-        assert!(parse_demo_drag("10:20").is_err());
-        let mut drag = DemoDrag {
-            from,
-            to,
-            frame: 0,
-            click: false,
-        };
-        let frames: Vec<_> = (0..=DemoDrag::REST + DemoDrag::GLIDE + 5)
-            .map(|_| drag.events())
-            .collect();
-        let presses = frames
-            .iter()
-            .flatten()
-            .filter(|event| matches!(event, egui::Event::PointerButton { pressed: true, .. }))
-            .count();
-        assert_eq!(presses, 1, "one press, never a release");
-        assert!(
-            !frames
-                .iter()
-                .flatten()
-                .any(|event| matches!(event, egui::Event::PointerButton { pressed: false, .. }))
-        );
-        assert_eq!(frames[0][0], egui::Event::PointerMoved(from));
-        assert_eq!(frames.last().unwrap()[0], egui::Event::PointerMoved(to));
-    }
-
-    #[cfg(feature = "demo")]
-    #[test]
-    fn demo_click_presses_and_releases_once_where_it_points() {
-        let at = parse_demo_point("30, 40").unwrap();
-        assert_eq!(at, egui::pos2(30.0, 40.0));
-        assert!(parse_demo_point("30").is_err());
-        let mut click = DemoDrag {
-            from: at,
-            to: at,
-            frame: 0,
-            click: true,
-        };
-        let events: Vec<_> = (0..=DemoDrag::REST + DemoDrag::GLIDE + 5)
-            .flat_map(|_| click.events())
-            .collect();
-        let buttons: Vec<bool> = events
-            .iter()
-            .filter_map(|event| match event {
-                egui::Event::PointerButton { pressed, pos, .. } if *pos == at => Some(*pressed),
-                _ => None,
-            })
-            .collect();
-        assert_eq!(buttons, [true, false], "one press, then its release");
-        assert!(
-            events
-                .iter()
-                .all(|event| !matches!(event, egui::Event::PointerMoved(pos) if *pos != at))
-        );
-    }
-
-    #[test]
-    fn demo_size_parses_width_by_height() {
-        assert_eq!(parse_demo_size("760x800").unwrap(), [760.0, 800.0]);
-        assert!(parse_demo_size("wide").is_err());
+    fn demo_size_fixes_the_window_size() {
         let options = native_options(false, None, Some([760.0, 800.0]), Geometry::default());
         assert_eq!(options.viewport.inner_size, Some(egui::vec2(760.0, 800.0)));
         assert_eq!(
@@ -1315,7 +1191,7 @@ struct Shell {
     shot: Option<Shot>,
     /// A drag held for `--demo-drag`, if this run shows one.
     #[cfg(feature = "demo")]
-    drag: Option<DemoDrag>,
+    drag: Option<spotifast::demo::script::Pointer>,
     /// Logs a warning when an update freezes the window.
     stalls: fastframe_shell::StallWatch,
     /// Where the window was when it last asked its monitor's refresh rate,
@@ -1441,48 +1317,6 @@ impl Shell {
         #[cfg(windows)]
         self.thumbbar
             .sync(app.thumb_state(ui.ctx().system_theme() != Some(egui::Theme::Light)));
-    }
-}
-
-/// A scripted pointer for `--demo-drag`: rest on `from`, press there, glide
-/// to `to` and hold, so the shot shows a drag in progress through the same
-/// code a real pointer runs. For `--demo-click`, `from` and `to` are the
-/// same point and the press is released on the next frame.
-#[cfg(feature = "demo")]
-#[derive(Clone, Copy)]
-struct DemoDrag {
-    from: egui::Pos2,
-    to: egui::Pos2,
-    frame: u32,
-    click: bool,
-}
-
-#[cfg(feature = "demo")]
-impl DemoDrag {
-    /// Frames to rest before pressing, so the rows under `from` are laid out.
-    const REST: u32 = 20;
-    /// Frames the glide from `from` to `to` takes.
-    const GLIDE: u32 = 20;
-
-    fn events(&mut self) -> Vec<egui::Event> {
-        let frame = self.frame;
-        self.frame = self.frame.saturating_add(1);
-        let pos = if frame <= Self::REST {
-            self.from
-        } else {
-            let t = ((frame - Self::REST) as f32 / Self::GLIDE as f32).min(1.0);
-            self.from.lerp(self.to, t)
-        };
-        let mut events = vec![egui::Event::PointerMoved(pos)];
-        if frame == Self::REST || (self.click && frame == Self::REST + 1) {
-            events.push(egui::Event::PointerButton {
-                pos,
-                button: egui::PointerButton::Primary,
-                pressed: frame == Self::REST,
-                modifiers: egui::Modifiers::NONE,
-            });
-        }
-        events
     }
 }
 

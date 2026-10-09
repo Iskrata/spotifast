@@ -19,6 +19,8 @@ use crate::app::{App, RemoteSnapshot};
 use crate::backend::AuthStatus;
 use crate::model::*;
 
+pub mod script;
+
 fn image(seed: u32) -> Vec<Image> {
     vec![
         Image {
@@ -334,6 +336,28 @@ fn demo_local_rows(app: &mut App) {
         }
     }
     page.items.revision = page.items.revision.wrapping_add(1);
+}
+
+/// An app on `ctx` with its files in `dirs`, filled with the sample data:
+/// no tray, no media controls, no saved sign-in, so it never reaches the
+/// desktop or Spotify. Tests and the headless renderer draw it directly.
+pub fn headless_app(ctx: &egui::Context, dirs: crate::paths::AppDirs) -> App {
+    let waker = crate::backend::Waker::default();
+    waker.attach(ctx);
+    let mut app = App::new(
+        &waker,
+        dirs,
+        crate::settings::Settings::default(),
+        crate::app::AppOptions {
+            media_controls: false,
+            restore_sign_in: false,
+            tray: false,
+            autostart: false,
+        },
+    );
+    app.attach(ctx);
+    populate(&mut app);
+    app
 }
 
 /// Populates the offline app with cards for screenshots and UI tests.
@@ -1782,25 +1806,14 @@ mod tests {
             std::env::temp_dir().join(format!("spotifast-a11y-{name}-{}", std::process::id()));
         let ctx = egui::Context::default();
         ctx.enable_accesskit();
-        let waker = crate::backend::Waker::default();
-        waker.attach(&ctx);
-        let mut app = App::new(
-            &waker,
+        let mut app = headless_app(
+            &ctx,
             AppDirs {
                 config: root.join("config"),
                 state: root.join("state"),
                 cache: root.join("cache"),
             },
-            Settings::default(),
-            AppOptions {
-                media_controls: false,
-                restore_sign_in: false,
-                tray: false,
-                autostart: false,
-            },
         );
-        app.attach(&ctx);
-        populate(&mut app);
         // These frames never advance the clock or take pictures.
         app.reveal_theme_changes = false;
         (ctx, app)

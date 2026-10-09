@@ -51,6 +51,9 @@ pub mod hit {
     pub const STANDARD: f32 = 32.0;
     /// The action row under a page's header; a 24-point icon.
     pub const LARGE: f32 = 40.0;
+    /// A disc laid over cover art, such as the player bar's expand
+    /// chevron; a 16-point icon on a backing that keeps it legible.
+    pub const OVERLAY: f32 = 24.0;
 }
 
 /// The green Play disc's diameters, and the player bar's own transport disc.

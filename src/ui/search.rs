@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use egui::{Align, CornerRadius, Layout, Rect, Sense, Vec2, pos2, vec2};
 
+use super::tokens;
 use crate::api::models::{Artist, ArtistRef, PlayableItem, SearchResults, pick_image};
 use crate::app::App;
 use crate::i18n::gettext;
@@ -304,7 +305,7 @@ fn top_result(
             palette.surface
         };
         ui.painter()
-            .rect_filled(rect, CornerRadius::same(theme::RADIUS), fill);
+            .rect_filled(rect, CornerRadius::same(tokens::radius::CARD), fill);
         let image_rect = Rect::from_min_size(rect.min + vec2(20.0, 20.0), Vec2::splat(96.0));
         widgets::paint_shadow(ui, &palette, image_rect, if round { 48.0 } else { 6.0 });
         widgets::paint_cover(

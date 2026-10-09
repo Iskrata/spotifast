@@ -23,6 +23,7 @@ pub mod search;
 pub mod settings;
 pub mod show;
 pub mod sidebar;
+pub mod tokens;
 pub mod topbar;
 mod update;
 pub mod widgets;
@@ -656,7 +657,7 @@ fn toasts(app: &mut App, ctx: &egui::Context, bottom_offset: f32) {
                 Frame::new()
                     .fill(palette.overlay)
                     .stroke(Stroke::new(1.0, palette.outline))
-                    .corner_radius(CornerRadius::same(theme::RADIUS))
+                    .corner_radius(CornerRadius::same(tokens::radius::CARD))
                     .inner_margin(Margin::symmetric(14, 10))
                     .shadow(egui::epaint::Shadow {
                         offset: [0, 4],

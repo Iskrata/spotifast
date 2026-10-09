@@ -4,6 +4,7 @@
 
 use egui::{CornerRadius, Frame, Margin, Sense, Stroke, Vec2, vec2};
 
+use super::tokens;
 use crate::app::{App, NowPlaying};
 use crate::i18n::gettext;
 use crate::lyrics::Lyrics;
@@ -46,7 +47,7 @@ fn song(app: &mut App, ui: &mut egui::Ui, now: &NowPlaying) {
             &palette,
             now.art_small.as_deref().or(now.art_url.as_deref()),
             cover,
-            6.0,
+            tokens::points(tokens::radius::ROW),
             Icon::Music,
             Some(app.backend.art()),
         );
@@ -96,7 +97,7 @@ fn lyrics_card(app: &mut App, ui: &mut egui::Ui, now: &NowPlaying) -> bool {
     let quiet = palette.text.gamma_multiply(0.6);
     let card = Frame::new()
         .fill(fill)
-        .corner_radius(CornerRadius::same(10))
+        .corner_radius(CornerRadius::same(tokens::radius::PANEL))
         .inner_margin(Margin::same(12))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
@@ -145,7 +146,7 @@ fn lyrics_card(app: &mut App, ui: &mut egui::Ui, now: &NowPlaying) -> bool {
     if response.hovered() {
         ui.painter().rect_stroke(
             rect,
-            CornerRadius::same(10),
+            CornerRadius::same(tokens::radius::PANEL),
             Stroke::new(1.0, palette.text.gamma_multiply(0.35)),
             egui::StrokeKind::Inside,
         );

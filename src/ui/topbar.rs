@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use egui::{Align, CornerRadius, Galley, Layout, Sense, Vec2, pos2, vec2};
+use egui::{Align, Galley, Layout, Sense, Vec2, pos2, vec2};
 
 use crate::api::models::pick_image;
 use crate::app::App;
@@ -149,7 +149,7 @@ fn badge(
     });
     ui.painter().rect_filled(
         rect,
-        CornerRadius::same(14),
+        super::tokens::capsule(rect.height()),
         palette.accent.gamma_multiply(0.16),
     );
     let icon_center = if labels {
@@ -408,7 +408,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                             &palette,
                             Some(url),
                             inner,
-                            14.0,
+                            inner.height() / 2.0,
                             Icon::User,
                             Some(app.backend.art()),
                         ),

@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use egui::{CornerRadius, Layout, Rect, Sense, UiBuilder, Vec2, pos2, vec2};
 
+use super::tokens;
 use crate::api::models::{Episode, PlayableItem, Show, pick_image};
 use crate::app::App;
 use crate::i18n::{gettext, ngettext};
@@ -213,7 +214,7 @@ pub fn episode_row(
     if hovered {
         ui.painter().rect_filled(
             rect,
-            CornerRadius::same(6),
+            CornerRadius::same(tokens::radius::ROW),
             palette
                 .surface_hover
                 .gamma_multiply(if palette.dark { 0.7 } else { 1.0 }),
@@ -227,7 +228,7 @@ pub fn episode_row(
         &palette,
         image,
         cover_rect,
-        6.0,
+        tokens::points(tokens::radius::ROW),
         Icon::Mic,
         Some(app.backend.art()),
     );
@@ -364,11 +365,16 @@ pub fn episode_row(
             );
         } else if resume.resume_position_ms > 0 && episode.duration_ms > 0 {
             let bar = Rect::from_min_size(pos2(x, footer_y - 2.0), vec2(72.0, 4.0));
-            ui.painter().rect_filled(bar, 2.0, palette.surface_active);
+            ui.painter().rect_filled(
+                bar,
+                tokens::points(tokens::radius::BAR),
+                palette.surface_active,
+            );
             let fraction = resume.resume_position_ms as f32 / episode.duration_ms as f32;
             let filled =
                 Rect::from_min_size(bar.min, vec2(bar.width() * fraction.clamp(0.0, 1.0), 4.0));
-            ui.painter().rect_filled(filled, 2.0, palette.accent);
+            ui.painter()
+                .rect_filled(filled, tokens::points(tokens::radius::BAR), palette.accent);
             x += 80.0;
         }
     }

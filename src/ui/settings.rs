@@ -2,6 +2,7 @@
 
 use egui::{Align, CornerRadius, Frame, Layout, Margin, Stroke, Vec2};
 
+use super::tokens;
 use crate::api::models::pick_image;
 use crate::app::App;
 use crate::i18n::{gettext, ngettext, pgettext};
@@ -117,7 +118,7 @@ fn slider_value_style(style: &mut egui::Style, palette: &Palette) {
     style.visuals.widgets.inactive.bg_fill = palette.surface;
     style.visuals.widgets.hovered.bg_fill = palette.surface_hover;
     style.visuals.widgets.active.bg_fill = palette.surface_active;
-    let pill = CornerRadius::same(14);
+    let pill = tokens::capsule(tokens::hit::COMPACT);
     for widget in [
         &mut style.visuals.widgets.inactive,
         &mut style.visuals.widgets.hovered,
@@ -184,7 +185,7 @@ fn section(
                 .gamma_multiply(if palette.dark { 0.7 } else { 1.0 }),
         )
         .stroke(Stroke::new(1.0, palette.outline))
-        .corner_radius(CornerRadius::same(theme::RADIUS + 2))
+        .corner_radius(CornerRadius::same(tokens::radius::PANEL))
         .inner_margin(Margin::symmetric(20, 16))
         .show(ui, |ui| {
             ui.set_width(ui.available_width().min(760.0));
@@ -340,7 +341,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             filtered_row(ui, &palette, &needle, &account, &account_rows[0], |ui| {
                 let response = Frame::new()
                     .fill(palette.surface)
-                    .corner_radius(CornerRadius::same(6))
+                    .corner_radius(CornerRadius::same(tokens::radius::ROW))
                     .inner_margin(Margin::symmetric(10, 6))
                     .show(ui, |ui| {
                         widgets::text_edit(
@@ -553,7 +554,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             filtered_row(ui, &palette, &needle, &playback, &playback_rows[1], |ui| {
                 let response = Frame::new()
                     .fill(palette.surface)
-                    .corner_radius(CornerRadius::same(6))
+                    .corner_radius(CornerRadius::same(tokens::radius::ROW))
                     .inner_margin(Margin::symmetric(10, 6))
                     .show(ui, |ui| {
                         widgets::text_edit(
@@ -2041,7 +2042,11 @@ fn eq_slider(ui: &mut egui::Ui, palette: &Palette, label: &str, value: &mut f32,
         }
         if ui.is_rect_visible(rect) {
             let painter = ui.painter();
-            painter.rect_filled(track, 2.0, palette.surface_active);
+            painter.rect_filled(
+                track,
+                tokens::points(tokens::radius::BAR),
+                palette.surface_active,
+            );
             let fill = if on { palette.accent } else { palette.dim };
             let (top, bottom) = (y_of(value.max(0.0)), y_of(value.min(0.0)));
             painter.rect_filled(
@@ -2079,7 +2084,7 @@ fn eq_curve(ui: &mut egui::Ui, palette: &Palette, settings: &crate::eq::EqSettin
     let width = ui.available_width().min(720.0);
     let (rect, _) = ui.allocate_exact_size(vec2(width, 120.0), egui::Sense::hover());
     let painter = ui.painter();
-    painter.rect_filled(rect, theme::RADIUS as f32, palette.surface);
+    painter.rect_filled(rect, tokens::points(tokens::radius::CARD), palette.surface);
     let plot = rect.shrink2(vec2(10.0, 12.0));
     let (low, high) = (20f32.log10(), 20_000f32.log10());
     let x_of = |hz: f32| plot.left() + (hz.log10() - low) / (high - low) * plot.width();
@@ -2204,7 +2209,7 @@ mod tests {
             super::slider_value_style(&mut style, &palette);
             assert_eq!(
                 style.visuals.widgets.inactive.corner_radius,
-                egui::CornerRadius::same(14)
+                crate::ui::tokens::capsule(crate::ui::tokens::hit::COMPACT)
             );
         });
         output.textures_delta.clear();

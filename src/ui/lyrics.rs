@@ -2,6 +2,7 @@
 
 use egui::{Align, Color32, Frame, Layout, Margin, Rect, Sense, UiBuilder, pos2, vec2};
 
+use super::tokens;
 use crate::app::App;
 use crate::i18n::{gettext, pgettext};
 use crate::model::{Action, Loadable};
@@ -564,7 +565,7 @@ fn track_heading(app: &App, ui: &mut egui::Ui) {
                 &theme::Palette::dark(),
                 now.art_small.as_deref().or(now.art_url.as_deref()),
                 rect,
-                4.0,
+                tokens::points(tokens::radius::COVER_SMALL),
                 Icon::Music,
                 Some(app.backend.art()),
             );

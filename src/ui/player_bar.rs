@@ -2,6 +2,7 @@
 
 use egui::{Align, Color32, Frame, Layout, Margin, Rect, Sense, UiBuilder, Vec2, pos2, vec2};
 
+use super::tokens;
 use crate::app::{App, NowPlaying};
 use crate::i18n::gettext;
 use crate::model::{Action, DragTrack, Page};
@@ -415,7 +416,7 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
         &palette,
         now.art_small.as_deref().or(now.art_url.as_deref()),
         cover_rect,
-        6.0,
+        tokens::points(tokens::radius::ROW),
         Icon::Music,
         Some(app.backend.art()),
     );

@@ -2,6 +2,7 @@
 
 use egui::{Align, CornerRadius, Frame, Layout, Margin, Rect, Stroke, Vec2, pos2};
 
+use super::tokens;
 use crate::app::App;
 use crate::backend::AuthStatus;
 use crate::i18n::gettext;
@@ -51,7 +52,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, connecting: bool) {
             Frame::new()
                 .fill(palette.panel)
                 .stroke(Stroke::new(1.0, palette.outline))
-                .corner_radius(CornerRadius::same(theme::RADIUS + 8))
+                .corner_radius(CornerRadius::same(tokens::radius::SHEET))
                 .inner_margin(Margin::same(36))
                 .shadow(egui::epaint::Shadow {
                     offset: [0, 16],
@@ -277,7 +278,8 @@ fn big_button(ui: &mut egui::Ui, app: &App, label: &str) -> bool {
     } else {
         palette.accent
     };
-    ui.painter().rect_filled(rect, 23.0, fill);
+    ui.painter()
+        .rect_filled(rect, tokens::capsule(rect.height()), fill);
     ui.painter().galley(
         rect.center() - galley.size() / 2.0,
         galley,

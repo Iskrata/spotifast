@@ -2729,6 +2729,28 @@ mod tests {
         app.backend.shutdown();
     }
 
+    /// Friend Activity opens from the player bar, beside Queue and
+    /// Lyrics; the sidebar lists only Home and Search above the Library.
+    #[test]
+    fn friend_activity_opens_from_the_player_bar_only() {
+        use egui::accesskit::Role;
+        let (ctx, mut app) = accessible_app("friends-toggle");
+        accessible_frame(&ctx, &mut app, vec![]);
+        let tree = accessible_frame(&ctx, &mut app, vec![]);
+        let bar_top = 800.0 - f64::from(crate::theme::PLAYER_BAR_HEIGHT);
+        let toggles: Vec<_> = tree
+            .nodes
+            .iter()
+            .filter(|(_, node)| {
+                node.label() == Some("Friend Activity") && node.role() == Role::Button
+            })
+            .filter_map(|(_, node)| node.bounds())
+            .collect();
+        assert_eq!(toggles.len(), 1, "one toggle: {toggles:?}");
+        assert!(toggles[0].y0 >= bar_top, "in the player bar: {toggles:?}");
+        app.backend.shutdown();
+    }
+
     #[test]
     fn friend_activity_opens_beside_the_page_and_lists_each_friend() {
         use egui::accesskit::{Action as AccessibleAction, Role};

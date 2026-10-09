@@ -412,7 +412,8 @@ for each section. **Name** and **Recently played** are available throughout.
 Albums and podcasts also offer **Recently added**, using their actual save
 dates. Spotify does not supply equivalent dates for followed playlists or
 artists, so those sections do not offer that choice. Entries with missing save
-dates come last.
+dates come last. The same menu also lays the Library out with **Show as
+list** or **Show as grid**.
 
 **Name** keeps your Spotify playlist folders, as Spotify does: playlists sort
 by name inside each folder, and folders sort by name among the playlists

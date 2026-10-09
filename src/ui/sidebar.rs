@@ -337,22 +337,20 @@ fn sort_menu(app: &mut App, ui: &mut egui::Ui, shelf: Filter, selected: LibraryS
         .find(|(sort, _)| *sort == selected)
         .expect("sort label")
         .1;
-    let response = ui.add(
-        egui::Button::image_and_text(
-            Icon::ChevronDown.image(app.palette.text, 15.0),
-            egui::RichText::new(label.as_ref()).font(theme::medium(13.0)),
-        )
-        .wrap()
-        .fill(app.palette.surface)
-        .corner_radius(tokens::capsule(28.0))
-        .min_size(vec2(0.0, 28.0)),
-    );
+    let view_labels = [
+        gettext(locale, "Show as list"),
+        gettext(locale, "Show as grid"),
+    ];
+    ui.add_space(4.0);
+    let response = buttons::secondary(ui, &app.palette, Some(Icon::ChevronDown), label);
     egui::Popup::menu(&response)
         .frame(super::widgets::menu_frame(&app.palette))
         .show(|ui| {
             let width = labels
                 .iter()
-                .map(|(_, label)| {
+                .map(|(_, label)| label)
+                .chain(&view_labels)
+                .map(|label| {
                     ui.painter()
                         .layout_no_wrap(label.to_string(), theme::regular(13.5), app.palette.text)
                         .size()
@@ -376,6 +374,18 @@ fn sort_menu(app: &mut App, ui: &mut egui::Ui, shelf: Filter, selected: LibraryS
                 ) {
                     app.actions
                         .push(Action::SetLibrarySort { shelf, sort: *sort });
+                }
+            }
+            // How the Library is laid out sits with how it is ordered.
+            super::widgets::menu_separator(ui, &app.palette);
+            for (grid, label) in [(false, &view_labels[0]), (true, &view_labels[1])] {
+                if super::widgets::menu_item(
+                    ui,
+                    &app.palette,
+                    (app.settings.sidebar_grid == grid).then_some(Icon::Check),
+                    label,
+                ) {
+                    app.actions.push(Action::SetLibraryGrid(grid));
                 }
             }
         });
@@ -969,9 +979,7 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
     let mut focus_search = false;
 
     ui.horizontal(|ui| {
-        ui.add_space(6.0);
-        theme::icon(ui, Icon::Library, 22.0, palette.secondary);
-        ui.add_space(2.0);
+        ui.add_space(10.0);
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.spacing_mut().item_spacing.x = 2.0;
             if IconButton::new(
@@ -986,19 +994,6 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
             .clicked()
             {
                 app.actions.push(Action::ToggleSidebar);
-            }
-            let grid = app.settings.sidebar_grid;
-            let (icon, label) = if grid {
-                (Icon::LayoutList, gettext(locale, "Show as list"))
-            } else {
-                (Icon::LayoutGrid, gettext(locale, "Show as grid"))
-            };
-            if IconButton::new(icon, &label)
-                .size(IconSize::Compact)
-                .show(ui, &palette)
-                .clicked()
-            {
-                app.actions.push(Action::SetLibraryGrid(!grid));
             }
             // One item never deserved a menu: the plus creates directly.
             if IconButton::new(Icon::Plus, &gettext(locale, "Create a playlist"))
@@ -1026,8 +1021,7 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
             }
             // The buttons come first; the heading takes the space left,
             // a little smaller where a translation runs long, and gives way
-            // to them in the narrowest sidebar, where the icon still names
-            // the section.
+            // to them in the narrowest sidebar.
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 let heading = gettext(locale, "Library");
                 let room = ui.available_width() - 6.0;

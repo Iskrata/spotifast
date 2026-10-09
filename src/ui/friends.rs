@@ -11,7 +11,7 @@ use crate::i18n::{Locale, gettext, pgettext};
 use crate::model::{Action, Dialog, Loadable, Page};
 use crate::theme::{self, Icon};
 
-use super::buttons::{IconButton, IconSize};
+use super::buttons::{self, IconButton, IconSize};
 use super::widgets;
 
 const AVATAR: f32 = 40.0;
@@ -172,12 +172,11 @@ fn contents(app: &mut App, ui: &mut egui::Ui) {
                 ),
             );
             ui.add_space(8.0);
-            if theme::soft_button(
+            if buttons::secondary(
                 ui,
                 &palette,
                 Some(Icon::Settings),
                 &gettext(locale, "Open Settings"),
-                false,
             )
             .clicked()
             {
@@ -192,14 +191,8 @@ fn contents(app: &mut App, ui: &mut egui::Ui) {
                 &gettext(locale, "Spotify did not return friend activity."),
             );
             ui.add_space(8.0);
-            if theme::soft_button(
-                ui,
-                &palette,
-                Some(Icon::Refresh),
-                &gettext(locale, "Retry"),
-                false,
-            )
-            .clicked()
+            if buttons::secondary(ui, &palette, Some(Icon::Refresh), &gettext(locale, "Retry"))
+                .clicked()
             {
                 app.actions.push(Action::RefreshFriends(true));
             }

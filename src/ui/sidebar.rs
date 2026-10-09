@@ -2,7 +2,7 @@
 
 use egui::{Align, CornerRadius, Frame, Layout, Margin, Rect, Sense, Vec2, pos2, vec2};
 
-use super::buttons::{IconButton, IconSize};
+use super::buttons::{self, IconButton, IconSize};
 use super::tokens;
 use crate::api::models::pick_image;
 use crate::app::App;
@@ -371,16 +371,7 @@ fn sort_menu(app: &mut App, ui: &mut egui::Ui, shelf: Filter, selected: LibraryS
         .expect("sort label")
         .1;
     ui.add_space(4.0);
-    let response = ui.add(
-        egui::Button::image_and_text(
-            Icon::ChevronDown.image(app.palette.text, 15.0),
-            egui::RichText::new(label.as_ref()).font(theme::medium(13.0)),
-        )
-        .wrap()
-        .fill(app.palette.surface)
-        .corner_radius(tokens::capsule(28.0))
-        .min_size(vec2(0.0, 28.0)),
-    );
+    let response = buttons::secondary(ui, &app.palette, Some(Icon::ChevronDown), label);
     egui::Popup::menu(&response)
         .frame(super::widgets::menu_frame(&app.palette))
         .show(|ui| {
@@ -968,7 +959,7 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
             (Filter::Artists, gettext(locale, "Artists")),
             (Filter::Podcasts, gettext(locale, "Podcasts")),
         ] {
-            if theme::soft_button(ui, &palette, None, &label, filter == value).clicked() {
+            if buttons::chip(ui, &palette, None, &label, filter == value).clicked() {
                 filter = value;
             }
         }

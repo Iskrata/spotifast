@@ -10,6 +10,7 @@ use crate::model::{Action, Dialog};
 use crate::settings::{LanguageChoice, ProxyMode, ThemeChoice};
 use crate::theme::{self, Icon, Palette};
 
+use super::buttons;
 use super::widgets;
 
 const PLAYBACK_DIRTY_ID: &str = "playback-settings-dirty";
@@ -330,7 +331,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                         }
                     });
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if theme::pill_button(ui, &palette, &sign_out, false).clicked() {
+                        if buttons::secondary(ui, &palette, None, &sign_out).clicked() {
                             app.actions.push(Action::SignOut);
                         }
                     });
@@ -373,8 +374,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 }
             });
             filtered_row(ui, &palette, &needle, &account, &account_rows[1], |ui| {
-                if theme::pill_button(ui, &palette, &gettext(locale, "Setup guide"), false)
-                    .clicked()
+                if buttons::secondary(ui, &palette, None, &gettext(locale, "Setup guide")).clicked()
                 {
                     app.actions.push(Action::OpenUrl(
                         "https://spotifast.rocks/make-it-even-faster/#make-a-spotify-app".into(),
@@ -383,7 +383,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             });
             if in_use {
                 filtered_row(ui, &palette, &needle, &account, &account_rows[2], |ui| {
-                    if theme::pill_button(ui, &palette, &gettext(locale, "Remove"), false).clicked()
+                    if buttons::secondary(ui, &palette, None, &gettext(locale, "Remove")).clicked()
                     {
                         app.settings.web_client_id = None;
                         app.actions.push(Action::ConfigurePersonalWebApp);
@@ -391,15 +391,13 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 });
             } else if wanted.is_some() {
                 filtered_row(ui, &palette, &needle, &account, &account_rows[3], |ui| {
-                    if theme::pill_button(ui, &palette, &gettext(locale, "Authorize"), true)
-                        .clicked()
-                    {
+                    if buttons::primary(ui, &palette, &gettext(locale, "Authorize")).clicked() {
                         app.actions.push(Action::ConfigurePersonalWebApp);
                     }
                 });
             } else if app.web_app.is_some() {
                 filtered_row(ui, &palette, &needle, &account, &account_rows[4], |ui| {
-                    if theme::pill_button(ui, &palette, &gettext(locale, "Remove"), false).clicked()
+                    if buttons::secondary(ui, &palette, None, &gettext(locale, "Remove")).clicked()
                     {
                         app.actions.push(Action::ConfigurePersonalWebApp);
                     }
@@ -535,16 +533,15 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         section(ui, &palette, &playback, |ui| {
             filtered_row(ui, &palette, &needle, &playback, &playback_rows[0], |ui| {
                 if let Some(label) = action {
-                    if theme::pill_button(ui, &palette, &label, true).clicked() {
+                    if buttons::primary(ui, &palette, &label).clicked() {
                         app.actions.push(Action::EnablePlayback);
                     }
                 } else if app.local_ready
-                    && theme::soft_button(
+                    && buttons::secondary(
                         ui,
                         &palette,
                         Some(Icon::Refresh),
                         &gettext(locale, "Reconnect"),
-                        false,
                     )
                     .clicked()
                 {
@@ -582,7 +579,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             let choice_gap = 6.0;
             let choices_width = choices
                 .iter()
-                .map(|(_, label)| theme::soft_button_width(ui, label))
+                .map(|(_, label)| buttons::text_button_width(ui, label))
                 .sum::<f32>()
                 + choice_gap * (choices.len() - 1) as f32;
             filtered_row_sized(
@@ -594,14 +591,8 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 choices_width,
                 |ui| {
                     let mut choose = |ui: &mut egui::Ui, kbps: u16, label: &str| {
-                        if theme::soft_button(
-                            ui,
-                            &palette,
-                            None,
-                            label,
-                            app.settings.bitrate == kbps,
-                        )
-                        .clicked()
+                        if buttons::chip(ui, &palette, None, label, app.settings.bitrate == kbps)
+                            .clicked()
                             && app.settings.bitrate != kbps
                         {
                             app.settings.bitrate = kbps;
@@ -716,7 +707,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                             } else {
                                 "ALSA (rodio)"
                             };
-                            if theme::soft_button(ui, &palette, None, label, current == backend)
+                            if buttons::chip(ui, &palette, None, label, current == backend)
                                 .clicked()
                                 && current != backend
                             {
@@ -735,7 +726,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                     let current = app.settings.audio_buffer_ms;
                     for ms in [50u32, 100, 200] {
                         let label = format!("{ms} ms");
-                        if theme::soft_button(ui, &palette, None, &label, current == ms).clicked()
+                        if buttons::chip(ui, &palette, None, &label, current == ms).clicked()
                             && current != ms
                         {
                             app.settings.audio_buffer_ms = ms;
@@ -758,7 +749,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                     if app.settings.audio_cache {
                         ui.add_space(6.0);
                         for (mb, label) in [(4096u64, "4 GB"), (1024, "1 GB"), (512, "512 MB")] {
-                            if theme::soft_button(
+                            if buttons::chip(
                                 ui,
                                 &palette,
                                 None,
@@ -783,7 +774,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             {
                 ui.horizontal(|ui| {
                     if playback_dirty {
-                        if theme::pill_button(ui, &palette, &apply_playback, true).clicked() {
+                        if buttons::primary(ui, &palette, &apply_playback).clicked() {
                             app.actions.push(Action::RestartEngine);
                             playback_dirty = false;
                         }
@@ -896,8 +887,8 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         any_visible = true;
         section(ui, &palette, &appearance, |ui| {
             // Wide enough for the theme's two buttons side by side.
-            let theme_buttons_width = theme::soft_button_width(ui, &theme_guide)
-                + theme::soft_button_width(ui, &themes_folder)
+            let theme_buttons_width = buttons::text_button_width(ui, &theme_guide)
+                + buttons::text_button_width(ui, &themes_folder)
                 + 6.0;
             filtered_row_sized(
                 ui,
@@ -961,25 +952,18 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                         let (guide, folder) = (&theme_guide, &themes_folder);
                         let gap = 6.0;
                         let mut buttons = |ui: &mut egui::Ui| {
-                            if theme::soft_button(ui, &palette, Some(Icon::Globe), guide, false)
-                                .clicked()
+                            if buttons::secondary(ui, &palette, Some(Icon::Globe), guide).clicked()
                             {
                                 app.actions.push(Action::OpenUrl(THEMES_GUIDE_URL.into()));
                             }
-                            if theme::soft_button(
-                                ui,
-                                &palette,
-                                Some(Icon::ExternalLink),
-                                folder,
-                                false,
-                            )
-                            .clicked()
+                            if buttons::secondary(ui, &palette, Some(Icon::ExternalLink), folder)
+                                .clicked()
                             {
                                 app.actions.push(Action::OpenThemesFolder);
                             }
                         };
-                        let both = theme::soft_button_width(ui, guide)
-                            + theme::soft_button_width(ui, folder)
+                        let both = buttons::text_button_width(ui, guide)
+                            + buttons::text_button_width(ui, folder)
                             + gap;
                         if ui.available_width() >= both {
                             ui.horizontal(|ui| {
@@ -1049,7 +1033,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 let choice_gap = 6.0;
                 let choices_width = choices
                     .iter()
-                    .map(|(_, label)| theme::soft_button_width(ui, label))
+                    .map(|(_, label)| buttons::text_button_width(ui, label))
                     .sum::<f32>()
                     + choice_gap * (choices.len() - 1) as f32;
                 filtered_row_sized(
@@ -1061,7 +1045,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                     choices_width,
                     |ui| {
                         let mut choose = |ui: &mut egui::Ui, mode: PlayerBarVis, label: &str| {
-                            if theme::soft_button(
+                            if buttons::chip(
                                 ui,
                                 &palette,
                                 None,
@@ -1142,7 +1126,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x = 6.0;
                         let mut zoom = app.settings.zoom;
-                        if theme::soft_button(ui, &palette, None, "+", false).clicked() {
+                        if buttons::secondary(ui, &palette, None, "+").clicked() {
                             zoom = (zoom + 0.1).min(2.5);
                         }
                         theme::text(
@@ -1151,7 +1135,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                             theme::medium(13.5),
                             palette.text,
                         );
-                        if theme::soft_button(ui, &palette, None, "-", false).clicked() {
+                        if buttons::secondary(ui, &palette, None, "-").clicked() {
                             zoom = (zoom - 0.1).max(0.5);
                         }
                         if (zoom - app.settings.zoom).abs() > 0.001 {
@@ -1228,13 +1212,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 6.0;
             for choice in ProxyMode::ALL {
-                if theme::soft_button(
-                    ui,
-                    &palette,
-                    None,
-                    &choice.label(locale),
-                    app.settings.proxy_mode == choice,
-                )
+                if buttons::chip(ui, &palette, None, &choice.label(locale), app.settings.proxy_mode == choice)
                 .clicked()
                     && app.settings.proxy_mode != choice
                 {
@@ -1271,7 +1249,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         }
         if app.settings.proxy_mode.is_manual() {
             ui.horizontal(|ui| {
-                if theme::pill_button(ui, &palette, &gettext(locale, "Apply settings"), true).clicked() {
+                if buttons::primary(ui, &palette, &gettext(locale, "Apply settings")).clicked() {
                     app.actions.push(Action::ApplyProxy);
                     if app.settings.proxy_config().is_ok() {
                         proxy_dirty = false;
@@ -1356,35 +1334,26 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         any_visible = true;
         section(ui, &palette, &skins, |ui| {
             filtered_row(ui, &palette, &needle, &skins, &skins_rows[0], |ui| {
-                if theme::pill_button(ui, &palette, &gettext(locale, "Switch to it"), true)
-                    .clicked()
-                {
+                if buttons::primary(ui, &palette, &gettext(locale, "Switch to it")).clicked() {
                     app.actions.push(Action::ToggleWinampWindow);
                 }
             });
             filtered_row(ui, &palette, &needle, &skins, &skins_rows[1], |ui| {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 6.0;
-                    if theme::soft_button(
+                    if buttons::secondary(
                         ui,
                         &palette,
                         Some(Icon::Globe),
                         &gettext(locale, "Skin Museum"),
-                        false,
                     )
                     .clicked()
                     {
                         app.actions
                             .push(Action::OpenUrl("https://skins.webamp.org/".into()));
                     }
-                    if theme::soft_button(
-                        ui,
-                        &palette,
-                        Some(Icon::ExternalLink),
-                        &open_folder,
-                        false,
-                    )
-                    .clicked()
+                    if buttons::secondary(ui, &palette, Some(Icon::ExternalLink), &open_folder)
+                        .clicked()
                     {
                         app.actions.push(Action::OpenSkinsFolder);
                     }
@@ -1447,8 +1416,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                     ui.spacing_mut().item_spacing.x = 6.0;
                     for candidate in 1..=crate::winamp::MAX_SCALE {
                         let label = format!("{candidate}x");
-                        if theme::soft_button(ui, &palette, None, &label, candidate == scale)
-                            .clicked()
+                        if buttons::chip(ui, &palette, None, &label, candidate == scale).clicked()
                             && candidate != scale
                         {
                             app.actions.push(Action::SetSkinScale(candidate as u8));
@@ -1608,7 +1576,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                             // Translators: {pack} is the name of a MilkDrop preset pack.
                             _ => gettext(locale, "Get {pack}").replace("{pack}", pack.name),
                         };
-                        if theme::soft_button(ui, &palette, Some(Icon::Globe), &label, false)
+                        if buttons::secondary(ui, &palette, Some(Icon::Globe), &label)
                             .on_hover_text(pack.note)
                             .clicked()
                             && downloading.is_none()
@@ -1616,14 +1584,8 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                             app.actions.push(Action::DownloadMilkdropPack(index));
                         }
                     }
-                    if theme::soft_button(
-                        ui,
-                        &palette,
-                        Some(Icon::ExternalLink),
-                        &open_folder,
-                        false,
-                    )
-                    .clicked()
+                    if buttons::secondary(ui, &palette, Some(Icon::ExternalLink), &open_folder)
+                        .clicked()
                     {
                         app.actions.push(Action::OpenMilkdropFolder);
                     }
@@ -1712,8 +1674,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                         (2, pgettext(locale, "resolution", "Half")),
                         (4, pgettext(locale, "resolution", "Quarter")),
                     ] {
-                        if theme::soft_button(ui, &palette, None, &label, scale == current)
-                            .clicked()
+                        if buttons::chip(ui, &palette, None, &label, scale == current).clicked()
                             && scale != current
                         {
                             app.actions.push(Action::SetMilkdropScale(scale));
@@ -1844,12 +1805,11 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         any_visible = true;
         section(ui, &palette, &storage, |ui| {
             filtered_row(ui, &palette, &needle, &storage, &storage_rows[0], |ui| {
-                if theme::soft_button(
+                if buttons::secondary(
                     ui,
                     &palette,
                     Some(Icon::Trash),
                     &gettext(locale, "Clear artwork"),
-                    false,
                 )
                 .clicked()
                 {
@@ -1858,12 +1818,11 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             });
             filtered_row(ui, &palette, &needle, &storage, &storage_rows[1], |_| {});
             filtered_row(ui, &palette, &needle, &storage, &storage_rows[2], |ui| {
-                if theme::soft_button(
+                if buttons::secondary(
                     ui,
                     &palette,
                     Some(Icon::Trash),
                     &gettext(locale, "Clear history"),
-                    false,
                 )
                 .clicked()
                 {
@@ -1922,18 +1881,16 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 } else {
                     &check_for_updates
                 };
-                if theme::soft_button(ui, &palette, Some(Icon::Refresh), check_label, false)
-                    .clicked()
+                if buttons::secondary(ui, &palette, Some(Icon::Refresh), check_label).clicked()
                     && !app.update_checking
                 {
                     app.actions.push(Action::CheckForUpdates);
                 }
-                if theme::soft_button(ui, &palette, Some(Icon::Info), &keyboard_shortcuts, false)
-                    .clicked()
+                if buttons::secondary(ui, &palette, Some(Icon::Info), &keyboard_shortcuts).clicked()
                 {
                     app.actions.push(Action::ShowDialog(Dialog::Shortcuts));
                 }
-                if theme::soft_button(ui, &palette, Some(Icon::ExternalLink), &source_code, false)
+                if buttons::secondary(ui, &palette, Some(Icon::ExternalLink), &source_code)
                     .clicked()
                 {
                     ui.ctx()

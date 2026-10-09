@@ -2,6 +2,7 @@
 
 use egui::{Align, CornerRadius, Frame, Layout, Margin, Rect, Stroke, Vec2, pos2};
 
+use super::buttons;
 use super::tokens;
 use crate::app::App;
 use crate::backend::AuthStatus;
@@ -87,7 +88,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, connecting: bool) {
                                 ctx.open_url(egui::OpenUrl::new_tab(url));
                             }
                             ui.add_space(14.0);
-                            if theme::pill_button(ui, &palette, &gettext(locale, "Cancel"), false).clicked() {
+                            if buttons::secondary(ui, &palette, None, &gettext(locale, "Cancel")).clicked() {
                                 app.actions.push(Action::CancelSignIn);
                             }
                         }
@@ -104,17 +105,12 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, connecting: bool) {
                                 egui::Label::new(egui::RichText::new(message).font(theme::regular(13.0)).color(palette.danger)).wrap(),
                             );
                             ui.add_space(12.0);
-                            if big_button(ui, app, &gettext(locale, "Try again")) {
+                            if buttons::primary_large(ui, &palette, &gettext(locale, "Try again")).clicked() {
                                 app.actions.push(Action::SignIn);
                             }
                             if app.settings.web_client_id.is_some() {
                                 ui.add_space(10.0);
-                                if theme::pill_button(
-                                    ui,
-                                    &palette,
-                                    &gettext(locale, "Use the shared Spotify app instead"),
-                                    false,
-                                )
+                                if buttons::secondary(ui, &palette, None, &gettext(locale, "Use the shared Spotify app instead"))
                                 .clicked()
                                 {
                                     // A wrong personal Client ID trapped the
@@ -126,7 +122,9 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, connecting: bool) {
                             }
                         }
                         _ => {
-                            if big_button(ui, app, &gettext(locale, "Sign in with Spotify")) {
+                            if buttons::primary_large(ui, &palette, &gettext(locale, "Sign in with Spotify"))
+                                .clicked()
+                            {
                                 app.actions.push(Action::SignIn);
                             }
                             ui.add_space(10.0);
@@ -144,12 +142,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, connecting: bool) {
                                 // hears it failed; the way out has to stand
                                 // here, not only on the failure screen.
                                 ui.add_space(10.0);
-                                if theme::pill_button(
-                                    ui,
-                                    &palette,
-                                    &gettext(locale, "Use the shared Spotify app instead"),
-                                    false,
-                                )
+                                if buttons::secondary(ui, &palette, None, &gettext(locale, "Use the shared Spotify app instead"))
                                 .clicked()
                                 {
                                     app.settings.web_client_id = None;
@@ -214,7 +207,7 @@ fn proxy_fields(ui: &mut egui::Ui, app: &mut App) {
             + 6.0 * (ProxyMode::ALL.len() - 1) as f32;
         ui.add_space((ui.available_width() - row_width).max(0.0) / 2.0);
         for choice in ProxyMode::ALL {
-            if theme::soft_button(
+            if buttons::chip(
                 ui,
                 &palette,
                 None,
@@ -247,9 +240,7 @@ fn proxy_fields(ui: &mut egui::Ui, app: &mut App) {
         super::widgets::proxy_scope_note(ui, &palette, app.locale, app.settings.proxy_mode);
         ui.add_space(8.0);
         ui.horizontal(|ui| {
-            if theme::pill_button(ui, &palette, &gettext(app.locale, "Apply settings"), true)
-                .clicked()
-            {
+            if buttons::primary(ui, &palette, &gettext(app.locale, "Apply settings")).clicked() {
                 apply = true;
             }
         });
@@ -261,31 +252,6 @@ fn proxy_fields(ui: &mut egui::Ui, app: &mut App) {
     if apply {
         app.actions.push(Action::ApplyProxy);
     }
-}
-
-fn big_button(ui: &mut egui::Ui, app: &App, label: &str) -> bool {
-    let palette = app.palette;
-    let galley =
-        ui.painter()
-            .layout_no_wrap(label.to_string(), theme::bold(15.0), palette.on_accent);
-    let size = Vec2::new(ui.available_width().min(300.0), 46.0);
-    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
-    response.widget_info(|| {
-        egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label)
-    });
-    let fill = if response.hovered() {
-        palette.accent_hover
-    } else {
-        palette.accent
-    };
-    ui.painter()
-        .rect_filled(rect, tokens::capsule(rect.height()), fill);
-    ui.painter().galley(
-        rect.center() - galley.size() / 2.0,
-        galley,
-        palette.on_accent,
-    );
-    response.clicked()
 }
 
 #[cfg(test)]

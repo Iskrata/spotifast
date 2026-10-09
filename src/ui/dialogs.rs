@@ -2,6 +2,7 @@
 
 use egui::{Align, CornerRadius, Frame, Layout, Margin, Stroke};
 
+use super::buttons;
 use super::tokens;
 use crate::app::App;
 use crate::i18n::{Locale, gettext, ngettext, pgettext};
@@ -48,10 +49,10 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                     }
                     ui.add_space(8.0);
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if theme::pill_button(ui, &palette, &gettext(locale, "Set up personal app"), true).clicked() {
+                        if buttons::primary(ui, &palette, &gettext(locale, "Set up personal app")).clicked() {
                             app.actions.push(Action::OpenPersonalAppSetup);
                         }
-                        if theme::pill_button(ui, &palette, &gettext(locale, "Keep shared app"), false).clicked() {
+                        if buttons::secondary(ui, &palette, None, &gettext(locale, "Keep shared app")).clicked() {
                             app.actions.push(Action::CloseDialog);
                         }
                     });
@@ -119,7 +120,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                     );
                     ui.add_space(20.0);
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if theme::pill_button(ui, &palette, &gettext(locale, "Add anyway"), true).clicked() {
+                        if buttons::primary(ui, &palette, &gettext(locale, "Add anyway")).clicked() {
                             app.actions.push(Action::ConfirmAddToPlaylist {
                                 playlist_id: playlist_id.clone(),
                                 playlist_name: playlist_name.clone(),
@@ -127,7 +128,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                                 position,
                             });
                         }
-                        if theme::pill_button(ui, &palette, &gettext(locale, "Cancel"), false).clicked() {
+                        if buttons::secondary(ui, &palette, None, &gettext(locale, "Cancel")).clicked() {
                             app.actions.push(Action::CloseDialog);
                         }
                     });
@@ -176,7 +177,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                     );
                     ui.add_space(16.0);
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if theme::pill_button(ui, &palette, &gettext(locale, "Done"), true).clicked() {
+                        if buttons::primary(ui, &palette, &gettext(locale, "Done")).clicked() {
                             app.actions.push(Action::CloseDialog);
                         }
                     });
@@ -202,7 +203,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                     );
                     ui.add_space(20.0);
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if theme::pill_button(ui, &palette, &gettext(locale, "OK"), true).clicked() {
+                        if buttons::primary(ui, &palette, &gettext(locale, "OK")).clicked() {
                             app.actions.push(Action::CloseDialog);
                         }
                     });
@@ -386,9 +387,8 @@ fn create_playlist(app: &mut App, ui: &mut egui::Ui) {
         if busy {
             theme::spinner(ui, 18.0, palette.accent);
         } else {
-            let create = theme::pill_button(ui, &palette, &gettext(locale, "Create"), true)
-                .clicked()
-                || submit;
+            let create =
+                buttons::primary(ui, &palette, &gettext(locale, "Create")).clicked() || submit;
             if create && !name_value.is_empty() {
                 app.actions.push(Action::CreatePlaylist {
                     name: name_value.clone(),
@@ -396,7 +396,7 @@ fn create_playlist(app: &mut App, ui: &mut egui::Ui) {
                     add_uris: uris.clone(),
                 });
             }
-            if theme::pill_button(ui, &palette, &gettext(locale, "Cancel"), false).clicked() {
+            if buttons::secondary(ui, &palette, None, &gettext(locale, "Cancel")).clicked() {
                 app.actions.push(Action::CloseDialog);
             }
         }
@@ -467,19 +467,14 @@ fn edit_playlist(app: &mut App, ui: &mut egui::Ui) {
                             palette.secondary,
                         );
                     } else {
-                        if theme::pill_button(ui, &palette, &gettext(locale, "Change cover"), false)
+                        if buttons::secondary(ui, &palette, None, &gettext(locale, "Change cover"))
                             .clicked()
                         {
                             app.actions.push(Action::ChoosePlaylistCover(id.clone()));
                         }
                         if cover.selection.is_some()
-                            && theme::pill_button(
-                                ui,
-                                &palette,
-                                &gettext(locale, "Upload cover"),
-                                true,
-                            )
-                            .clicked()
+                            && buttons::primary(ui, &palette, &gettext(locale, "Upload cover"))
+                                .clicked()
                         {
                             app.actions.push(Action::UploadPlaylistCover(id.clone()));
                         }
@@ -565,7 +560,7 @@ fn edit_playlist(app: &mut App, ui: &mut egui::Ui) {
         if busy {
             theme::spinner(ui, 18.0, palette.accent);
         } else {
-            if theme::pill_button(ui, &palette, &gettext(locale, "Save"), true).clicked()
+            if buttons::primary(ui, &palette, &gettext(locale, "Save")).clicked()
                 && !name_value.is_empty()
             {
                 app.actions.push(Action::UpdatePlaylist {
@@ -575,7 +570,7 @@ fn edit_playlist(app: &mut App, ui: &mut egui::Ui) {
                     public: public_value,
                 });
             }
-            if theme::pill_button(ui, &palette, &gettext(locale, "Cancel"), false).clicked() {
+            if buttons::secondary(ui, &palette, None, &gettext(locale, "Cancel")).clicked() {
                 app.actions.push(Action::CloseDialog);
             }
         }
@@ -598,10 +593,10 @@ fn confirm(app: &mut App, ui: &mut egui::Ui, title: &str, body: &str, label: &st
     );
     ui.add_space(20.0);
     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-        if theme::pill_button(ui, &palette, label, true).clicked() {
+        if buttons::primary(ui, &palette, label).clicked() {
             app.actions.push(action);
         }
-        if theme::pill_button(ui, &palette, &gettext(app.locale, "Cancel"), false).clicked() {
+        if buttons::secondary(ui, &palette, None, &gettext(app.locale, "Cancel")).clicked() {
             app.actions.push(Action::CloseDialog);
         }
     });

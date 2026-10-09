@@ -12,6 +12,7 @@ use crate::i18n::{gettext, pgettext};
 use crate::model::{Action, Page};
 use crate::theme::{self, Icon};
 
+use super::buttons;
 use super::widgets;
 
 const PORTRAIT: f32 = 56.0;
@@ -188,7 +189,7 @@ fn contents(app: &mut App, ui: &mut egui::Ui, shown: &Shown) {
                 } else {
                     pgettext(locale, "artist", "Follow")
                 };
-                if theme::pill_button(ui, &palette, &label, false).clicked() {
+                if buttons::secondary(ui, &palette, None, &label).clicked() {
                     app.actions.push(Action::ToggleSaved(shown.uri.clone()));
                 }
             }

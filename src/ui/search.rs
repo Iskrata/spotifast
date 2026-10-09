@@ -11,6 +11,7 @@ use crate::i18n::gettext;
 use crate::model::{Action, Loadable, Page, RowContext, SearchFilter};
 use crate::theme::{self, Icon};
 
+use super::buttons;
 use super::widgets::{self, TrackRow};
 
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
@@ -103,7 +104,7 @@ fn recent(app: &mut App, ui: &mut egui::Ui) {
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing = vec2(8.0, 8.0);
         for query in &history {
-            let (response, forget) = theme::soft_button_dismiss(ui, &palette, Icon::Clock, query);
+            let (response, forget) = buttons::chip_dismissible(ui, &palette, Icon::Clock, query);
             if forget {
                 app.actions.push(Action::ForgetSearch(query.clone()));
             } else if response.clicked() {

@@ -8,7 +8,7 @@ use crate::i18n::{gettext, pgettext};
 use crate::model::{Action, Loadable};
 use crate::theme::{self, Icon};
 
-use super::buttons::IconButton;
+use super::buttons::{self, IconButton};
 use super::widgets;
 
 const LINE_SIZE: f32 = 19.0;
@@ -86,11 +86,11 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
                 let loaded = matches!(&app.lyrics, Loadable::Loaded(Some(_)));
                 if loaded
                     && !app.lyrics_following
-                    && theme::pill_button(
+                    && buttons::secondary(
                         ui,
                         &palette,
+                        None,
                         &pgettext(app.locale, "lyrics", "Follow"),
-                        false,
                     )
                     .clicked()
                 {
@@ -138,7 +138,13 @@ fn contents(app: &mut App, ui: &mut egui::Ui) {
             ui.add_space(8.0);
             theme::text(ui, message, theme::regular(13.0), palette.secondary);
             ui.add_space(8.0);
-            if theme::pill_button(ui, &palette, &gettext(app.locale, "Try again"), false).clicked()
+            if buttons::secondary(
+                ui,
+                &palette,
+                Some(Icon::Refresh),
+                &gettext(app.locale, "Try again"),
+            )
+            .clicked()
             {
                 app.request_lyrics();
             }
@@ -393,7 +399,14 @@ fn with_cover(app: &mut App, ui: &mut egui::Ui, rect: Rect, top: f32) {
                     .layout(Layout::top_down(Align::Center)),
             );
             let label = gettext(app.locale, "Try again");
-            if theme::pill_button(&mut retry_ui, &theme::Palette::dark(), &label, false).clicked() {
+            if buttons::secondary(
+                &mut retry_ui,
+                &theme::Palette::dark(),
+                Some(Icon::Refresh),
+                &label,
+            )
+            .clicked()
+            {
                 app.actions.push(Action::RetryLyrics);
             }
             return;
@@ -528,11 +541,11 @@ fn fullscreen_header(app: &mut App, ui: &mut egui::Ui) {
             let loaded = matches!(&app.lyrics, Loadable::Loaded(Some(_)));
             if loaded
                 && !app.lyrics_following
-                && theme::pill_button(
+                && buttons::secondary(
                     ui,
                     &palette,
+                    None,
                     &pgettext(app.locale, "lyrics", "Follow"),
-                    false,
                 )
                 .clicked()
             {
@@ -605,7 +618,13 @@ fn fullscreen_contents(app: &mut App, ui: &mut egui::Ui) {
             ui.add_space(8.0);
             theme::text(ui, message, theme::regular(13.0), palette.text);
             ui.add_space(8.0);
-            if theme::pill_button(ui, &palette, &gettext(app.locale, "Try again"), false).clicked()
+            if buttons::secondary(
+                ui,
+                &palette,
+                Some(Icon::Refresh),
+                &gettext(app.locale, "Try again"),
+            )
+            .clicked()
             {
                 app.actions.push(Action::RetryLyrics);
             }

@@ -9,7 +9,7 @@ use crate::model::{Action, DiscographyFilter, Loadable, Page, RowContext};
 use crate::theme::{self, Icon};
 use crate::util;
 
-use super::buttons::{IconButton, IconSize};
+use super::buttons::{self, IconButton, IconSize};
 use super::collection::{Hero, hero, hero_images};
 use super::widgets::{self, TrackRow};
 
@@ -67,7 +67,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, id: &str) {
                     }
                     if items.len() > 5 {
                         ui.add_space(6.0);
-                        if theme::soft_button(
+                        if buttons::secondary(
                             ui,
                             &palette,
                             None,
@@ -76,7 +76,6 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, id: &str) {
                             } else {
                                 gettext(locale, "See more")
                             },
-                            false,
                         )
                         .clicked()
                         {
@@ -179,14 +178,8 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, id: &str) {
                         theme::subtle(ui, &palette, &gettext(locale, "Nothing in this category."));
                     } else if list.can_load_more() {
                         ui.add_space(8.0);
-                        if theme::soft_button(
-                            ui,
-                            &palette,
-                            None,
-                            &gettext(locale, "Load more"),
-                            false,
-                        )
-                        .clicked()
+                        if buttons::secondary(ui, &palette, None, &gettext(locale, "Load more"))
+                            .clicked()
                         {
                             app.actions
                                 .push(Action::LoadMoreArtistAlbums(id.to_string()));
@@ -352,15 +345,15 @@ fn artist_actions(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
                 offset_index: None,
             });
         }
-        if theme::pill_button(
+        if buttons::secondary(
             ui,
             &palette,
+            None,
             &if following {
                 pgettext(locale, "artist", "Following")
             } else {
                 pgettext(locale, "artist", "Follow")
             },
-            false,
         )
         .clicked()
         {

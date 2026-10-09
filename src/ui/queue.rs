@@ -10,7 +10,7 @@ use crate::i18n::{Locale, gettext};
 use crate::model::{Action, DragTrack, Loadable, QueueTab, RowContext};
 use crate::theme::{self, Icon};
 
-use super::buttons::IconButton;
+use super::buttons::{self, IconButton};
 use super::widgets::{self, TrackRow};
 
 pub fn page(app: &mut App, ui: &mut egui::Ui) {
@@ -453,12 +453,11 @@ fn recents_contents(app: &mut App, ui: &mut egui::Ui) {
                 ui.add_space(8.0);
                 theme::icon(ui, Icon::CircleAlert, 16.0, palette.danger);
                 theme::text(ui, &err, theme::regular(13.0), palette.secondary);
-                if theme::soft_button(
+                if buttons::secondary(
                     ui,
                     &palette,
                     Some(Icon::Refresh),
                     &gettext(app.locale, "Retry"),
-                    false,
                 )
                 .clicked()
                 {
@@ -486,12 +485,11 @@ fn recents_contents(app: &mut App, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             theme::icon(ui, Icon::CircleAlert, 14.0, palette.danger);
             theme::text(ui, &err, theme::regular(12.0), palette.secondary);
-            if theme::soft_button(
+            if buttons::secondary(
                 ui,
                 &palette,
                 Some(Icon::Refresh),
                 &gettext(app.locale, "Retry"),
-                false,
             )
             .clicked()
             {
@@ -544,12 +542,11 @@ fn recents_contents(app: &mut App, ui: &mut egui::Ui) {
         if can_load && cursor - clip.bottom() < 900.0 {
             app.actions.push(Action::LoadMoreRecents);
         }
-        if theme::soft_button(
+        if buttons::secondary(
             ui,
             &palette,
             Some(Icon::Refresh),
             &gettext(app.locale, "Load more"),
-            false,
         )
         .clicked()
         {

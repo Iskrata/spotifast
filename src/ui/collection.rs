@@ -15,7 +15,7 @@ use crate::model::{
 use crate::theme::{self, Icon, Palette};
 use crate::util;
 
-use super::buttons::{IconButton, IconSize};
+use super::buttons::{self, IconButton, IconSize};
 use super::widgets::{self, TrackRow};
 
 pub(super) struct Hero<'a> {
@@ -1032,7 +1032,7 @@ fn placeholder_row(
     retry: bool,
 ) -> bool {
     let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
-    let width = (rect.width() - if retry { 96.0 } else { 24.0 }).max(1.0);
+    let width = (rect.width() - if retry { 120.0 } else { 24.0 }).max(1.0);
     let text = crate::bidi::layout(
         ui.painter(),
         label,
@@ -1047,16 +1047,21 @@ fn placeholder_row(
         text,
         palette.secondary,
     );
-    retry
-        && ui
-            .put(
-                Rect::from_center_size(
-                    pos2(rect.right() - 40.0, rect.center().y),
-                    vec2(64.0, 28.0),
-                ),
-                egui::Button::new(gettext(locale, "Retry").as_ref()),
-            )
-            .clicked()
+    if !retry {
+        return false;
+    }
+    let mut cell = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(rect.shrink2(vec2(8.0, 0.0)))
+            .layout(Layout::right_to_left(Align::Center)),
+    );
+    buttons::secondary(
+        &mut cell,
+        palette,
+        Some(Icon::Refresh),
+        &gettext(locale, "Retry"),
+    )
+    .clicked()
 }
 
 fn absolute_row_index(row_offset: u32, local_index: usize) -> usize {

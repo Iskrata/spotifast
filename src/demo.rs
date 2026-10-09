@@ -6895,12 +6895,14 @@ mod tests {
     #[cfg(feature = "demo")]
     #[test]
     fn full_screen_lyrics_keep_the_cover_centred_until_there_are_words() {
-        let centred = |shapes: &[egui::epaint::ClippedShape], wanted: &str| {
+        // `shift` is how far right of the middle the text sits: a button's
+        // label follows its icon, and the button as a whole is centred.
+        let centred = |shapes: &[egui::epaint::ClippedShape], wanted: &str, shift: f32| {
             shapes.iter().any(|shape| match &shape.shape {
                 // A centred label anchors at its middle, so measure what is
                 // drawn rather than where it starts.
                 egui::Shape::Text(text) if text.galley.job.text == wanted => {
-                    (shape.shape.visual_bounding_rect().center().x - 800.0).abs() < 3.0
+                    (shape.shape.visual_bounding_rect().center().x - 800.0 - shift).abs() < 3.0
                 }
                 _ => false,
             })
@@ -6931,9 +6933,10 @@ mod tests {
                 output.textures_delta.clear();
                 shapes = output.shapes;
             }
-            assert!(centred(&shapes, "Rosewood"), "the title stays centred");
+            assert!(centred(&shapes, "Rosewood", 0.0), "the title stays centred");
             if let Some(below) = below {
-                assert!(centred(&shapes, below), "{below} under the cover");
+                // Half of the refresh icon and the gap before the label.
+                assert!(centred(&shapes, below, 11.0), "{below} under the cover");
             }
             app.backend.shutdown();
         }

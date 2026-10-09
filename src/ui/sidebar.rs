@@ -773,18 +773,32 @@ fn nav_row(
     label: &str,
     active: bool,
 ) -> egui::Response {
-    let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), 40.0), Sense::click());
+    // As tall as a large icon button, with its 24-point icon in line with
+    // the Library heading below, and highlighted like a Library row.
+    const INSET: f32 = 10.0;
+    const ICON: f32 = tokens::icon::LARGE;
+    let corner = CornerRadius::same(tokens::radius::ROW);
+    let (rect, response) = ui.allocate_exact_size(
+        vec2(ui.available_width(), tokens::hit::LARGE),
+        Sense::click(),
+    );
     if ui.is_rect_visible(rect) {
+        if response.hovered() {
+            ui.painter()
+                .rect_filled(rect, corner, palette.surface_hover.gamma_multiply(0.6));
+        }
         let color = if active || response.hovered() {
             palette.text
         } else {
             palette.secondary
         };
-        let icon_rect =
-            Rect::from_center_size(pos2(rect.left() + 22.0, rect.center().y), Vec2::splat(22.0));
-        icon.image(color, 22.0).paint_at(ui, icon_rect);
+        let icon_rect = Rect::from_min_size(
+            pos2(rect.left() + INSET, rect.center().y - ICON / 2.0),
+            Vec2::splat(ICON),
+        );
+        icon.image(color, ICON).paint_at(ui, icon_rect);
         ui.painter().text(
-            pos2(rect.left() + 46.0, rect.center().y),
+            pos2(icon_rect.right() + 12.0, rect.center().y),
             egui::Align2::LEFT_CENTER,
             label,
             theme::bold(15.0),
@@ -794,7 +808,7 @@ fn nav_row(
     response.widget_info(|| {
         egui::WidgetInfo::selected(egui::WidgetType::Button, ui.is_enabled(), active, label)
     });
-    theme::focus_ring(ui, &response);
+    buttons::focus_ring(ui, &response, corner);
     response
 }
 

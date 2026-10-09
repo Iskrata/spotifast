@@ -31,28 +31,18 @@ pub fn on(ctx: &Context) -> bool {
 }
 
 /// The frame of a floating panel filled with `solid` when glass is off:
-/// the sidebar, a side panel or the player bar. As glass, it is `solid`'s
-/// colour at the panel glass's opacity, rounded and inset by the gutter.
+/// the sidebar, a side panel or the player bar. As glass, it is filled
+/// with the panel glass, rounded and inset by the gutter; a tint the solid
+/// fill carried (the player bar's) gives way to the art showing through.
 /// Its shadow and edges come from [`Floating`].
 pub fn panel_frame(ctx: &Context, palette: &Palette, solid: Color32) -> Frame {
     if !on(ctx) {
         return Frame::new().fill(solid);
     }
     Frame::new()
-        .fill(tinted(palette.glass_panel(), solid, palette.panel))
+        .fill(palette.glass_panel())
         .corner_radius(CornerRadius::same(tokens::radius::FLOATING))
         .outer_margin(Margin::same(tokens::glass::GUTTER))
-}
-
-/// `glass` carrying `solid` in place of the panel colour it was made from,
-/// so a tint the solid fill had (the player bar's) shows in the glass.
-fn tinted(glass: Color32, solid: Color32, panel: Color32) -> Color32 {
-    if solid == panel {
-        return glass;
-    }
-    let [r, g, b, _] = solid.to_srgba_unmultiplied();
-    let [.., a] = glass.to_srgba_unmultiplied();
-    Color32::from_rgba_unmultiplied(r, g, b, a)
 }
 
 /// The panel fill as it looks over the plain window, made opaque, for
@@ -196,16 +186,6 @@ mod tests {
     }
 
     #[test]
-    fn a_tinted_panel_keeps_its_tint_as_glass() {
-        let palette = Palette::dark();
-        let tint = Color32::from_rgb(60, 30, 90);
-        let glass = tinted(palette.glass_panel(), tint, palette.panel);
-        let [r, g, b, a] = glass.to_srgba_unmultiplied();
-        assert!(r.abs_diff(60) <= 1 && g.abs_diff(30) <= 1 && b.abs_diff(90) <= 1);
-        assert_eq!(a, palette.glass_panel().a());
-    }
-
-    #[test]
     fn the_edge_is_lit_along_the_top_and_faint_below() {
         let palette = Palette::dark();
         let rect = Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(200.0, 400.0));
@@ -220,5 +200,71 @@ mod tests {
             palette.glass_highlight()
         );
         assert_eq!(color(rect, egui::pos2(0.0, 300.0)), palette.glass_border());
+    }
+
+    /// WCAG's relative luminance of an opaque colour.
+    fn luminance(color: Color32) -> f32 {
+        let linear = |channel: u8| {
+            let c = f32::from(channel) / 255.0;
+            if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        0.2126 * linear(color.r()) + 0.7152 * linear(color.g()) + 0.0722 * linear(color.b())
+    }
+
+    /// WCAG's contrast ratio between two opaque colours.
+    fn contrast(a: Color32, b: Color32) -> f32 {
+        let (a, b) = (luminance(a), luminance(b));
+        (a.max(b) + 0.05) / (a.min(b) + 0.05)
+    }
+
+    /// What can lie behind glass: the plain window, and the window under
+    /// each colour an orb can glow in, at the most an orb covers it.
+    fn backdrops(palette: &Palette) -> Vec<Color32> {
+        let orbs = super::super::art_background::orb_colour_range(palette.dark);
+        std::iter::once(palette.window)
+            .chain(orbs.into_iter().map(|orb| {
+                over(
+                    orb.gamma_multiply(super::super::art_background::MAX_OPACITY),
+                    palette.window,
+                )
+            }))
+            .collect()
+    }
+
+    /// Every glass surface's fill in `palette`, by name: the floating
+    /// panels and the search field resting, and popovers and the focused
+    /// search field.
+    fn surfaces(palette: &Palette) -> [(&'static str, Color32); 2] {
+        [
+            ("panel", palette.glass_panel()),
+            ("popover", palette.glass_popover()),
+        ]
+    }
+
+    /// Body text, in the text and secondary colours, reads at a WCAG
+    /// contrast of at least 4.5 on every glass surface over the plain
+    /// window and over every colour the orbs can glow in, in both themes.
+    #[test]
+    fn body_text_stays_readable_on_glass_over_any_orb() {
+        for palette in [Palette::dark(), Palette::light()] {
+            let backdrops = backdrops(&palette);
+            for (surface, fill) in surfaces(&palette) {
+                for (name, text) in [("text", palette.text), ("secondary", palette.secondary)] {
+                    let least = backdrops
+                        .iter()
+                        .map(|&backdrop| contrast(text, over(fill, backdrop)))
+                        .fold(f32::INFINITY, f32::min);
+                    assert!(
+                        least >= 4.5,
+                        "{name} on {surface} glass, dark {}: {least:.2}",
+                        palette.dark
+                    );
+                }
+            }
+        }
     }
 }

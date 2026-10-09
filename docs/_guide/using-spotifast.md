@@ -363,7 +363,10 @@ paused. It is on by default.
 While it is on, the sidebar, the side panels, the player bar and the search
 field float over the orbs as tinted glass, with a little space between them so
 the colours glow through and around them. Menus, popovers and dialogs are
-glass too, nearly opaque. Turning the background off makes them solid again.
+glass too, nearly opaque. The glass is opaque enough that text on it stays
+readable over the brightest colours the background can show, and the player
+bar takes its colour from the art behind it rather than a tint of its own.
+Turning the background off makes them solid again.
 
 **Reduce motion** in **Settings > Appearance** shows panels, menus, pages
 and the player bar's song at once instead of easing them in, and holds the

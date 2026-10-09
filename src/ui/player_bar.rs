@@ -48,8 +48,13 @@ pub(crate) fn end_tint_session(ctx: &egui::Context) {
 
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let palette = app.palette;
-    let fill = eased_fill(ui.ctx(), palette.panel, app.now_playing_tint());
     let glass = super::glass::on(ui.ctx());
+    // As glass, the art itself colours the bar.
+    let fill = if glass {
+        palette.panel
+    } else {
+        eased_fill(ui.ctx(), palette.panel, app.now_playing_tint())
+    };
     let floating = super::glass::Floating::begin(ui);
     let bar = egui::Panel::bottom("player-bar")
         .exact_size(theme::PLAYER_BAR_HEIGHT)

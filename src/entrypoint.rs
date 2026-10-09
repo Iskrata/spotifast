@@ -560,11 +560,19 @@ pub(crate) fn run() -> eframe::Result<()> {
                     mini,
                     demo_inner,
                 );
-                if demo {
+                let mut options = if demo {
                     demo_native_options(options, demo_storage.clone())
                 } else {
                     options
+                };
+                // A screenshot run neither takes focus nor shows on screen, so
+                // captures can run while someone works at the same desktop.
+                if shot.is_some() {
+                    options.viewport = std::mem::take(&mut options.viewport)
+                        .with_active(false)
+                        .with_position(SHOT_POSITION);
                 }
+                options
             };
             #[cfg(not(feature = "demo"))]
             let options = native_options(false, mini, None);
@@ -837,6 +845,10 @@ fn profile_options(mut options: eframe::NativeOptions) -> eframe::NativeOptions 
     }
     options
 }
+
+/// Where a `--demo-shot` window opens: far outside any display.
+#[cfg(feature = "demo")]
+const SHOT_POSITION: [f32; 2] = [-30000.0, -30000.0];
 
 #[cfg(any(test, feature = "demo"))]
 fn demo_native_options(

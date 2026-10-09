@@ -9,6 +9,9 @@ use crate::i18n::{Locale, gettext, ngettext, pgettext};
 use crate::model::{Action, Dialog};
 use crate::theme;
 
+/// The dialogs' layer, which fades and grows in as one opens.
+pub(super) const DIALOG_ID: &str = "dialog";
+
 pub fn show(app: &mut App, ctx: &egui::Context) {
     let Some(dialog) = app.dialog.clone() else {
         return;
@@ -26,7 +29,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
             spread: 0,
             color: palette.shadow,
         });
-    let response = egui::Modal::new(egui::Id::new("dialog"))
+    let response = egui::Modal::new(egui::Id::new(DIALOG_ID))
         .frame(frame)
         .backdrop_color(egui::Color32::from_black_alpha(if palette.dark {
             150

@@ -100,7 +100,11 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
 /// Fades menus, popovers and dialogs in and out once everything has drawn.
 /// The Windows caption buttons are always there and stay as they are.
 fn fade_popovers(ctx: &Context) {
-    popovers::fade(ctx, &[Id::new(WINDOW_CONTROLS_ID)]);
+    popovers::fade(
+        ctx,
+        &[Id::new(WINDOW_CONTROLS_ID)],
+        &[Id::new(dialogs::DIALOG_ID)],
+    );
 }
 
 const WINDOW_CONTROLS_ID: &str = "windows-window-controls";

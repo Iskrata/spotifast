@@ -11,7 +11,8 @@
 //! Cover art is downloaded like in the demo, so the capture waits until the
 //! artwork has loaded (or `--settle-ms` passes). With `--frames N` it writes
 //! N numbered pictures `--step-ms` apart for inspecting motion; a `--click`
-//! or `--drag` then presses on the first of them.
+//! or `--drag` then presses on the first of them, and `--hover` moves the
+//! pointer there.
 //!
 //! `packaging/render-shots.sh` renders a list of states in one go.
 
@@ -61,6 +62,11 @@ struct Args {
     /// Press at the first point and hold at the second, as `--demo-drag`.
     #[arg(long, value_name = "X,Y:X,Y", value_parser = script::parse_drag)]
     drag: Option<[egui::Pos2; 2]>,
+
+    /// Move the pointer onto `X,Y` on the first picture, without pressing,
+    /// for watching hover feedback arrive.
+    #[arg(long, value_name = "X,Y", value_parser = script::parse_point, conflicts_with_all = ["click", "drag"])]
+    hover: Option<egui::Pos2>,
 
     /// The PNG to write. With `--frames` above 1, `-000`, `-001`, ... go
     /// before the extension.
@@ -233,6 +239,12 @@ fn render(args: &Args, dirs: spotifast::paths::AppDirs) -> Result<()> {
         return save(&mut harness, &args.out);
     }
     for index in 0..args.frames {
+        if let Some(at) = args.hover.filter(|_| index == 0) {
+            harness
+                .input_mut()
+                .events
+                .push(egui::Event::PointerMoved(at));
+        }
         frame(&mut harness, pointer.as_mut(), step);
         save(&mut harness, &numbered(&args.out, index))?;
     }

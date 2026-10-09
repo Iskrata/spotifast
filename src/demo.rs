@@ -1555,11 +1555,31 @@ mod tests {
     /// than its slow polling.
     #[test]
     fn a_settled_window_asks_for_no_frames() {
-        let (ctx, mut app) = accessible_app("idle-repaint");
+        settles_after_transitions("idle-repaint", false);
+    }
+
+    /// The same with the panels floating as glass over the album art,
+    /// whose shadows and edges slide with them and then rest too.
+    #[test]
+    fn a_settled_glass_window_asks_for_no_frames() {
+        settles_after_transitions("idle-repaint-glass", true);
+    }
+
+    fn settles_after_transitions(name: &str, glass: bool) {
+        let (ctx, mut app) = accessible_app(name);
         if let Some(remote) = app.remote.as_mut() {
             remote.state.is_playing = false;
         }
-        app.settings.art_background = false;
+        app.settings.art_background = glass;
+        if let Some(url) = app
+            .now_playing()
+            .and_then(|now| now.art_small.or(now.art_url))
+        {
+            app.art_palettes.insert(
+                url,
+                [[196, 112, 72], [152, 72, 96], [72, 64, 118], [44, 92, 112]],
+            );
+        }
         let mut time = 0.0;
         let mut frame = |app: &mut App, events: Vec<egui::Event>| {
             time += 1.0 / 60.0;
@@ -1581,13 +1601,21 @@ mod tests {
         };
         let settle = |frame: &mut dyn FnMut(&mut App, Vec<egui::Event>) -> std::time::Duration,
                       app: &mut App| {
+            // Until a frame asks for none soon, for at most long enough for
+            // the art's colours to fade in. Artwork arriving from the demo's
+            // cache wakes a frame now and then, so the last of a fixed run
+            // of frames could catch one.
             let mut delay = std::time::Duration::ZERO;
-            for _ in 0..60 {
+            for _ in 0..300 {
                 delay = frame(app, Vec::new());
+                if delay >= std::time::Duration::from_secs(1) {
+                    break;
+                }
             }
             delay
         };
         assert!(settle(&mut frame, &mut app) >= std::time::Duration::from_secs(1));
+        assert_eq!(crate::ui::glass::on(&ctx), glass);
         // Each transition runs and then lets the window rest again. (A
         // song still loading shows a spinner, which moves on purpose.)
         app.open(Page::Settings);

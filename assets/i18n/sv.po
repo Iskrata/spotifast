@@ -3300,3 +3300,12 @@ msgstr "Minska rörelse"
 msgid ""
 "Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
 msgstr "Visa paneler, menyer och sidor direkt i stället för att tona in dem. Följer systemets hjälpmedelsinställning tills du ändrar den."
+
+#: src/ui/settings.rs
+msgid "Reduce transparency"
+msgstr "Minska genomskinlighet"
+
+#: src/ui/settings.rs
+msgid ""
+"Draw the panels, the player bar and menus solid instead of as glass over the album art background. Follows your system's accessibility setting until you change it."
+msgstr "Visa paneler, spelarfältet och menyer heltäckande i stället för som glas över bakgrunden från skivomslaget. Följer systemets hjälpmedelsinställning tills du ändrar den."

@@ -3339,3 +3339,12 @@ msgstr "Ogranicz ruch"
 msgid ""
 "Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
 msgstr "Pokazuj panele, menu i strony od razu zamiast płynnie. Do czasu zmiany działa zgodnie z ustawieniem dostępności systemu."
+
+#: src/ui/settings.rs
+msgid "Reduce transparency"
+msgstr "Ogranicz przezroczystość"
+
+#: src/ui/settings.rs
+msgid ""
+"Draw the panels, the player bar and menus solid instead of as glass over the album art background. Follows your system's accessibility setting until you change it."
+msgstr "Rysuj panele, pasek odtwarzacza i menu jako nieprzezroczyste zamiast jako szkło nad tłem z okładki albumu. Do czasu zmiany działa zgodnie z ustawieniem dostępności systemu."

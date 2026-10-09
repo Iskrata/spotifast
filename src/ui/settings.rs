@@ -795,6 +795,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let accent_from_art = gettext(locale, "Colour from album art");
     let art_background = gettext(locale, "Moving album art background");
     let reduce_motion = gettext(locale, "Reduce motion");
+    let reduce_transparency = gettext(locale, "Reduce transparency");
     let sidebar_compact = gettext(locale, "Compact library sidebar");
     let tracklist_compact = gettext(locale, "Compact track list");
     let middle_click = gettext(locale, "Middle-click autoscroll");
@@ -889,6 +890,13 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             gettext(
                 locale,
                 "Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it.",
+            ),
+        ),
+        RowText::new(
+            reduce_transparency.clone(),
+            gettext(
+                locale,
+                "Draw the panels, the player bar and menus solid instead of as glass over the album art background. Follows your system's accessibility setting until you change it.",
             ),
         ),
     ];
@@ -1042,6 +1050,20 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                     let mut reduce = app.reduce_motion();
                     if widgets::switch(ui, &palette, &reduce_motion, &mut reduce).changed() {
                         app.settings.reduce_motion_choice = Some(reduce);
+                        changed = true;
+                    }
+                },
+            );
+            filtered_row(
+                ui,
+                &palette,
+                &needle,
+                &appearance,
+                &appearance_rows[11],
+                |ui| {
+                    let mut solid = app.reduce_transparency();
+                    if widgets::switch(ui, &palette, &reduce_transparency, &mut solid).changed() {
+                        app.settings.reduce_transparency_choice = Some(solid);
                         changed = true;
                     }
                 },

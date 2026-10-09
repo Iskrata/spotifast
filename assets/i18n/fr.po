@@ -3340,3 +3340,12 @@ msgstr "Réduire les animations"
 msgid ""
 "Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
 msgstr "Affiche les panneaux, menus et pages immédiatement au lieu de les faire apparaître en douceur. Suit le réglage d'accessibilité de votre système jusqu'à ce que vous le changiez."
+
+#: src/ui/settings.rs
+msgid "Reduce transparency"
+msgstr "Réduire la transparence"
+
+#: src/ui/settings.rs
+msgid ""
+"Draw the panels, the player bar and menus solid instead of as glass over the album art background. Follows your system's accessibility setting until you change it."
+msgstr "Affiche les panneaux, la barre de lecture et les menus opaques plutôt qu'en verre sur l'arrière-plan de la pochette. Suit le réglage d'accessibilité de votre système jusqu'à ce que vous le changiez."

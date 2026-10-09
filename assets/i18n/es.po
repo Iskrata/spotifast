@@ -3320,3 +3320,12 @@ msgstr "Reducir movimiento"
 msgid ""
 "Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
 msgstr "Muestra los paneles, menús y páginas al instante en lugar de hacerlos aparecer poco a poco. Sigue el ajuste de accesibilidad del sistema hasta que lo cambies."
+
+#: src/ui/settings.rs
+msgid "Reduce transparency"
+msgstr "Reducir transparencia"
+
+#: src/ui/settings.rs
+msgid ""
+"Draw the panels, the player bar and menus solid instead of as glass over the album art background. Follows your system's accessibility setting until you change it."
+msgstr "Dibuja los paneles, la barra del reproductor y los menús opacos en lugar de como cristal sobre el fondo de la portada. Sigue el ajuste de accesibilidad del sistema hasta que lo cambies."

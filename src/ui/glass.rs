@@ -6,7 +6,8 @@
 //!
 //! The glass is a tint, not a blur: egui draws no backdrop filter. Its
 //! opacity keeps text readable over the brightest orbs (see the tests).
-//! With the art background off, every surface is solid as before.
+//! With the art background off, or Reduce transparency on, every surface
+//! is solid as before.
 
 use egui::epaint::{PathShape, PathStroke, Shadow};
 use egui::{Color32, Context, CornerRadius, Frame, Id, Margin, Rect, Shape, Stroke, StrokeKind};
@@ -28,6 +29,19 @@ pub fn set(ctx: &Context, on: bool) {
 /// Whether the surfaces are glass this frame.
 pub fn on(ctx: &Context) -> bool {
     ctx.data(|data| data.get_temp(on_id()).unwrap_or(false))
+}
+
+/// The macOS accessibility preference to reduce transparency, which
+/// Spotifast follows until the person chooses in Settings.
+#[cfg(target_os = "macos")]
+pub fn system_prefers_solid() -> bool {
+    objc2_app_kit::NSWorkspace::sharedWorkspace().accessibilityDisplayShouldReduceTransparency()
+}
+
+/// Other desktops: glass stays on until the person turns it off.
+#[cfg(not(target_os = "macos"))]
+pub fn system_prefers_solid() -> bool {
+    false
 }
 
 /// The frame of a floating panel filled with `solid` when glass is off:

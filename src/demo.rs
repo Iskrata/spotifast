@@ -913,6 +913,9 @@ fn apply_surfaces(app: &mut App, page: Option<&str>, show: Option<&str>) {
                 app.lyrics_uri = app.now_playing().map(|now| now.uri);
                 app.lyrics = Loadable::Loaded(Some(sample_lyrics()));
             }
+            // The panels solid over the art background, as Reduce
+            // transparency draws them.
+            "reduce-transparency" => app.settings.reduce_transparency_choice = Some(true),
             "art-background" => {
                 app.settings.art_background = true;
                 // Fixed colours, so the shot does not wait on the artwork.
@@ -3342,6 +3345,32 @@ mod tests {
         accessible_frame(&ctx, &mut app, vec![]);
         app.settings.art_background = false;
         assert_eq!(app.art_background_palette(None, None), None);
+        app.backend.shutdown();
+    }
+
+    /// The panels are glass only over the moving art background, and
+    /// Reduce transparency makes them solid while the background stays.
+    #[test]
+    fn panels_are_glass_over_the_art_background_unless_reduced() {
+        let (ctx, mut app) = accessible_app("glass");
+        accessible_frame(&ctx, &mut app, vec![]);
+        assert!(crate::ui::glass::on(&ctx), "glass by default");
+        app.settings.reduce_transparency_choice = Some(true);
+        accessible_frame(&ctx, &mut app, vec![]);
+        assert!(
+            !crate::ui::glass::on(&ctx),
+            "solid with Reduce transparency"
+        );
+        assert!(app.settings.art_background, "the background stays");
+        app.settings.reduce_transparency_choice = Some(false);
+        app.settings.art_background = false;
+        accessible_frame(&ctx, &mut app, vec![]);
+        assert!(!crate::ui::glass::on(&ctx), "solid without the background");
+        app.system_reduce_transparency = true;
+        app.settings.art_background = true;
+        assert!(app.glass(), "a choice outranks the system");
+        app.settings.reduce_transparency_choice = None;
+        assert!(!app.glass(), "the system's preference until chosen");
         app.backend.shutdown();
     }
 

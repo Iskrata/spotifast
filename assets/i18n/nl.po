@@ -3319,3 +3319,12 @@ msgstr "Beweging verminderen"
 msgid ""
 "Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
 msgstr "Toont panelen, menu's en pagina's meteen in plaats van ze geleidelijk te laten verschijnen. Volgt de toegankelijkheidsinstelling van je systeem tot je dit wijzigt."
+
+#: src/ui/settings.rs
+msgid "Reduce transparency"
+msgstr "Transparantie verminderen"
+
+#: src/ui/settings.rs
+msgid ""
+"Draw the panels, the player bar and menus solid instead of as glass over the album art background. Follows your system's accessibility setting until you change it."
+msgstr "Toont panelen, de spelerbalk en menu's ondoorzichtig in plaats van als glas boven de achtergrond van de albumhoes. Volgt de toegankelijkheidsinstelling van je systeem tot je dit wijzigt."

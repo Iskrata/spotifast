@@ -366,7 +366,11 @@ the colours glow through and around them. Menus, popovers and dialogs are
 glass too, nearly opaque. The glass is opaque enough that text on it stays
 readable over the brightest colours the background can show, and the player
 bar takes its colour from the art behind it rather than a tint of its own.
-Turning the background off makes them solid again.
+Turning the background off makes them solid again, and so does
+**Reduce transparency** in **Settings > Appearance**, which keeps the moving
+background but draws everything over it solid. Until you change it, it
+follows your system: on macOS, the Reduce transparency setting under
+Accessibility > Display when Spotifast starts. Elsewhere it starts off.
 
 **Reduce motion** in **Settings > Appearance** shows panels, menus, pages
 and the player bar's song at once instead of easing them in, and holds the

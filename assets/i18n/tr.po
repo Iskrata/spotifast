@@ -3306,3 +3306,12 @@ msgstr "Hareketi azalt"
 msgid ""
 "Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
 msgstr "Panelleri, menüleri ve sayfaları yumuşak geçiş yerine hemen gösterir. Siz değiştirene kadar sistemin erişilebilirlik ayarını izler."
+
+#: src/ui/settings.rs
+msgid "Reduce transparency"
+msgstr "Saydamlığı azalt"
+
+#: src/ui/settings.rs
+msgid ""
+"Draw the panels, the player bar and menus solid instead of as glass over the album art background. Follows your system's accessibility setting until you change it."
+msgstr "Panelleri, çalar çubuğunu ve menüleri albüm kapağı arka planının üzerinde cam yerine opak çizer. Siz değiştirene kadar sistemin erişilebilirlik ayarını izler."

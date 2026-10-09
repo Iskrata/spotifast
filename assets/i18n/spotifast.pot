@@ -3185,3 +3185,12 @@ msgstr ""
 msgid ""
 "Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
 msgstr ""
+
+#: src/ui/settings.rs
+msgid "Reduce transparency"
+msgstr ""
+
+#: src/ui/settings.rs
+msgid ""
+"Draw the panels, the player bar and menus solid instead of as glass over the album art background. Follows your system's accessibility setting until you change it."
+msgstr ""

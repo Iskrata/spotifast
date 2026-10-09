@@ -275,6 +275,15 @@ pub struct Settings {
         skip_serializing_if = "Option::is_none"
     )]
     pub reduce_motion_choice: Option<bool>,
+    /// Reduce transparency, once the person has chosen. Until then, and in
+    /// older files without it, the glass follows the system's
+    /// accessibility preference: see [`Settings::reduce_transparency`].
+    #[serde(
+        default,
+        rename = "reduce_transparency",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub reduce_transparency_choice: Option<bool>,
     /// A spectrum or waveform of the playing song behind the player bar.
     pub player_bar_vis: PlayerBarVis,
     /// Last local volume, 0..=65535.
@@ -448,6 +457,7 @@ impl Default for Settings {
             accent_from_art: true,
             art_background: true,
             reduce_motion_choice: None,
+            reduce_transparency_choice: None,
             player_bar_vis: PlayerBarVis::Off,
             volume: (u16::MAX as u32 * 70 / 100) as u16,
             sidebar_visible: true,
@@ -577,6 +587,12 @@ impl Settings {
     /// system's preference.
     pub fn reduce_motion(&self, system: bool) -> bool {
         self.reduce_motion_choice.unwrap_or(system)
+    }
+
+    /// Whether the panels are solid instead of glass: the person's
+    /// choice, or else the system's preference.
+    pub fn reduce_transparency(&self, system: bool) -> bool {
+        self.reduce_transparency_choice.unwrap_or(system)
     }
 
     pub fn library_pins(&self) -> Vec<String> {
@@ -1103,6 +1119,32 @@ mod tests {
         assert!(older.art_background);
         let off: Settings = serde_json::from_str(r#"{"art_background":false}"#).unwrap();
         assert!(!off.art_background);
+    }
+
+    #[test]
+    fn reduce_transparency_follows_the_system_until_chosen() {
+        let older: Settings = serde_json::from_str("{}").unwrap();
+        assert_eq!(older.reduce_transparency_choice, None);
+        assert!(older.reduce_transparency(true));
+        assert!(!older.reduce_transparency(false));
+        let written = serde_json::to_value(&older).unwrap();
+        assert!(
+            written.get("reduce_transparency").is_none(),
+            "nothing is written until the person chooses"
+        );
+
+        let chosen: Settings = serde_json::from_str(r#"{"reduce_transparency":false}"#).unwrap();
+        assert!(
+            !chosen.reduce_transparency(true),
+            "a choice outranks the system"
+        );
+        let on = Settings {
+            reduce_transparency_choice: Some(true),
+            ..Settings::default()
+        };
+        let written = serde_json::to_value(&on).unwrap();
+        assert_eq!(written["reduce_transparency"], serde_json::json!(true));
+        assert!(on.reduce_transparency(false));
     }
 
     #[test]

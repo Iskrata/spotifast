@@ -3207,3 +3207,12 @@ msgstr "减弱动态效果"
 msgid ""
 "Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
 msgstr "立即显示面板、菜单和页面，不使用渐入效果。在你更改之前，会跟随系统的辅助功能设置。"
+
+#: src/ui/settings.rs
+msgid "Reduce transparency"
+msgstr "降低透明度"
+
+#: src/ui/settings.rs
+msgid ""
+"Draw the panels, the player bar and menus solid instead of as glass over the album art background. Follows your system's accessibility setting until you change it."
+msgstr "将面板、播放栏和菜单绘制为不透明，而不是专辑封面背景上的玻璃效果。在你更改之前，会跟随系统的辅助功能设置。"

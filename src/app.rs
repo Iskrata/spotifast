@@ -206,8 +206,8 @@ pub struct AppOptions {
     /// Demo and isolated tests must not read or migrate real Spotify grants.
     pub restore_sign_in: bool,
     /// Register the MPRIS media-control service and follow the desktop's
-    /// light or dark preference (Linux) and its preference to reduce motion
-    /// (macOS). Demo and tests leave the desktop's preferences alone.
+    /// light or dark preference (Linux) and its preferences to reduce
+    /// motion and transparency (macOS). Demo and tests leave the desktop's preferences alone.
     pub media_controls: bool,
     /// Register the system-tray item (Linux).
     pub tray: bool,
@@ -256,6 +256,9 @@ pub struct App {
     /// The system's preference to reduce motion, read at launch, which
     /// Reduce motion follows until the person chooses.
     pub(crate) system_reduce_motion: bool,
+    /// The system's preference to reduce transparency, read at launch,
+    /// which Reduce transparency follows until the person chooses.
+    pub(crate) system_reduce_transparency: bool,
     /// The artwork the media controls were last given, and the URL it came
     /// from. Finding the file touches the disk and the controls are synced
     /// every frame, so the answer is kept until the artwork changes.
@@ -743,6 +746,8 @@ impl App {
         };
         let system_reduce_motion =
             options.media_controls && crate::ui::motion::system_prefers_reduced();
+        let system_reduce_transparency =
+            options.media_controls && crate::ui::glass::system_prefers_solid();
         #[cfg(target_os = "macos")]
         let media_controls = {
             let mut media_controls = media_controls;
@@ -787,6 +792,7 @@ impl App {
             #[cfg(target_os = "linux")]
             system_appearance,
             system_reduce_motion,
+            system_reduce_transparency,
             media_art: None,
             tray,
             tray_playing: false,
@@ -3656,10 +3662,18 @@ impl App {
         self.settings.reduce_motion(self.system_reduce_motion)
     }
 
+    /// Whether the panels are solid instead of glass: the setting, or the
+    /// system's preference until the person chooses.
+    pub fn reduce_transparency(&self) -> bool {
+        self.settings
+            .reduce_transparency(self.system_reduce_transparency)
+    }
+
     /// Whether the panels float as glass over the album art background:
-    /// only while that background shows.
+    /// only while that background shows, and not with Reduce
+    /// transparency on.
     pub fn glass(&self) -> bool {
-        self.settings.art_background
+        self.settings.art_background && !self.reduce_transparency()
     }
 
     pub fn windows_controls_visible(&self) -> bool {

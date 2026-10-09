@@ -3285,3 +3285,12 @@ msgstr "動きを減らす"
 msgid ""
 "Show panels, menus and pages at once instead of easing them in. Follows your system's accessibility setting until you change it."
 msgstr "パネル、メニュー、ページをアニメーションなしですぐに表示します。変更するまでシステムのアクセシビリティ設定に従います。"
+
+#: src/ui/settings.rs
+msgid "Reduce transparency"
+msgstr "透明度を下げる"
+
+#: src/ui/settings.rs
+msgid ""
+"Draw the panels, the player bar and menus solid instead of as glass over the album art background. Follows your system's accessibility setting until you change it."
+msgstr "パネル、プレイヤーバー、メニューをアルバムアートの背景の上にガラスとしてではなく、不透明に表示します。変更するまでシステムのアクセシビリティ設定に従います。"

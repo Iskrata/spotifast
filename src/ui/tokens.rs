@@ -52,7 +52,8 @@ pub mod hit {
     /// The action row under a page's header; a 24-point icon.
     pub const LARGE: f32 = 40.0;
     /// A disc laid over cover art, such as the player bar's expand
-    /// chevron; a 16-point icon on a backing that keeps it legible.
+    /// chevron and the sidebar artwork's collapse chevron; a 16-point icon
+    /// on a backing that keeps it legible.
     pub const OVERLAY: f32 = 24.0;
 }
 

@@ -713,6 +713,43 @@ impl<'a> PlayDisc<'a> {
     }
 }
 
+/// Where an [`overlay`] control sits over the top-right corner of `art`,
+/// `inset` in from its edges.
+pub fn overlay_rect(art: egui::Rect, inset: f32) -> egui::Rect {
+    egui::Rect::from_min_size(
+        egui::pos2(
+            art.right() - tokens::hit::OVERLAY - inset,
+            art.top() + inset,
+        ),
+        Vec2::splat(tokens::hit::OVERLAY),
+    )
+}
+
+/// A small control laid over cover art in `rect`, such as the expand and
+/// collapse chevrons: a 16-point icon on a 24-point backing that keeps it
+/// legible over any picture, lifting as the pointer arrives.
+pub fn overlay(
+    ui: &mut Ui,
+    palette: &Palette,
+    rect: egui::Rect,
+    id: egui::Id,
+    icon: Icon,
+) -> Response {
+    let response = ui.interact(rect, id, Sense::click());
+    let lift = motion::hover(ui.ctx(), id.with("hover"), response.hovered());
+    let backing = motion::mix(palette.panel, palette.surface_hover, lift);
+    ui.painter().circle_filled(
+        rect.center(),
+        tokens::hit::OVERLAY / 2.0,
+        backing.gamma_multiply(0.9),
+    );
+    icon.image(palette.text, tokens::icon::SMALL).paint_at(
+        ui,
+        egui::Rect::from_center_size(rect.center(), Vec2::splat(tokens::icon::SMALL)),
+    );
+    response
+}
+
 /// The row under a page's header: album, playlist, radio, artist and
 /// podcast. It leads with the large [`PlayDisc`], then large icon buttons
 /// (or Follow, for an artist) and More last, all spaced alike, and keeps

@@ -591,25 +591,15 @@ fn paint_expanded_art(app: &mut App, ui: &mut egui::Ui, rect: Rect) {
         Some(app.backend.art()),
     );
     let art = ui.interact(rect, egui::Id::new("sidebar-art"), Sense::click());
-    let chevron_rect = Rect::from_center_size(
-        pos2(rect.right() - 16.0, rect.top() + 16.0),
-        Vec2::splat(20.0),
-    );
+    let chevron_rect = buttons::overlay_rect(rect, 6.0);
     let over_chevron = ui.rect_contains_pointer(chevron_rect);
     if art.hovered() || over_chevron {
-        let chevron = ui.interact(
+        let chevron = buttons::overlay(
+            ui,
+            &palette,
             chevron_rect,
             egui::Id::new("sidebar-art-collapse"),
-            Sense::click(),
-        );
-        ui.painter().circle_filled(
-            chevron_rect.center(),
-            10.0,
-            palette.panel.gamma_multiply(0.9),
-        );
-        Icon::ChevronDown.image(palette.text, 14.0).paint_at(
-            ui,
-            Rect::from_center_size(chevron_rect.center(), Vec2::splat(14.0)),
+            Icon::ChevronDown,
         );
         if chevron.clicked() {
             app.settings.art_expanded = false;

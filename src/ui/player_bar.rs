@@ -450,13 +450,7 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
     // Hovering the cover offers to dock the art large at the sidebar's
     // bottom, the way Spotify expands it. (#92)
     let art_available = now.art_url.is_some() || now.art_small.is_some();
-    let expand_rect = Rect::from_min_size(
-        pos2(
-            cover_rect.right() - tokens::hit::OVERLAY - 2.0,
-            cover_rect.top() + 2.0,
-        ),
-        Vec2::splat(tokens::hit::OVERLAY),
-    );
+    let expand_rect = super::buttons::overlay_rect(cover_rect, 2.0);
     let offer_expand =
         art_available && !app.settings.art_expanded && super::sidebar_shown(app, ui.ctx());
     let over_expand = offer_expand && ui.rect_contains_pointer(expand_rect);
@@ -464,27 +458,13 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
         open_playing(app, now);
     }
     if offer_expand && (cover_response.hovered() || over_expand) {
-        let expand = ui.interact(
+        let expand = super::buttons::overlay(
+            ui,
+            &palette,
             expand_rect,
             egui::Id::new("now-playing-art-expand"),
-            Sense::click(),
+            Icon::ChevronUp,
         );
-        let backing = if expand.hovered() {
-            palette.surface_hover
-        } else {
-            palette.panel
-        };
-        ui.painter().circle_filled(
-            expand_rect.center(),
-            tokens::hit::OVERLAY / 2.0,
-            backing.gamma_multiply(0.9),
-        );
-        Icon::ChevronUp
-            .image(palette.text, tokens::icon::SMALL)
-            .paint_at(
-                ui,
-                Rect::from_center_size(expand_rect.center(), Vec2::splat(tokens::icon::SMALL)),
-            );
         if expand.clicked() {
             app.settings.art_expanded = true;
             app.actions.push(Action::SettingsChanged);

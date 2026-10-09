@@ -2,7 +2,7 @@
 
 use egui::{Align, Color32, Frame, Layout, Margin, Rect, Sense, UiBuilder, Vec2, pos2, vec2};
 
-use super::tokens;
+use super::{motion, tokens};
 use crate::app::{App, NowPlaying};
 use crate::i18n::gettext;
 use crate::model::{Action, DragTrack, Page};
@@ -415,15 +415,25 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
         return;
     };
 
-    super::widgets::paint_cover(
-        ui,
-        &palette,
-        now.art_small.as_deref().or(now.art_url.as_deref()),
-        cover_rect,
-        tokens::points(tokens::radius::ROW),
-        Icon::Music,
-        Some(app.backend.art()),
-    );
+    // A new song cross-fades in over the one before.
+    let (arrived, before) = song_change(ui.ctx(), now);
+    let paint_art = |ui: &egui::Ui, art: Option<&str>| {
+        super::widgets::paint_cover(
+            ui,
+            &palette,
+            art,
+            cover_rect,
+            tokens::points(tokens::radius::ROW),
+            Icon::Music,
+            Some(app.backend.art()),
+        );
+    };
+    if let Some(before) = &before {
+        paint_art(ui, before.art.as_deref());
+    }
+    let mut art_ui = ui.new_child(UiBuilder::new().max_rect(cover_rect));
+    art_ui.multiply_opacity(arrived);
+    paint_art(&art_ui, now.art_small.as_deref().or(now.art_url.as_deref()));
     let song = app.now_playing_item();
     let drag_sense = if song.is_some() {
         Sense::click_and_drag()
@@ -492,6 +502,10 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
     );
     text_ui.set_clip_rect(text_rect.intersect(ui.clip_rect()));
     text_ui.spacing_mut().item_spacing.y = 2.0;
+    if let Some(before) = &before {
+        paint_words_before(&text_ui, &palette, before, 1.0 - arrived);
+        text_ui.multiply_opacity(arrived);
+    }
     let title_response = theme::link(&mut text_ui, &now.title, theme::medium(14.0), palette.text);
     if title_response.clicked() {
         open_playing(app, now);
@@ -549,6 +563,77 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
         );
         super::widgets::heart_button(&mut heart_ui, app, &now.uri, IconSize::Standard);
     }
+}
+
+/// The song the bar showed before the playing one, while it fades out.
+#[derive(Clone, Debug, PartialEq)]
+struct Shown {
+    uri: String,
+    art: Option<String>,
+    title: String,
+    subtitle: String,
+}
+
+impl Shown {
+    fn of(now: &NowPlaying) -> Self {
+        Self {
+            uri: now.uri.clone(),
+            art: now.art_small.clone().or_else(|| now.art_url.clone()),
+            title: now.title.clone(),
+            subtitle: now.subtitle.clone(),
+        }
+    }
+}
+
+/// How far the playing song has faded in since it took over the bar, over
+/// the content motion duration, and the song before it while that lasts.
+/// The song the bar opens with is simply there.
+fn song_change(ctx: &egui::Context, now: &NowPlaying) -> (f32, Option<Shown>) {
+    let id = egui::Id::new("player-bar-song");
+    let state = ctx.data(|data| data.get_temp::<(Shown, Option<Shown>)>(id));
+    let before = match state {
+        Some((shown, before)) if shown.uri == now.uri => before,
+        Some((shown, _)) => {
+            let before = Some(shown);
+            ctx.data_mut(|data| data.insert_temp(id, (Shown::of(now), before.clone())));
+            before
+        }
+        None => {
+            ctx.data_mut(|data| data.insert_temp(id, (Shown::of(now), None::<Shown>)));
+            None
+        }
+    };
+    let arrived = motion::arrival(
+        ctx,
+        id.with("arrival"),
+        egui::Id::new(&now.uri),
+        tokens::motion::CONTENT,
+    );
+    if arrived >= 1.0 && before.is_some() {
+        ctx.data_mut(|data| data.insert_temp(id, (Shown::of(now), None::<Shown>)));
+        return (arrived, None);
+    }
+    (arrived, before)
+}
+
+/// The song before's title and byline, where the playing song's go,
+/// fading out at `opacity`.
+fn paint_words_before(ui: &egui::Ui, palette: &theme::Palette, before: &Shown, opacity: f32) {
+    let painter = ui.painter().clone().with_clip_rect(ui.clip_rect());
+    let title = painter.layout_no_wrap(
+        before.title.clone(),
+        theme::medium(14.0),
+        palette.text.gamma_multiply(opacity),
+    );
+    let top = ui.max_rect().left_top();
+    let below = top.y + title.size().y + ui.spacing().item_spacing.y;
+    painter.galley(top, title, palette.text);
+    let subtitle = painter.layout_no_wrap(
+        before.subtitle.clone(),
+        theme::regular(12.0),
+        palette.secondary.gamma_multiply(opacity),
+    );
+    painter.galley(pos2(top.x, below), subtitle, palette.secondary);
 }
 
 /// Opens the playing song's album, or the playing episode's show.

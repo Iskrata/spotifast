@@ -3,6 +3,7 @@
 use egui::{Align, CornerRadius, Layout, Rect, Sense, pos2, vec2};
 use fastframe_audio::DeviceInfo;
 
+use super::tokens;
 use crate::api::models::Device;
 use crate::app::App;
 use crate::i18n::gettext;
@@ -118,8 +119,11 @@ fn enable_playback_row(app: &mut App, ui: &mut egui::Ui) {
     );
     let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), 52.0), Sense::click());
     if response.hovered() && !authorizing {
-        ui.painter()
-            .rect_filled(rect, egui::CornerRadius::same(6), palette.surface_hover);
+        ui.painter().rect_filled(
+            rect,
+            egui::CornerRadius::same(tokens::radius::ROW),
+            palette.surface_hover,
+        );
     }
     let icon_rect =
         Rect::from_center_size(pos2(rect.left() + 24.0, rect.center().y), Vec2::splat(22.0));
@@ -179,8 +183,11 @@ fn receiver_row(app: &mut App, ui: &mut egui::Ui, receiver: &crate::zeroconf::Re
     let activating = app.activating_receiver.as_deref() == Some(receiver.name.as_str());
     let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), 52.0), Sense::click());
     if response.hovered() && !activating {
-        ui.painter()
-            .rect_filled(rect, egui::CornerRadius::same(6), palette.surface_hover);
+        ui.painter().rect_filled(
+            rect,
+            egui::CornerRadius::same(tokens::radius::ROW),
+            palette.surface_hover,
+        );
     }
     let icon_rect =
         Rect::from_center_size(pos2(rect.left() + 24.0, rect.center().y), Vec2::splat(22.0));
@@ -264,8 +271,11 @@ fn output_picker(app: &mut App, ui: &mut egui::Ui) {
     response
         .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label.as_ref()));
     if response.hovered() {
-        ui.painter()
-            .rect_filled(rect, CornerRadius::same(6), palette.surface_hover);
+        ui.painter().rect_filled(
+            rect,
+            CornerRadius::same(tokens::radius::ROW),
+            palette.surface_hover,
+        );
     }
     Icon::Volume2.image(palette.secondary, 18.0).paint_at(
         ui,
@@ -537,7 +547,7 @@ pub fn popup(app: &mut App, ctx: &egui::Context) {
                                 if response.hovered() {
                                     ui.painter().rect_filled(
                                         rect,
-                                        CornerRadius::same(6),
+                                        CornerRadius::same(tokens::radius::ROW),
                                         palette.surface_hover,
                                     );
                                 }

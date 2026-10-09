@@ -5,6 +5,7 @@
 
 use egui::{CornerRadius, Frame, Margin, Sense, Stroke, UiBuilder, Vec2, vec2};
 
+use super::tokens;
 use crate::api::models::pick_image;
 use crate::app::{App, NowPlaying};
 use crate::i18n::{gettext, pgettext};
@@ -94,7 +95,7 @@ pub(super) fn card(app: &mut App, ui: &mut egui::Ui, now: &NowPlaying) -> bool {
     let scope = ui.scope_builder(UiBuilder::new().sense(Sense::click()), |ui| {
         Frame::new()
             .fill(palette.surface)
-            .corner_radius(CornerRadius::same(10))
+            .corner_radius(CornerRadius::same(tokens::radius::PANEL))
             .inner_margin(Margin::same(12))
             .show(ui, |ui| {
                 ui.set_width(ui.available_width());
@@ -110,7 +111,7 @@ pub(super) fn card(app: &mut App, ui: &mut egui::Ui, now: &NowPlaying) -> bool {
     if response.hovered() {
         ui.painter().rect_stroke(
             response.rect,
-            CornerRadius::same(10),
+            CornerRadius::same(tokens::radius::PANEL),
             Stroke::new(1.0, palette.text.gamma_multiply(0.35)),
             egui::StrokeKind::Inside,
         );

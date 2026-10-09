@@ -4820,8 +4820,7 @@ impl Worker {
         // Splitting moves playlists to the playback session, which finds
         // Spotify's own playlists, or to shared access; without either, one
         // request to the personal app asks for everything.
-        let split =
-            self.api.personal_ready() && (self.api.has_shared() || self.engine.is_some());
+        let split = self.api.personal_ready() && (self.api.has_shared() || self.engine.is_some());
         self.emit(Event::Api(Box::new(ApiResponse::SearchStarted {
             query: query.clone(),
             serial,

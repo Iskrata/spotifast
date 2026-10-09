@@ -2,6 +2,7 @@
 
 use egui::{Align, Color32, Frame, Layout, Margin, Rect, Sense, UiBuilder, pos2, vec2};
 
+use super::tokens;
 use crate::app::App;
 use crate::i18n::{gettext, pgettext};
 use crate::model::{Action, Loadable};
@@ -643,7 +644,7 @@ fn track_heading(app: &App, ui: &mut egui::Ui) {
                 "lyrics-heading",
                 app.small_art(&now, size),
                 rect,
-                4.0,
+                tokens::points(tokens::radius::COVER_SMALL),
             );
             ui.vertical(|ui| {
                 ui.add(

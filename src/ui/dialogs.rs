@@ -2,6 +2,7 @@
 
 use egui::{Align, CornerRadius, Frame, Layout, Margin, Stroke};
 
+use super::tokens;
 use crate::app::App;
 use crate::i18n::{Locale, gettext, ngettext};
 use crate::model::{Action, Dialog};
@@ -20,7 +21,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
     let frame = Frame::new()
         .fill(palette.overlay)
         .stroke(Stroke::new(1.0, palette.outline))
-        .corner_radius(CornerRadius::same(theme::RADIUS + 4))
+        .corner_radius(CornerRadius::same(tokens::radius::DIALOG))
         .inner_margin(Margin::same(24))
         .shadow(egui::epaint::Shadow {
             offset: [0, 10],
@@ -321,7 +322,7 @@ fn text_field(
 ) -> egui::Response {
     let response = Frame::new()
         .fill(palette.surface)
-        .corner_radius(CornerRadius::same(6))
+        .corner_radius(CornerRadius::same(tokens::radius::ROW))
         .inner_margin(Margin::symmetric(12, 8))
         .show(ui, |ui| {
             super::widgets::text_edit(
@@ -542,7 +543,7 @@ fn edit_playlist(app: &mut App, ui: &mut egui::Ui) {
             );
             Frame::new()
                 .fill(palette.surface)
-                .corner_radius(CornerRadius::same(6))
+                .corner_radius(CornerRadius::same(tokens::radius::ROW))
                 .inner_margin(Margin::symmetric(12, 8))
                 .show(ui, |ui| {
                     super::widgets::text_edit(

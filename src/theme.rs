@@ -5,6 +5,7 @@
 //! consistent.
 
 use crate::i18n::{Locale, gettext};
+use crate::ui::tokens::radius;
 use egui::{Color32, CornerRadius, Response, Sense, Stroke, Vec2};
 use std::borrow::Cow;
 
@@ -231,8 +232,6 @@ fn status_detail(status: Option<fastframe_theme::Status>, locale: Locale) -> Cow
     }
 }
 
-pub const RADIUS: u8 = 8;
-pub const RADIUS_SMALL: u8 = 4;
 pub const ROW_HEIGHT: f32 = 56.0;
 pub const COMPACT_ROW_HEIGHT: f32 = 48.0;
 /// The compact track list: one line, no cover.
@@ -346,8 +345,8 @@ fn apply_to_style(style: &mut egui::Style, palette: &Palette) {
     visuals.selection.bg_fill = palette.accent.gamma_multiply(0.35);
     visuals.selection.stroke = Stroke::new(1.0, palette.accent);
     visuals.window_stroke = Stroke::new(1.0, palette.outline);
-    visuals.window_corner_radius = CornerRadius::same(RADIUS + 2);
-    visuals.menu_corner_radius = CornerRadius::same(RADIUS);
+    visuals.window_corner_radius = CornerRadius::same(radius::PANEL);
+    visuals.menu_corner_radius = CornerRadius::same(radius::CARD);
     visuals.window_shadow = egui::epaint::Shadow {
         offset: [0, 6],
         blur: 24,
@@ -360,7 +359,7 @@ fn apply_to_style(style: &mut egui::Style, palette: &Palette) {
         spread: 0,
         color: palette.shadow,
     };
-    let corner = CornerRadius::same(RADIUS_SMALL + 2);
+    let corner = CornerRadius::same(radius::ROW);
     for widget in [
         &mut visuals.widgets.inactive,
         &mut visuals.widgets.hovered,
@@ -1202,7 +1201,7 @@ mod tests {
             assert!(style.visuals.dark_mode);
             assert_eq!(
                 style.visuals.widgets.inactive.corner_radius,
-                CornerRadius::same(RADIUS_SMALL + 2)
+                CornerRadius::same(radius::ROW)
             );
             assert_eq!(
                 style.visuals.selection.stroke,

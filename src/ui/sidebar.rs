@@ -2,6 +2,7 @@
 
 use egui::{Align, CornerRadius, Frame, Layout, Margin, Rect, Sense, Vec2, pos2, vec2};
 
+use super::tokens;
 use crate::api::models::pick_image;
 use crate::app::App;
 use crate::i18n::{Locale, gettext};
@@ -94,7 +95,7 @@ fn cover_play_button(
         let radius = if entry.round {
             (cover_rect.width() / 2.0).min(127.0) as u8
         } else {
-            6
+            tokens::radius::ROW
         };
         ui.painter().rect_filled(
             cover_rect,
@@ -193,7 +194,7 @@ fn grid_play_button(
                 spread: 0,
                 color: egui::Color32::from_black_alpha(90),
             }
-            .as_shape(rect, egui::CornerRadius::same(127)),
+            .as_shape(rect, egui::CornerRadius::same(tokens::radius::ROUND)),
         );
         ui.painter().circle_filled(rect.center(), size / 2.0, fill);
         let icon = if playing {
@@ -378,7 +379,7 @@ fn sort_menu(app: &mut App, ui: &mut egui::Ui, shelf: Filter, selected: LibraryS
         )
         .wrap()
         .fill(app.palette.surface)
-        .corner_radius(12)
+        .corner_radius(tokens::capsule(28.0))
         .min_size(vec2(0.0, 28.0)),
     );
     egui::Popup::menu(&response)
@@ -666,7 +667,7 @@ fn paint_expanded_art(app: &mut App, ui: &mut egui::Ui, rect: Rect) {
             spread: 0,
             color: egui::Color32::from_black_alpha(if palette.dark { 120 } else { 40 }),
         }
-        .as_shape(rect, egui::CornerRadius::same(8)),
+        .as_shape(rect, egui::CornerRadius::same(tokens::radius::CARD)),
     );
     super::widgets::playing_cover(
         ui,
@@ -675,7 +676,7 @@ fn paint_expanded_art(app: &mut App, ui: &mut egui::Ui, rect: Rect) {
         "sidebar-art",
         Some(&url),
         rect,
-        8.0,
+        tokens::points(tokens::radius::CARD),
     );
     let art = ui.interact(rect, egui::Id::new("sidebar-art"), Sense::click());
     let chevron_rect = Rect::from_center_size(
@@ -1440,24 +1441,27 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
                 let mut cover_took_click = false;
                 if ui.is_rect_visible(rect) {
                     if active {
-                        ui.painter()
-                            .rect_filled(rect, CornerRadius::same(6), palette.surface);
+                        ui.painter().rect_filled(
+                            rect,
+                            CornerRadius::same(tokens::radius::ROW),
+                            palette.surface,
+                        );
                     } else if response.hovered() {
                         ui.painter().rect_filled(
                             rect,
-                            CornerRadius::same(6),
+                            CornerRadius::same(tokens::radius::ROW),
                             palette.surface_hover.gamma_multiply(0.6),
                         );
                     }
                     if drop_hover {
                         ui.painter().rect_filled(
                             rect,
-                            CornerRadius::same(6),
+                            CornerRadius::same(tokens::radius::ROW),
                             palette.accent.gamma_multiply(0.18),
                         );
                         ui.painter().rect_stroke(
                             rect,
-                            CornerRadius::same(6),
+                            CornerRadius::same(tokens::radius::ROW),
                             egui::Stroke::new(1.5, palette.accent),
                             egui::StrokeKind::Inside,
                         );
@@ -1612,7 +1616,7 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
                     if dragging_song && !droppable {
                         ui.painter().rect_filled(
                             rect,
-                            CornerRadius::same(6),
+                            CornerRadius::same(tokens::radius::ROW),
                             palette.panel.gamma_multiply(0.5),
                         );
                     }
@@ -1792,12 +1796,15 @@ fn library_grid(
                     let mut cover_took_click = false;
                     if ui.is_rect_visible(rect) {
                         if active {
-                            ui.painter()
-                                .rect_filled(rect, CornerRadius::same(6), palette.surface);
+                            ui.painter().rect_filled(
+                                rect,
+                                CornerRadius::same(tokens::radius::ROW),
+                                palette.surface,
+                            );
                         } else if response.hovered() {
                             ui.painter().rect_filled(
                                 rect,
-                                CornerRadius::same(6),
+                                CornerRadius::same(tokens::radius::ROW),
                                 palette.surface_hover.gamma_multiply(0.6),
                             );
                         }
@@ -1806,7 +1813,7 @@ fn library_grid(
                         } else if entry.folder.is_some() {
                             ui.painter().rect_filled(
                                 cover_rect,
-                                CornerRadius::same(6),
+                                CornerRadius::same(tokens::radius::ROW),
                                 palette.surface,
                             );
                             Icon::Library
@@ -1879,7 +1886,7 @@ fn library_grid(
                         if dragging_song && !droppable {
                             ui.painter().rect_filled(
                                 rect,
-                                CornerRadius::same(6),
+                                CornerRadius::same(tokens::radius::ROW),
                                 palette.panel.gamma_multiply(0.5),
                             );
                         } else if dragging_song
@@ -1888,7 +1895,7 @@ fn library_grid(
                         {
                             ui.painter().rect_stroke(
                                 cover_rect,
-                                CornerRadius::same(6),
+                                CornerRadius::same(tokens::radius::ROW),
                                 egui::Stroke::new(2.0, palette.accent),
                                 egui::StrokeKind::Inside,
                             );

@@ -1,5 +1,6 @@
 use egui::{Align, CornerRadius, Frame, Layout, Margin, RichText, Stroke};
 
+use super::tokens;
 use crate::app::App;
 use crate::i18n::gettext;
 use crate::model::Action;
@@ -21,7 +22,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
     let frame = Frame::new()
         .fill(palette.overlay)
         .stroke(Stroke::new(1.0, palette.outline))
-        .corner_radius(CornerRadius::same(theme::RADIUS + 4))
+        .corner_radius(CornerRadius::same(tokens::radius::DIALOG))
         .inner_margin(Margin::same(24))
         .shadow(egui::epaint::Shadow {
             offset: [0, 10],

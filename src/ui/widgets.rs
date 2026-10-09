@@ -5,6 +5,7 @@ use egui::{
     pos2, vec2,
 };
 
+use super::tokens;
 use crate::api::models::*;
 use crate::app::App;
 use crate::i18n::{Locale, gettext, ngettext, pgettext};
@@ -461,8 +462,11 @@ fn menu_item_response(
     );
     if ui.is_rect_visible(rect) {
         if (response.hovered() || highlighted) && enabled {
-            ui.painter()
-                .rect_filled(rect, CornerRadius::same(6), palette.surface_hover);
+            ui.painter().rect_filled(
+                rect,
+                CornerRadius::same(tokens::radius::ROW),
+                palette.surface_hover,
+            );
         }
         let color = if enabled { palette.text } else { palette.dim };
         let mut x = rect.left() + 10.0;
@@ -568,8 +572,11 @@ fn submenu<R>(
 
     if ui.is_rect_visible(rect) {
         if response.hovered() || is_open {
-            ui.painter()
-                .rect_filled(rect, CornerRadius::same(6), palette.surface_hover);
+            ui.painter().rect_filled(
+                rect,
+                CornerRadius::same(tokens::radius::ROW),
+                palette.surface_hover,
+            );
         }
         let color = palette.text;
         let mut x = rect.left() + 10.0;
@@ -664,7 +671,7 @@ pub fn menu_frame(palette: &Palette) -> egui::Frame {
     egui::Frame::new()
         .fill(palette.overlay)
         .stroke(Stroke::new(1.0, palette.outline))
-        .corner_radius(CornerRadius::same(theme::RADIUS))
+        .corner_radius(CornerRadius::same(tokens::radius::CARD))
         .inner_margin(egui::Margin::same(6))
         .shadow(egui::epaint::Shadow {
             offset: [0, 6],
@@ -1644,7 +1651,7 @@ fn track_row_contents(
         // color so selecting a song does not mark it as playing.
         ui.painter().rect_filled(
             rect,
-            CornerRadius::same(6),
+            CornerRadius::same(tokens::radius::ROW),
             palette
                 .secondary
                 .gamma_multiply(if hovered { 0.30 } else { 0.20 }),
@@ -1652,7 +1659,7 @@ fn track_row_contents(
     } else if hovered {
         ui.painter().rect_filled(
             rect,
-            CornerRadius::same(6),
+            CornerRadius::same(tokens::radius::ROW),
             palette
                 .surface_hover
                 .gamma_multiply(if palette.dark { 0.7 } else { 1.0 }),
@@ -1712,7 +1719,7 @@ fn track_row_contents(
             &palette,
             app.item_image(row.item, app.art_px(size)).as_deref(),
             cover_rect,
-            4.0,
+            tokens::points(tokens::radius::COVER_SMALL),
             if row.item.is_track() {
                 Icon::Music
             } else {
@@ -1726,7 +1733,7 @@ fn track_row_contents(
             let scrim = |alpha: u8| {
                 painter.rect_filled(
                     cover_rect,
-                    CornerRadius::same(4),
+                    CornerRadius::same(tokens::radius::COVER_SMALL),
                     Color32::from_black_alpha(alpha),
                 );
             };
@@ -2283,7 +2290,7 @@ pub fn drag_ghost(ctx: &egui::Context, palette: &Palette, locale: Locale) {
             egui::Frame::new()
                 .fill(palette.overlay)
                 .stroke(Stroke::new(1.0, palette.outline))
-                .corner_radius(CornerRadius::same(theme::RADIUS))
+                .corner_radius(CornerRadius::same(tokens::radius::CARD))
                 .inner_margin(egui::Margin::symmetric(10, 6))
                 .shadow(egui::epaint::Shadow {
                     offset: [0, 4],
@@ -2312,8 +2319,11 @@ pub fn drag_ghost(ctx: &egui::Context, palette: &Palette, locale: Locale) {
 
 pub fn explicit_badge(ui: &mut Ui, palette: &Palette) {
     let (rect, _) = ui.allocate_exact_size(vec2(15.0, 15.0), Sense::hover());
-    ui.painter()
-        .rect_filled(rect, CornerRadius::same(2), palette.secondary);
+    ui.painter().rect_filled(
+        rect,
+        CornerRadius::same(tokens::radius::BAR),
+        palette.secondary,
+    );
     ui.painter().text(
         rect.center(),
         egui::Align2::CENTER_CENTER,
@@ -2716,7 +2726,7 @@ pub fn card(
             }
             ui.painter().rect_filled(
                 rect,
-                CornerRadius::same(theme::RADIUS),
+                CornerRadius::same(tokens::radius::CARD),
                 palette
                     .surface_hover
                     .gamma_multiply(if palette.dark { 0.8 } else { 1.0 }),
@@ -3152,13 +3162,15 @@ pub fn thin_slider(
         } else {
             Color32::from_black_alpha(40)
         };
-        ui.painter().rect_filled(bar, 2.0, track_color);
+        ui.painter()
+            .rect_filled(bar, tokens::points(tokens::radius::BAR), track_color);
         let filled = Rect::from_min_max(
             bar.min,
             pos2(bar.left() + bar.width() * shown.clamp(0.0, 1.0), bar.max.y),
         );
         let fill = if active { palette.accent } else { palette.text };
-        ui.painter().rect_filled(filled, 2.0, fill);
+        ui.painter()
+            .rect_filled(filled, tokens::points(tokens::radius::BAR), fill);
         if active {
             ui.painter()
                 .circle_filled(pos2(filled.right(), bar.center().y), 6.0, palette.text);
@@ -3496,7 +3508,7 @@ pub fn labeled_field(
             ui.add_space(6.0);
             Frame::new()
                 .fill(palette.surface)
-                .corner_radius(CornerRadius::same(8))
+                .corner_radius(CornerRadius::same(tokens::radius::CARD))
                 .inner_margin(Margin::symmetric(12, 10))
                 .show(ui, |ui| {
                     text_edit(
@@ -4406,7 +4418,8 @@ mod tests {
                         {
                             shape.stroke == Stroke::NONE
                                 && (shape.rect != rect
-                                    || shape.corner_radius == CornerRadius::same(6))
+                                    || shape.corner_radius
+                                        == CornerRadius::same(tokens::radius::ROW))
                         }
                         _ => true,
                     }),

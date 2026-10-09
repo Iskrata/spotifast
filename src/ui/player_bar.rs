@@ -2,6 +2,7 @@
 
 use egui::{Align, Color32, Frame, Layout, Margin, Rect, Sense, UiBuilder, Vec2, pos2, vec2};
 
+use super::tokens;
 use crate::app::{App, NowPlaying};
 use crate::i18n::gettext;
 use crate::model::{Action, DragTrack, Page};
@@ -452,7 +453,7 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
         "player-bar",
         app.small_art(now, cover_rect.width()),
         cover_rect,
-        6.0,
+        tokens::points(tokens::radius::ROW),
     );
     let song = app.now_playing_item();
     let drag_sense = if song.is_some() {

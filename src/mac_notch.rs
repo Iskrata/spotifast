@@ -871,7 +871,7 @@ pub fn init() {
     }
     card_view.addSubview(&canvas_view);
 
-    // 3. Album artwork (Left of card, 50x50 with 8pt rounded corners matching theme::RADIUS)
+    // 3. Album artwork (Left of card, 50x50 with 8pt rounded corners matching tokens::radius::CARD)
     let art_view = NSImageView::initWithFrame(
         mtm.alloc(),
         NSRect::new(NSPoint::new(16.0, 14.0), NSSize::new(50.0, 50.0)),

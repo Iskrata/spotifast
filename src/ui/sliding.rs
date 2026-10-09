@@ -65,10 +65,18 @@ pub(crate) fn show<R>(
     // A drag past the panel's least width or a double-click on its edge
     // would close it here; the toggles stay the only way to.
     let mut expanded = slide.open;
+    let glass = super::glass::on(ui.ctx());
     let floating = super::glass::Floating::begin(ui);
     let inner = panel
         .drag_to_open(false)
-        .show_collapsible(ui, &mut expanded, add_contents)?;
+        .show_collapsible(ui, &mut expanded, |ui| {
+            // egui fades a scrolled list's edges into the plain panel
+            // colour, which shows as solid bands on glass.
+            if glass {
+                ui.spacing_mut().scroll.fade.strength = 0.0;
+            }
+            add_contents(ui)
+        })?;
     floating.finish(ui, palette, inner.response.rect);
     Some(Slid {
         inner,

@@ -309,12 +309,24 @@ pub fn menu_item_enabled(
     label: &str,
     enabled: bool,
 ) -> bool {
-    menu_item_response(ui, palette, icon, label, enabled, false).1
+    menu_item_response(ui, palette, icon, label, enabled, false, None).1
+}
+
+/// A menu item for a command that also has a keyboard shortcut, shown
+/// faintly at the item's end.
+pub fn menu_item_shortcut(
+    ui: &mut Ui,
+    palette: &Palette,
+    icon: Option<Icon>,
+    label: &str,
+    shortcut: &str,
+) -> bool {
+    menu_item_response(ui, palette, icon, label, true, false, Some(shortcut)).1
 }
 
 /// A menu item that may be highlighted as the keyboard's choice, as the
-/// pointer would highlight it. Returns its response and whether it was
-/// clicked.
+/// pointer would highlight it, and may show its keyboard shortcut.
+/// Returns its response and whether it was clicked.
 fn menu_item_response(
     ui: &mut Ui,
     palette: &Palette,
@@ -322,6 +334,7 @@ fn menu_item_response(
     label: &str,
     enabled: bool,
     highlighted: bool,
+    shortcut: Option<&str>,
 ) -> (egui::Response, bool) {
     let width = ui.available_width();
     let (rect, response) = ui.allocate_exact_size(
@@ -357,19 +370,31 @@ fn menu_item_response(
             x += 26.0;
         }
         // A playlist can be named a paragraph; the label ends at the menu's
-        // edge instead of running past it.
+        // edge, or its shortcut, instead of running past it.
+        let mut right = rect.right() - 10.0;
+        if let Some(shortcut) = shortcut {
+            let hint =
+                ui.painter()
+                    .layout_no_wrap(shortcut.to_owned(), theme::regular(12.0), palette.dim);
+            ui.painter().galley(
+                pos2(right - hint.size().x, rect.center().y - hint.size().y / 2.0),
+                hint.clone(),
+                palette.dim,
+            );
+            right -= hint.size().x + 12.0;
+        }
         let galley = crate::bidi::layout(
             ui.painter(),
             label,
             theme::regular(13.5),
             color,
-            (rect.right() - 10.0 - x).max(0.0),
+            (right - x).max(0.0),
             1,
             Some(crate::bidi::ELLIPSIS),
         );
         let text_rect = Rect::from_min_max(
             pos2(x, rect.center().y - galley.size().y / 2.0),
-            pos2(rect.right() - 10.0, rect.center().y + galley.size().y / 2.0),
+            pos2(right, rect.center().y + galley.size().y / 2.0),
         );
         ui.painter()
             .galley(crate::bidi::galley_pos(text_rect, &galley), galley, color);
@@ -852,8 +877,15 @@ pub(crate) fn playlist_picker(
             for (index, (id, name)) in matches.into_iter().enumerate() {
                 ui.push_id(id, |ui| {
                     let chosen = highlighted == Some(index);
-                    let (row, clicked) =
-                        menu_item_response(ui, &palette, Some(Icon::ListMusic), name, true, chosen);
+                    let (row, clicked) = menu_item_response(
+                        ui,
+                        &palette,
+                        Some(Icon::ListMusic),
+                        name,
+                        true,
+                        chosen,
+                        None,
+                    );
                     if chosen && moved {
                         row.scroll_to_me(None);
                     }

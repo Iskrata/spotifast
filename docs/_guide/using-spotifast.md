@@ -414,15 +414,19 @@ Use your desktop's window rule or shortcut instead. In KDE Plasma, configure
 Window Management**. Your saved preference remains available when you use
 Spotifast on Windows, macOS, or X11 again.
 
-Since 0.8.0, the top bar reserves room for the device and update
-badges beside Search. In narrow windows those badges show only their icons.
+The top bar holds Back and Forward, Search, the device badge and your
+picture. Your picture opens the account menu, with Settings, Keyboard
+shortcuts, the Winamp mini player and MilkDrop beside their shortcuts. When
+a newer version is available, a green dot appears on your picture and the
+account menu offers the update. In narrow windows the device badge shows
+only its icon.
 The bar stays above the page. Library, Queue and Lyrics keep their full height.
 When the window narrows, Library, Queue and Lyrics give up width before the
 top bar runs out of room, and return to the widths you chose once it widens.
 With Queue or Lyrics open, the window cannot be made narrower than the room
 they need beside the page.
-Hover to read the device name or available version; click to open the device
-picker or update window.
+Hover the device badge to read the device name; click it to open the device
+picker.
 
 ## MacBook notch widget
 

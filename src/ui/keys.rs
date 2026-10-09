@@ -16,6 +16,8 @@ pub(super) const SIDEBAR_SHORTCUT: &str = platform_shortcut("Ctrl+B", "Cmd+B");
 pub(super) const QUIT_SHORTCUT: &str = platform_shortcut("Ctrl+Q", "Cmd+Q");
 pub(super) const WINAMP_SHORTCUT: &str = platform_shortcut("Ctrl+M", "Cmd+Shift+M");
 pub(super) const MILKDROP_SHORTCUT: &str = platform_shortcut("Ctrl+Shift+K", "Cmd+Shift+K");
+pub(super) const SETTINGS_SHORTCUT: &str = platform_shortcut("Ctrl+,", "Cmd+,");
+pub(super) const SHORTCUTS_SHORTCUT: &str = platform_shortcut("Ctrl+/", "Cmd+/");
 
 pub fn handle(app: &mut App, ctx: &egui::Context) {
     let typing = ctx.memory(|memory| memory.focused().is_some());
@@ -285,10 +287,7 @@ pub fn shortcuts(locale: Locale) -> Vec<(Cow<'static, str>, Cow<'static, str>)> 
             keys("Esc"),
             gettext(locale, "MilkDrop: leave full screen, or close"),
         ),
-        (
-            keys(platform_shortcut("Ctrl+,", "Cmd+,")),
-            gettext(locale, "Settings"),
-        ),
+        (keys(SETTINGS_SHORTCUT), gettext(locale, "Settings")),
         (
             if cfg!(target_os = "macos") {
                 // Translators: Keep the key names. Only the word "or" is translated.

@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use egui::{Align, Galley, Layout, Sense, Vec2, pos2, vec2};
 
-use super::buttons::IconButton;
+use super::buttons::{AvatarButton, IconButton, IconSize};
 use crate::api::models::pick_image;
 use crate::app::App;
 use crate::i18n::gettext;
@@ -13,40 +13,32 @@ use crate::theme::{self, Icon, Palette};
 
 /// The gap the bar keeps between everything it lays out.
 const ITEM_SPACING: f32 = 8.0;
-/// The account avatar, and the three standard icon buttons beside it.
-const AVATAR_SIZE: f32 = 36.0;
-const ICON_BUTTON_SIZE: f32 = super::buttons::IconSize::Standard.hit();
+/// The navigation buttons and the account avatar.
+const NAV_SIZE: IconSize = IconSize::Standard;
+const AVATAR_SIZE: IconSize = IconSize::Large;
 const SPINNER_SIZE: f32 = 15.0;
 /// A badge is as tall as its text plus this, and as wide as its text plus
 /// the padding its own label needs.
 const BADGE_PADDING_Y: f32 = 12.0;
 const DEVICE_BADGE_PADDING: f32 = 30.0;
-/// The text starts 26 px in; leave 8 px after it to match the space before
-/// the icon.
-const UPDATE_BADGE_PADDING: f32 = 34.0;
 /// The width the search field aims for, the most it ever takes, and the
-/// least it shrinks to before the badges give up their labels instead.
+/// least it shrinks to before the badge gives up its label instead.
 const SEARCH_IDEAL: f32 = 200.0;
 const SEARCH_MAX: f32 = 440.0;
 const SEARCH_FLOOR: f32 = 130.0;
-// After the badges collapse, a right panel can leave less than 130 points.
+// After the badge collapses, a right panel can leave less than 130 points.
 // Keep the original 80-point minimum inside the page's own toolbar.
 const SEARCH_MIN: f32 = 80.0;
-/// Everything at the right end whose width never changes: the page padding,
-/// the avatar, the gap the account menu leaves, the three icon buttons, and
-/// the spacing between them. The cursor stops at the left edge of the last
-/// button, so this counts three gaps, not four. The spinner and the badges
-/// are measured on top of it because they come and go.
-const RIGHT_CONTROLS_WIDTH: f32 =
-    super::widgets::PAGE_PADDING + AVATAR_SIZE + 4.0 + 3.0 * ICON_BUTTON_SIZE + 3.0 * ITEM_SPACING;
-/// What the Winamp, MilkDrop and Settings buttons take, gaps included. In a
-/// bar too narrow to hold them beside the narrowest field they fold into the
-/// account menu, which already has Settings.
-const FOLDING_WIDTH: f32 = 3.0 * (ICON_BUTTON_SIZE + ITEM_SPACING);
+/// Everything at the right end whose width never changes: the page padding
+/// and the avatar. Settings, the Winamp mini player and MilkDrop live in
+/// the account menu. The spinner and the badge are measured on top of it
+/// because they come and go.
+const RIGHT_CONTROLS_WIDTH: f32 = super::widgets::PAGE_PADDING + AVATAR_SIZE.hit();
 
 /// What precedes the field until the bar has drawn once: the page padding,
 /// the back and forward buttons and the gaps after them.
-const LEAD_GUESS: f32 = super::widgets::PAGE_PADDING + 2.0 * 32.0 + 3.0 * ITEM_SPACING + 8.0;
+const LEAD_GUESS: f32 =
+    super::widgets::PAGE_PADDING + 2.0 * NAV_SIZE.hit() + 3.0 * ITEM_SPACING + 8.0;
 /// A badge collapsed to its icon: a square as tall as its 12.5 pt label.
 const BADGE_CHIP: f32 = 15.0 + BADGE_PADDING_Y;
 
@@ -56,8 +48,8 @@ fn lead_id() -> egui::Id {
 
 /// The narrowest the bar, and so the page under it, can be before its
 /// controls run into each other: the narrowest field, with the spinner and
-/// both badges as icons. Counting them even while they are away keeps the
-/// panels and the window from changing width as they come and go.
+/// the device badge as an icon. Counting them even while they are away
+/// keeps the panels and the window from changing width as they come and go.
 pub fn least_width(ctx: &egui::Context) -> f32 {
     let lead = ctx
         .data(|data| data.get_temp(lead_id()))
@@ -70,7 +62,8 @@ fn least_width_after(lead: f32) -> f32 {
         + RIGHT_CONTROLS_WIDTH
         + SPINNER_SIZE
         + ITEM_SPACING
-        + 2.0 * (ITEM_SPACING + BADGE_CHIP)
+        + ITEM_SPACING
+        + BADGE_CHIP
 }
 
 /// How the top bar divides itself for one window width.
@@ -78,37 +71,24 @@ fn least_width_after(lead: f32) -> f32 {
 struct TopbarFit {
     /// How wide the search field may be.
     search: f32,
-    /// Whether the badges have the room to spell themselves out.
+    /// Whether the badge has the room to spell itself out.
     labels: bool,
-    /// Whether the Winamp, MilkDrop and Settings buttons move into the
-    /// account menu, so the rest of the bar keeps clear of the field.
-    fold: bool,
 }
 
 /// Divide the bar. The search field keeps the half it has always had, but
-/// never so much that the right end has to reach over it, and the badges
-/// fall back to their icons before the field shrinks past reading size.
-/// Only a window narrower than its minimum, as a tiling window manager
-/// makes one, leaves too little for the narrowest field beside them; the
-/// Winamp, MilkDrop and Settings buttons fold into the account menu then.
+/// never so much that the right end has to reach over it, and the badge
+/// falls back to its icon before the field shrinks past reading size.
 ///
-/// `labelled` and `icons` are what the badges ask for with and without their
-/// text, each already including the spacing that precedes it.
+/// `labelled` and `icons` are what the badge asks for with and without its
+/// text, already including the spacing that precedes it.
 fn topbar_fit(room: f32, controls: f32, labelled: f32, icons: f32) -> TopbarFit {
     // SEARCH_IDEAL is above SEARCH_FLOOR, so the clamp below is well ordered.
     let ideal = (room * 0.5).clamp(SEARCH_IDEAL, SEARCH_MAX);
     let labels = room - controls - labelled >= SEARCH_FLOOR;
     let badges = if labels { labelled } else { icons };
-    let fold = room - controls - badges < SEARCH_MIN;
-    let controls = if fold {
-        controls - FOLDING_WIDTH
-    } else {
-        controls
-    };
     TopbarFit {
         search: (room - controls - badges).clamp(SEARCH_MIN, ideal),
         labels,
-        fold,
     }
 }
 
@@ -171,44 +151,21 @@ fn badge(
     response
 }
 
+/// Show sidebar, Home, Back and Forward: icon buttons that stay in place
+/// while they cannot act, faded and deaf to clicks.
 fn nav_button(
     ui: &mut egui::Ui,
     palette: &Palette,
     icon: Icon,
     enabled: bool,
-    tooltip: &str,
+    label: &str,
 ) -> egui::Response {
-    let (rect, response) = ui.allocate_exact_size(
-        Vec2::splat(32.0),
-        if enabled {
-            Sense::click()
-        } else {
-            Sense::hover()
-        },
-    );
-    // The tooltip names the button for a screen reader too.
-    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, tooltip));
-    if ui.is_rect_visible(rect) {
-        let fill = if palette.dark {
-            egui::Color32::from_black_alpha(90)
-        } else {
-            egui::Color32::from_black_alpha(20)
-        };
-        ui.painter().circle_filled(rect.center(), 16.0, fill);
-        let color = if !enabled {
-            palette.dim
-        } else if response.hovered() {
-            palette.text
-        } else {
-            palette.secondary
-        };
-        theme::paint_icon(ui, icon, rect, 20.0, color);
-    }
-    if enabled {
-        response.on_hover_text(tooltip)
-    } else {
-        response
-    }
+    ui.add_enabled_ui(enabled, |ui| {
+        IconButton::new(icon, label)
+            .size(NAV_SIZE)
+            .show(ui, palette)
+    })
+    .inner
 }
 
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
@@ -301,33 +258,14 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 ui.painter()
                     .layout_no_wrap(label, theme::medium(12.5), palette.accent)
             });
-            let update = app.update.clone();
-            let update_galley = update.as_ref().map(|update| {
-                let label = match &app.update_download {
-                    crate::updates::DownloadState::Ready(_) => {
-                        gettext(locale, "Update ready").into_owned()
-                    }
-                    crate::updates::DownloadState::Downloading { .. } => {
-                        gettext(locale, "Downloading update…").into_owned()
-                    }
-                    _ => {
-                        // Translators: {version} is a version number such as 1.2.0.
-                        gettext(locale, "Update to {version}").replace("{version}", &update.version)
-                    }
-                };
-                ui.painter()
-                    .layout_no_wrap(label, theme::medium(12.5), palette.accent)
-            });
             // Ask once, so the bar reserves room for exactly the spinner it
             // then draws.
             let busy = app
                 .backend
                 .activity()
                 .busy(std::time::Duration::from_millis(1000));
-            let badges = |labels: bool| {
-                badge_width(device_galley.as_ref(), DEVICE_BADGE_PADDING, labels)
-                    + badge_width(update_galley.as_ref(), UPDATE_BADGE_PADDING, labels)
-            };
+            let badges =
+                |labels: bool| badge_width(device_galley.as_ref(), DEVICE_BADGE_PADDING, labels);
             let controls = RIGHT_CONTROLS_WIDTH
                 + if busy {
                     SPINNER_SIZE + ITEM_SPACING
@@ -381,115 +319,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.add_space(window_controls.topbar_width);
                 ui.add_space(super::widgets::PAGE_PADDING);
-                // Account.
-                let (name, avatar) = app
-                    .user
-                    .as_ref()
-                    .map(|user| {
-                        (
-                            user.name().to_string(),
-                            pick_image(&user.images, 64).map(str::to_string),
-                        )
-                    })
-                    .unwrap_or_default();
-                let (rect, response) =
-                    ui.allocate_exact_size(Vec2::splat(AVATAR_SIZE), Sense::click());
-                if ui.is_rect_visible(rect) {
-                    let fill = if response.hovered() {
-                        palette.surface_hover
-                    } else {
-                        palette.surface
-                    };
-                    ui.painter().circle_filled(rect.center(), 18.0, fill);
-                    let inner = egui::Rect::from_center_size(rect.center(), Vec2::splat(28.0));
-                    match avatar.as_deref() {
-                        Some(url) => super::widgets::paint_cover(
-                            ui,
-                            &palette,
-                            Some(url),
-                            inner,
-                            inner.height() / 2.0,
-                            Icon::User,
-                            Some(app.backend.art()),
-                        ),
-                        None => {
-                            let initial = name
-                                .chars()
-                                .next()
-                                .unwrap_or('?')
-                                .to_uppercase()
-                                .to_string();
-                            ui.painter()
-                                .circle_filled(inner.center(), 14.0, palette.accent);
-                            ui.painter().text(
-                                inner.center(),
-                                egui::Align2::CENTER_CENTER,
-                                initial,
-                                theme::bold(13.0),
-                                palette.on_accent,
-                            );
-                        }
-                    }
-                }
-                let response = response.on_hover_text(&name);
-                egui::Popup::menu(&response)
-                    .frame(super::widgets::menu_frame(&palette))
-                    .align(egui::RectAlign::BOTTOM_END)
-                    .show(|ui| {
-                        ui.set_width(200.0);
-                        ui.add_space(4.0);
-                        ui.horizontal(|ui| {
-                            ui.add_space(10.0);
-                            theme::text(ui, &name, theme::semibold(14.0), palette.text);
-                        });
-                        if let Some(product) =
-                            app.user.as_ref().and_then(|user| user.product.clone())
-                        {
-                            ui.horizontal(|ui| {
-                                ui.add_space(10.0);
-                                theme::text(
-                                    ui,
-                                    capitalize(&product),
-                                    theme::regular(12.0),
-                                    palette.secondary,
-                                );
-                            });
-                        }
-                        super::widgets::menu_separator(ui, &palette);
-                        if fit.fold {
-                            folded_items(app, ui);
-                        }
-                        if super::widgets::menu_item(
-                            ui,
-                            &palette,
-                            Some(Icon::Settings),
-                            &gettext(locale, "Settings"),
-                        ) {
-                            app.actions.push(Action::Open(Page::Settings));
-                        }
-                        if super::widgets::menu_item(
-                            ui,
-                            &palette,
-                            Some(Icon::Keyboard),
-                            &gettext(locale, "Keyboard shortcuts"),
-                        ) {
-                            app.actions
-                                .push(Action::ShowDialog(crate::model::Dialog::Shortcuts));
-                        }
-                        super::widgets::menu_separator(ui, &palette);
-                        if super::widgets::menu_item(
-                            ui,
-                            &palette,
-                            Some(Icon::LogOut),
-                            &gettext(locale, "Sign out"),
-                        ) {
-                            app.actions.push(Action::SignOut);
-                        }
-                    });
-                ui.add_space(4.0);
-                if !fit.fold {
-                    folding_buttons(app, ui);
-                }
+                account(app, ui);
                 // A quiet spinner once the app has been talking to Spotify for a
                 // while, long enough that fast requests never flash it.
                 if busy {
@@ -518,97 +348,180 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                         app.actions.push(Action::ToggleDevicesPopup);
                     }
                 }
-                // A newer release. Most people never visit a releases page,
-                // so the app says so, quietly, until they do.
-                if let (Some(galley), Some(update)) = (update_galley, update)
-                    && badge(
-                        ui,
-                        &palette,
-                        Icon::CircleArrowDown,
-                        galley,
-                        UPDATE_BADGE_PADDING,
-                        fit.labels,
-                    )
-                    .on_hover_text(
-                        // Translators: {version} is a version number such as 1.2.0.
-                        gettext(locale, "Version {version} is available.")
-                            .replace("{version}", &update.version),
-                    )
-                    .clicked()
-                {
-                    app.actions.push(Action::ShowUpdate);
-                }
             });
         },
     );
 }
 
-/// The Winamp, MilkDrop and Settings buttons beside the account menu, laid
-/// out right to left.
-fn folding_buttons(app: &mut App, ui: &mut egui::Ui) {
+/// The account avatar and its menu, which also holds Settings, the
+/// Winamp mini player, MilkDrop and, when there is one, a newer release.
+/// A newer release shows as a dot on the avatar: most people never visit
+/// a releases page, so the app says so, quietly, until they do.
+fn account(app: &mut App, ui: &mut egui::Ui) {
     let palette = app.palette;
     let locale = app.locale;
-    if IconButton::new(Icon::Settings, &gettext(locale, "Settings"))
-        .show(ui, &palette)
-        .clicked()
-    {
-        app.actions.push(Action::Open(Page::Settings));
+    let (name, avatar) = app
+        .user
+        .as_ref()
+        .map(|user| {
+            (
+                user.name().to_string(),
+                pick_image(&user.images, 64).map(str::to_string),
+            )
+        })
+        .unwrap_or_default();
+    let update = app.update.clone();
+    let mut label = if name.is_empty() {
+        gettext(locale, "Account").into_owned()
+    } else {
+        name.clone()
+    };
+    if let Some(update) = &update {
+        // Translators: {version} is a version number such as 1.2.0.
+        let notice = gettext(locale, "Version {version} is available.")
+            .replace("{version}", &update.version);
+        label = format!("{label}. {notice}");
     }
-    if IconButton::new(
-        Icon::Sparkles,
-        super::keys::platform_shortcut(
-            &gettext(locale, "MilkDrop visualiser (Ctrl+Shift+K)"),
-            &gettext(locale, "MilkDrop visualiser (Cmd+Shift+K)"),
+    let art = app.backend.art();
+    let response = AvatarButton::new(&label)
+        .size(AVATAR_SIZE)
+        .notice(update.is_some())
+        .show(ui, &palette, |ui, picture| match avatar.as_deref() {
+            Some(url) => super::widgets::paint_cover(
+                ui,
+                &palette,
+                Some(url),
+                picture,
+                picture.height() / 2.0,
+                Icon::User,
+                Some(art),
+            ),
+            None => {
+                let initial = name
+                    .chars()
+                    .next()
+                    .unwrap_or('?')
+                    .to_uppercase()
+                    .to_string();
+                ui.painter().circle_filled(
+                    picture.center(),
+                    picture.height() / 2.0,
+                    palette.accent,
+                );
+                ui.painter().text(
+                    picture.center(),
+                    egui::Align2::CENTER_CENTER,
+                    initial,
+                    theme::bold(14.0),
+                    palette.on_accent,
+                );
+            }
+        });
+    let commands = [
+        (
+            Icon::Settings,
+            gettext(locale, "Settings"),
+            super::keys::SETTINGS_SHORTCUT,
+            Action::Open(Page::Settings),
         ),
-    )
-    .active(app.settings.milkdrop_open)
-    .show(ui, &palette)
-    .clicked()
-    {
-        app.actions.push(Action::ToggleWinampMilkdrop);
-    }
-    if IconButton::new(
-        Icon::PictureInPicture,
-        super::keys::platform_shortcut(
-            &gettext(locale, "Winamp mini player (Ctrl+M)"),
-            &gettext(locale, "Winamp mini player (Cmd+Shift+M)"),
+        (
+            Icon::Keyboard,
+            gettext(locale, "Keyboard shortcuts"),
+            super::keys::SHORTCUTS_SHORTCUT,
+            Action::ShowDialog(crate::model::Dialog::Shortcuts),
         ),
-    )
-    .show(ui, &palette)
-    .clicked()
-    {
-        app.actions.push(Action::ToggleWinampWindow);
-    }
+        (
+            Icon::PictureInPicture,
+            gettext(locale, "Winamp mini player"),
+            super::keys::WINAMP_SHORTCUT,
+            Action::ToggleWinampWindow,
+        ),
+        (
+            Icon::Sparkles,
+            gettext(locale, "MilkDrop visualiser"),
+            super::keys::MILKDROP_SHORTCUT,
+            Action::ToggleWinampMilkdrop,
+        ),
+    ];
+    egui::Popup::menu(&response)
+        .frame(super::widgets::menu_frame(&palette))
+        .align(egui::RectAlign::BOTTOM_END)
+        .show(|ui| {
+            // As wide as the longest label beside its shortcut.
+            let measure = |text: &str, font| {
+                ui.painter()
+                    .layout_no_wrap(text.to_owned(), font, palette.text)
+                    .size()
+                    .x
+            };
+            let width = commands
+                .iter()
+                .map(|(_, label, shortcut, _)| {
+                    measure(label, theme::regular(13.5)) + measure(shortcut, theme::regular(12.0))
+                })
+                .fold(0.0_f32, f32::max)
+                + MENU_ITEM_CHROME;
+            ui.set_width(
+                width
+                    .max(MENU_WIDTH)
+                    .min(ui.ctx().content_rect().width() - 24.0),
+            );
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.add_space(10.0);
+                theme::text(ui, &name, theme::semibold(14.0), palette.text);
+            });
+            if let Some(product) = app.user.as_ref().and_then(|user| user.product.clone()) {
+                ui.horizontal(|ui| {
+                    ui.add_space(10.0);
+                    theme::text(
+                        ui,
+                        capitalize(&product),
+                        theme::regular(12.0),
+                        palette.secondary,
+                    );
+                });
+            }
+            super::widgets::menu_separator(ui, &palette);
+            if let Some(update) = &update {
+                let label = match &app.update_download {
+                    crate::updates::DownloadState::Ready(_) => {
+                        gettext(locale, "Update ready").into_owned()
+                    }
+                    crate::updates::DownloadState::Downloading { .. } => {
+                        gettext(locale, "Downloading update…").into_owned()
+                    }
+                    _ => {
+                        // Translators: {version} is a version number such as 1.2.0.
+                        gettext(locale, "Update to {version}").replace("{version}", &update.version)
+                    }
+                };
+                if super::widgets::menu_item(ui, &palette, Some(Icon::CircleArrowDown), &label) {
+                    app.actions.push(Action::ShowUpdate);
+                }
+                super::widgets::menu_separator(ui, &palette);
+            }
+            for (icon, label, shortcut, action) in commands {
+                if super::widgets::menu_item_shortcut(ui, &palette, Some(icon), &label, shortcut) {
+                    app.actions.push(action);
+                }
+            }
+            super::widgets::menu_separator(ui, &palette);
+            if super::widgets::menu_item(
+                ui,
+                &palette,
+                Some(Icon::LogOut),
+                &gettext(locale, "Sign out"),
+            ) {
+                app.actions.push(Action::SignOut);
+            }
+        });
 }
 
-/// The same three controls as items of the account menu, once the bar is
-/// too narrow for their buttons. Settings is there already.
-fn folded_items(app: &mut App, ui: &mut egui::Ui) {
-    let palette = app.palette;
-    let locale = app.locale;
-    if super::widgets::menu_item(
-        ui,
-        &palette,
-        Some(Icon::PictureInPicture),
-        super::keys::platform_shortcut(
-            &gettext(locale, "Winamp mini player (Ctrl+M)"),
-            &gettext(locale, "Winamp mini player (Cmd+Shift+M)"),
-        ),
-    ) {
-        app.actions.push(Action::ToggleWinampWindow);
-    }
-    if super::widgets::menu_item(
-        ui,
-        &palette,
-        Some(Icon::Sparkles),
-        super::keys::platform_shortcut(
-            &gettext(locale, "MilkDrop visualiser (Ctrl+Shift+K)"),
-            &gettext(locale, "MilkDrop visualiser (Cmd+Shift+K)"),
-        ),
-    ) {
-        app.actions.push(Action::ToggleWinampMilkdrop);
-    }
-}
+/// The account menu's least width, and what an item adds around its label
+/// and shortcut: the icon, the gaps and the padding at both ends.
+const MENU_WIDTH: f32 = 220.0;
+const MENU_ITEM_CHROME: f32 = 10.0 + 26.0 + 12.0 + 10.0 + 8.0;
 
 /// What Show sidebar does: turn the sidebar on or, when it is on but a
 /// right panel leaves it no room, close that panel to make some.
@@ -636,11 +549,10 @@ fn capitalize(text: &str) -> String {
 mod topbar_fit_tests {
     use super::*;
 
-    // What the badges measure on a bar showing "Playing on MacBook de Luis"
-    // and "Update to 0.7.1", each including the spacing before it.
+    // What the badge measures on a bar showing "Playing on MacBook de Luis",
+    // including the spacing before it.
     const DEVICE: f32 = ITEM_SPACING + 176.0;
-    const UPDATE: f32 = ITEM_SPACING + 152.0;
-    // Collapsed, a badge is a square chip as tall as its text.
+    // Collapsed, the badge is a square chip as tall as its text.
     const CHIP: f32 = ITEM_SPACING + 15.0 + BADGE_PADDING_Y;
 
     /// The narrowest bar the app can produce: a 760 px window, its sidebar,
@@ -650,17 +562,12 @@ mod topbar_fit_tests {
     fn right_end(room: f32, labelled: f32, icons: f32) -> f32 {
         let fit = topbar_fit(room, RIGHT_CONTROLS_WIDTH, labelled, icons);
         let badges = if fit.labels { labelled } else { icons };
-        let controls = if fit.fold {
-            RIGHT_CONTROLS_WIDTH - FOLDING_WIDTH
-        } else {
-            RIGHT_CONTROLS_WIDTH
-        };
-        controls + badges - (room - fit.search)
+        RIGHT_CONTROLS_WIDTH + badges - (room - fit.search)
     }
 
     #[test]
     fn a_wide_bar_keeps_the_field_it_always_had() {
-        let fit = topbar_fit(2000.0, RIGHT_CONTROLS_WIDTH, DEVICE + UPDATE, CHIP * 2.0);
+        let fit = topbar_fit(2000.0, RIGHT_CONTROLS_WIDTH, DEVICE, CHIP);
         assert_eq!(fit.search, SEARCH_MAX);
         assert!(fit.labels);
         // Half the room, as before, while half still fits.
@@ -672,16 +579,11 @@ mod topbar_fit_tests {
     fn the_right_end_never_reaches_over_the_search_field() {
         let mut room = NARROWEST_BAR;
         while room <= 2400.0 {
-            for (labelled, icons) in [
-                (0.0, 0.0),
-                (DEVICE, CHIP),
-                (UPDATE, CHIP),
-                (DEVICE + UPDATE, CHIP * 2.0),
-            ] {
+            for (labelled, icons) in [(0.0, 0.0), (DEVICE, CHIP)] {
                 let over = right_end(room, labelled, icons);
                 assert!(
                     over <= 0.0,
-                    "badges overlap the field by {over} px on a {room} px bar"
+                    "the badge overlaps the field by {over} px on a {room} px bar"
                 );
             }
             room += 1.0;
@@ -689,71 +591,63 @@ mod topbar_fit_tests {
     }
 
     #[test]
-    fn a_right_panel_can_narrow_search_after_the_badges_collapse() {
-        let room = RIGHT_CONTROLS_WIDTH + CHIP * 2.0 + 100.0;
-        let fit = topbar_fit(room, RIGHT_CONTROLS_WIDTH, DEVICE + UPDATE, CHIP * 2.0);
+    fn a_right_panel_can_narrow_search_after_the_badge_collapses() {
+        let room = RIGHT_CONTROLS_WIDTH + CHIP + 100.0;
+        let fit = topbar_fit(room, RIGHT_CONTROLS_WIDTH, DEVICE, CHIP);
         assert!(!fit.labels);
         assert_eq!(fit.search, 100.0);
-        assert_eq!(right_end(room, DEVICE + UPDATE, CHIP * 2.0), 0.0);
+        assert_eq!(right_end(room, DEVICE, CHIP), 0.0);
     }
 
     /// A tiling window manager can make the window narrower than its
     /// minimum, and a right panel then leaves the page less than the bar
-    /// needs (B1 of the UX audit). The three buttons beside the account
-    /// fold into its menu before anything reaches over the field.
+    /// needs (B1 of the UX audit). With Settings, the Winamp mini player
+    /// and MilkDrop in the account menu, the avatar and the collapsed
+    /// badge still sit clear of the narrowest field there.
     #[test]
-    fn a_bar_below_its_least_width_folds_the_buttons_into_the_account_menu() {
-        let mut room = 240.0;
+    fn a_bar_below_its_least_width_keeps_the_right_end_off_the_field() {
+        let mut room = RIGHT_CONTROLS_WIDTH + CHIP + SEARCH_MIN;
         while room < NARROWEST_BAR {
-            for (labelled, icons) in [(0.0, 0.0), (DEVICE + UPDATE, CHIP * 2.0)] {
-                let fit = topbar_fit(room, RIGHT_CONTROLS_WIDTH, labelled, icons);
-                let over = right_end(room, labelled, icons);
-                if RIGHT_CONTROLS_WIDTH - FOLDING_WIDTH + icons + SEARCH_MIN <= room {
-                    assert!(over <= 0.0, "{over} px over the field on a {room} px bar");
-                }
-                assert_eq!(
-                    fit.fold,
-                    RIGHT_CONTROLS_WIDTH + icons + SEARCH_MIN > room,
-                    "on a {room} px bar"
-                );
-            }
-            room += 1.0;
-        }
-        // Down to the narrowest bar the app lays out at its minimum, nothing
-        // folds.
-        let mut room = NARROWEST_BAR;
-        while room <= 2400.0 {
-            assert!(!topbar_fit(room, RIGHT_CONTROLS_WIDTH, DEVICE + UPDATE, CHIP * 2.0).fold);
+            let over = right_end(room, DEVICE, CHIP);
+            assert!(over <= 0.0, "{over} px over the field on a {room} px bar");
             room += 1.0;
         }
     }
 
     #[test]
-    fn a_narrow_bar_trades_the_badge_labels_for_their_icons() {
+    fn a_narrow_bar_trades_the_badge_label_for_its_icon() {
         assert!(topbar_fit(1400.0, RIGHT_CONTROLS_WIDTH, DEVICE, CHIP).labels);
         // The 1080 px window of the report that started this.
-        assert!(topbar_fit(952.0, RIGHT_CONTROLS_WIDTH, DEVICE + UPDATE, CHIP * 2.0).labels);
-        assert!(!topbar_fit(NARROWEST_BAR, RIGHT_CONTROLS_WIDTH, DEVICE, CHIP).labels);
+        assert!(topbar_fit(952.0, RIGHT_CONTROLS_WIDTH, DEVICE, CHIP).labels);
+        assert!(
+            !topbar_fit(
+                RIGHT_CONTROLS_WIDTH + DEVICE,
+                RIGHT_CONTROLS_WIDTH,
+                DEVICE,
+                CHIP
+            )
+            .labels
+        );
     }
 
     /// At the least width the panels leave it, the bar still holds the
-    /// spinner and both badges beside the narrowest field (#624).
+    /// spinner and the badge beside the narrowest field (#624).
     #[test]
     fn the_least_width_holds_every_control_beside_the_field() {
         let lead = LEAD_GUESS;
         let room = least_width_after(lead) - lead;
         let controls = RIGHT_CONTROLS_WIDTH + SPINNER_SIZE + ITEM_SPACING;
-        let fit = topbar_fit(room, controls, DEVICE + UPDATE, CHIP * 2.0);
+        let fit = topbar_fit(room, controls, DEVICE, CHIP);
         assert!(!fit.labels);
         assert_eq!(fit.search, SEARCH_MIN);
-        assert!(controls + CHIP * 2.0 + fit.search <= room);
+        assert!(controls + CHIP + fit.search <= room);
     }
 
     #[test]
     fn the_field_stays_readable_however_tight_the_bar_gets() {
         let mut room = NARROWEST_BAR;
         while room <= 2400.0 {
-            let fit = topbar_fit(room, RIGHT_CONTROLS_WIDTH, DEVICE + UPDATE, CHIP * 2.0);
+            let fit = topbar_fit(room, RIGHT_CONTROLS_WIDTH, DEVICE, CHIP);
             assert!(fit.search >= SEARCH_FLOOR, "field is {} px", fit.search);
             assert!(fit.search <= SEARCH_MAX);
             room += 1.0;

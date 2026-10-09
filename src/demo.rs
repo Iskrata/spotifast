@@ -2353,6 +2353,61 @@ mod tests {
         app.backend.shutdown();
     }
 
+    /// Settings, Keyboard shortcuts, the Winamp mini player and MilkDrop
+    /// are labelled items of the account menu, and each does what its
+    /// keyboard shortcut does.
+    #[test]
+    fn the_account_menu_holds_settings_and_the_winamp_controls() {
+        use egui::accesskit::{Action as AccessibleAction, Role};
+        let (ctx, mut app) = accessible_app("account-menu");
+        for label in [
+            "Settings",
+            "Keyboard shortcuts",
+            "Winamp mini player",
+            "MilkDrop visualiser",
+        ] {
+            app.open(Page::Home);
+            let tree = accessible_frame(&ctx, &mut app, vec![]);
+            assert!(
+                !tree
+                    .nodes
+                    .iter()
+                    .any(|(_, node)| node.label() == Some(label)),
+                "{label} shows before the account menu opens"
+            );
+            let account = accessible_node(&tree, "Carmine", Role::Button);
+            accessible_frame(
+                &ctx,
+                &mut app,
+                vec![accessible_action(account, AccessibleAction::Click, None)],
+            );
+            let menu = accessible_frame(&ctx, &mut app, vec![]);
+            let item = accessible_node(&menu, label, Role::Button);
+            accessible_frame(
+                &ctx,
+                &mut app,
+                vec![accessible_action(item, AccessibleAction::Click, None)],
+            );
+            match label {
+                "Settings" => assert_eq!(app.page(), &Page::Settings),
+                "Keyboard shortcuts" => {
+                    assert!(matches!(app.dialog, Some(Dialog::Shortcuts)));
+                    app.dialog = None;
+                }
+                "Winamp mini player" => {
+                    assert!(app.settings.winamp_window);
+                    app.settings.winamp_window = false;
+                    app.switch_intent = false;
+                }
+                _ => {
+                    assert!(app.settings.milkdrop_open);
+                    app.settings.milkdrop_open = false;
+                }
+            }
+        }
+        app.backend.shutdown();
+    }
+
     #[test]
     fn library_grid_toggle_is_accessible_and_persistent() {
         use egui::accesskit::{Action as AccessibleAction, Role};
@@ -9900,48 +9955,72 @@ mod tests {
                          beside {panel:?} with the sidebar {sidebar}",
                         field - device
                     );
-                    // The buttons beside the account sit clear of the field,
-                    // or have folded into its menu.
+                    // Settings, the Winamp mini player and MilkDrop live in
+                    // the account menu, never on the bar.
                     for name in ["Settings", "MilkDrop visualiser", "Winamp mini player"] {
-                        if let Some(left) = badge(name) {
-                            assert!(
-                                left >= field,
-                                "{name} covers {} px of the search field at {width} px",
-                                field - left
-                            );
-                        }
+                        assert!(badge(name).is_none(), "{name} is on the bar at {width} px");
                     }
-                    if let Some(label) = label {
-                        let release = badge(label).expect("the update badge");
-                        assert!(
-                            release >= field,
-                            "the update badge covers {} px of the search field at {width} px",
-                            field - release
-                        );
-                        if narrowest {
-                            let button = accessible_node(&tree, label, Role::Button);
+                    let account = tree
+                        .nodes
+                        .iter()
+                        .find(|(_, node)| {
+                            node.role() == Role::Button
+                                && node.label().is_some_and(|name| name.starts_with("Carmine"))
+                        })
+                        .expect("the account avatar");
+                    let account_left = account.1.bounds().expect("avatar bounds").x0 as f32;
+                    assert!(
+                        account_left >= field,
+                        "the avatar covers {} px of the search field at {width} px",
+                        field - account_left
+                    );
+                    // A newer release is a dot on the avatar, and the avatar
+                    // says so to a screen reader.
+                    assert_eq!(
+                        account.1.label().is_some_and(|name| name.contains("9.9.9")),
+                        label.is_some(),
+                        "the avatar's name at {width} px"
+                    );
+                    if let Some(label) = label
+                        && narrowest
+                    {
+                        let account = account.0;
+                        let mut frame = |events: Vec<egui::Event>| {
                             let mut output = ctx.run_ui(
                                 egui::RawInput {
                                     screen_rect: Some(egui::Rect::from_min_size(
                                         egui::Pos2::ZERO,
                                         egui::vec2(width, 620.0),
                                     )),
-                                    events: vec![accessible_action(
-                                        button,
-                                        AccessibleAction::Click,
-                                        None,
-                                    )],
+                                    events,
                                     ..Default::default()
                                 },
                                 |ui| app.frame_ui(ui),
                             );
                             output.textures_delta.clear();
-                            assert!(
-                                app.show_update,
-                                "the collapsed {label} badge must open the updater"
-                            );
-                            app.show_update = false;
-                        }
+                            output
+                                .platform_output
+                                .accesskit_update
+                                .expect("screen-reader tree")
+                        };
+                        frame(vec![accessible_action(
+                            account,
+                            AccessibleAction::Click,
+                            None,
+                        )]);
+                        let menu = frame(vec![]);
+                        let release = accessible_node(&menu, label, Role::Button);
+                        frame(vec![accessible_action(
+                            release,
+                            AccessibleAction::Click,
+                            None,
+                        )]);
+                        frame(vec![]);
+                        assert!(
+                            app.show_update,
+                            "the account menu's {label} must open the updater"
+                        );
+                        app.show_update = false;
                     }
                 }
             }
@@ -9999,9 +10078,11 @@ mod tests {
                 .expect("the panel was drawn")
                 .outer_rect;
             // The page starts at the window's edge and keeps all the panel
-            // leaves; the top bar's own fit is checked above.
+            // leaves, at least what the top bar needs; the top bar's own
+            // fit is checked above.
             assert!(
-                side.left() >= 760.0 - side.width() - 0.5 && side.width() < 300.0,
+                side.left() >= 760.0 - side.width() - 0.5
+                    && side.left() >= crate::ui::topbar::least_width(&ctx) - 0.5,
                 "beside {panel} the page keeps {} points",
                 side.left()
             );

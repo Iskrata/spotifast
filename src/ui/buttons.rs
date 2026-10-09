@@ -88,24 +88,11 @@ impl<'a> IconButton<'a> {
     }
 
     pub fn show(self, ui: &mut Ui, palette: &Palette) -> Response {
-        debug_assert!(!self.label.is_empty(), "an icon button needs a label");
         let edge = self.size.hit();
-        let (rect, response) = ui.allocate_exact_size(Vec2::splat(edge), Sense::click());
-        response.widget_info(|| {
-            egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), self.label)
-        });
+        let (response, lifted) = round_control(ui, palette, edge, self.label);
+        let rect = response.rect;
         if ui.is_rect_visible(rect) {
             let enabled = ui.is_enabled();
-            let lifted = enabled && (response.hovered() || response.has_focus());
-            let pressed = enabled && response.is_pointer_button_down_on();
-            if pressed || lifted {
-                let fill = if pressed {
-                    palette.surface_active
-                } else {
-                    palette.surface_hover
-                };
-                ui.painter().circle_filled(rect.center(), edge / 2.0, fill);
-            }
             let color = if !enabled {
                 palette.dim
             } else if let Some(tint) = self.tint {
@@ -138,13 +125,106 @@ impl<'a> IconButton<'a> {
                 );
             }
         }
-        focus_ring(ui, &response, CornerRadius::same(tokens::radius::ROUND));
+        response.on_hover_text(self.label)
+    }
+}
+
+/// The frame every round control shares: an `edge`-point square that
+/// answers to clicks, named `label` for a screen reader, with the hover
+/// and press circle under its content and a round focus ring. Returns the
+/// response and whether hover or focus lifts the control.
+fn round_control(ui: &mut Ui, palette: &Palette, edge: f32, label: &str) -> (Response, bool) {
+    debug_assert!(!label.is_empty(), "a round control needs a label");
+    let (rect, response) = ui.allocate_exact_size(Vec2::splat(edge), Sense::click());
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label)
+    });
+    let enabled = ui.is_enabled();
+    let lifted = enabled && (response.hovered() || response.has_focus());
+    let pressed = enabled && response.is_pointer_button_down_on();
+    if ui.is_rect_visible(rect) && (pressed || lifted) {
+        let fill = if pressed {
+            palette.surface_active
+        } else {
+            palette.surface_hover
+        };
+        ui.painter().circle_filled(rect.center(), edge / 2.0, fill);
+    }
+    focus_ring(ui, &response, CornerRadius::same(tokens::radius::ROUND));
+    (response, lifted)
+}
+
+/// The account's picture in the frame of an [`IconButton`] of the same
+/// size, so it hovers, presses and takes focus the way the buttons beside
+/// it do. Something waiting in the account menu, such as an update, shows
+/// as a green dot on it.
+#[must_use = "an avatar button does nothing until shown"]
+pub struct AvatarButton<'a> {
+    label: &'a str,
+    size: IconSize,
+    notice: bool,
+}
+
+impl<'a> AvatarButton<'a> {
+    pub fn new(label: &'a str) -> Self {
+        Self {
+            label,
+            size: IconSize::Standard,
+            notice: false,
+        }
+    }
+
+    pub fn size(mut self, size: IconSize) -> Self {
+        self.size = size;
+        self
+    }
+
+    /// Something in the account menu waits for the user.
+    pub fn notice(mut self, notice: bool) -> Self {
+        self.notice = notice;
+        self
+    }
+
+    /// The picture's diameter in a button of `size`: the hover circle
+    /// shows as a ring around it.
+    pub const fn diameter(size: IconSize) -> f32 {
+        size.hit() - AVATAR_INSET
+    }
+
+    /// Shows the button; `paint` draws the picture into the square it is
+    /// given.
+    pub fn show(
+        self,
+        ui: &mut Ui,
+        palette: &Palette,
+        paint: impl FnOnce(&mut Ui, egui::Rect),
+    ) -> Response {
+        let (response, _) = round_control(ui, palette, self.size.hit(), self.label);
+        let rect = response.rect;
+        if ui.is_rect_visible(rect) {
+            let picture =
+                egui::Rect::from_center_size(rect.center(), Vec2::splat(Self::diameter(self.size)));
+            paint(ui, picture);
+            if self.notice {
+                let center = picture.right_top() + Vec2::new(-NOTICE_DOT / 4.0, NOTICE_DOT / 4.0);
+                ui.painter().circle(
+                    center,
+                    NOTICE_DOT / 2.0,
+                    palette.accent,
+                    Stroke::new(2.0, palette.window),
+                );
+            }
+        }
         response.on_hover_text(self.label)
     }
 }
 
 /// The diameter of the dot under a control that is on.
 const ACTIVE_DOT: f32 = 4.0;
+/// How much narrower an avatar is than its button.
+const AVATAR_INSET: f32 = 8.0;
+/// The dot on an avatar that has something waiting.
+const NOTICE_DOT: f32 = 10.0;
 
 /// Makes keyboard focus visible around a control, following its own shape
 /// (`corner` of the control's rect), without changing its layout.

@@ -1397,7 +1397,7 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
                             _ => 0.0,
                         }
                     },
-                    crate::motion::seconds(ui.ctx(), 0.12),
+                    crate::motion::seconds(ui.ctx(), super::tokens::motion::FAST),
                 );
                 let rect = rect.translate(vec2(0.0, shift));
                 // Set when the cover play button takes a click, so a double

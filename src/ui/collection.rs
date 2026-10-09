@@ -892,7 +892,7 @@ fn table_contents(app: &mut App, ui: &mut egui::Ui, table: Table<'_>) {
                 Some(_) => 4.0,
                 None => 0.0,
             },
-            crate::motion::seconds(ui.ctx(), 0.12),
+            crate::motion::seconds(ui.ctx(), super::tokens::motion::FAST),
         );
         let (response, asked) = widgets::track_row_response(
             ui,

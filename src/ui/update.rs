@@ -1,5 +1,6 @@
 use egui::{Align, CornerRadius, Frame, Layout, Margin, RichText, Stroke};
 
+use super::buttons::IconButton;
 use super::tokens;
 use crate::app::App;
 use crate::i18n::gettext;
@@ -43,15 +44,9 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
             ui.horizontal(|ui| {
                 theme::text(ui, title.as_ref(), theme::bold(20.0), palette.text);
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    close |= theme::icon_button(
-                        ui,
-                        Icon::X,
-                        18.0,
-                        palette.secondary,
-                        palette.text,
-                        &gettext(locale, "Close update"),
-                    )
-                    .clicked();
+                    close |= IconButton::new(Icon::X, &gettext(locale, "Close update"))
+                        .show(ui, &palette)
+                        .clicked();
                 });
             });
             ui.add_space(4.0);

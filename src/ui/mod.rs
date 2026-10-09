@@ -5,6 +5,7 @@ use std::sync::Arc;
 mod art_background;
 pub mod artist;
 mod artist_about;
+pub mod buttons;
 pub(crate) mod card_hover;
 pub mod collection;
 pub(crate) mod devices;
@@ -521,15 +522,10 @@ fn banner(
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                if theme::icon_button(
-                    ui,
-                    Icon::X,
-                    16.0,
-                    palette.secondary,
-                    palette.text,
-                    &gettext(locale, "Close banner"),
-                )
-                .clicked()
+                if buttons::IconButton::new(Icon::X, &gettext(locale, "Close banner"))
+                    .size(buttons::IconSize::Compact)
+                    .show(ui, &palette)
+                    .clicked()
                 {
                     app.actions.push(close);
                 }

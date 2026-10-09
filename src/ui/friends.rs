@@ -9,13 +9,14 @@ use crate::model::{Action, Loadable, Page};
 use crate::session_reads::FriendActivity;
 use crate::theme::{self, Icon, Palette};
 
+use super::buttons::IconButton;
 use super::widgets;
 
 const AVATAR: f32 = 40.0;
 const ROW_GAP: f32 = 18.0;
 /// The header's title starts this far in, and the close button's glyph
-/// ends this far from the right (`theme::icon_button` pads it by half of
-/// `ICON_BUTTON_PAD`).
+/// ends this far from the right (an icon button pads its glyph by half the
+/// difference between its icon and hit sizes).
 const TITLE_INSET: i8 = 4;
 const CLOSE_GLYPH_INSET: i8 = 6;
 
@@ -60,15 +61,9 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
                 theme::text(ui, title, theme::bold(16.0), palette.text);
             },
             |ui| {
-                close = theme::icon_button(
-                    ui,
-                    Icon::X,
-                    18.0,
-                    palette.secondary,
-                    palette.text,
-                    &gettext(locale, "Close"),
-                )
-                .clicked();
+                close = IconButton::new(Icon::X, &gettext(locale, "Close"))
+                    .show(ui, &palette)
+                    .clicked();
             },
         );
         if close {

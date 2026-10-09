@@ -11,6 +11,7 @@ use crate::lyrics::Lyrics;
 use crate::model::{Action, Loadable, Page};
 use crate::theme::{self, Icon};
 
+use super::buttons::IconSize;
 use super::{player_bar, widgets};
 
 const COVER: f32 = 64.0;
@@ -69,8 +70,13 @@ fn song(app: &mut App, ui: &mut egui::Ui, now: &NowPlaying) {
             if let Some(item) = app.now_playing_item() {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 0.0;
-                    widgets::heart_button(ui, app, &now.uri, 16.0);
-                    widgets::add_to_playlist_button(ui, app, std::slice::from_ref(&item), 16.0);
+                    widgets::heart_button(ui, app, &now.uri, IconSize::Compact);
+                    widgets::add_to_playlist_button(
+                        ui,
+                        app,
+                        std::slice::from_ref(&item),
+                        IconSize::Compact,
+                    );
                 });
             }
         });

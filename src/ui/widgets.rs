@@ -5,6 +5,7 @@ use egui::{
     pos2, vec2,
 };
 
+use super::buttons::{IconButton, IconSize};
 use super::tokens;
 use crate::api::models::*;
 use crate::app::App;
@@ -802,17 +803,12 @@ pub(crate) fn add_to_playlist_button(
     ui: &mut Ui,
     app: &mut App,
     items: &[PlayableItem],
-    size: f32,
+    size: IconSize,
 ) {
     let palette = app.palette;
-    let button = theme::icon_button(
-        ui,
-        Icon::ListPlus,
-        size,
-        palette.secondary,
-        palette.text,
-        &gettext(app.locale, "Add to playlist"),
-    );
+    let button = IconButton::new(Icon::ListPlus, &gettext(app.locale, "Add to playlist"))
+        .size(size)
+        .show(ui, &palette);
     let query_id = button.id.with("add-to-playlist-query");
     let opened = egui::Popup::menu(&button)
         .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
@@ -845,26 +841,32 @@ fn remembered_playlist_picker(
 }
 
 /// The Like heart for `uri`, filled while the song is in Liked Songs.
-pub(crate) fn heart_button(ui: &mut Ui, app: &mut App, uri: &str, size: f32) -> egui::Response {
+pub(crate) fn heart_button(
+    ui: &mut Ui,
+    app: &mut App,
+    uri: &str,
+    size: IconSize,
+) -> egui::Response {
     let palette = app.palette;
     let saved = app.is_saved(uri).unwrap_or(false);
     // A liked heart stays green under the pointer.
-    let (icon, color, hover, tooltip) = if saved {
+    let (icon, color, tooltip) = if saved {
         (
             Icon::HeartFilled,
-            palette.accent,
-            palette.accent_hover,
+            Some(palette.accent),
             gettext(app.locale, "Remove from Liked Songs"),
         )
     } else {
         (
             Icon::Heart,
-            palette.secondary,
-            palette.text,
+            None,
             gettext(app.locale, "Save to Liked Songs"),
         )
     };
-    let response = theme::icon_button(ui, icon, size, color, hover, &tooltip);
+    let response = IconButton::new(icon, &tooltip)
+        .size(size)
+        .tint(color)
+        .show(ui, &palette);
     if response.clicked() {
         app.actions.push(Action::ToggleSaved(uri.to_string()));
     }
@@ -2061,7 +2063,7 @@ fn track_row_contents(
             {
                 child.set_opacity(0.0);
             }
-            heart_button(&mut child, app, row.item.uri(), 16.0);
+            heart_button(&mut child, app, row.item.uri(), IconSize::Compact);
         }
         x += cols.heart;
     }
@@ -2095,14 +2097,8 @@ fn track_row_contents(
         {
             child.set_opacity(0.0);
         }
-        let more = theme::icon_button(
-            &mut child,
-            Icon::Ellipsis,
-            18.0,
-            palette.secondary,
-            palette.text,
-            &gettext(app.locale, "More"),
-        );
+        let more = IconButton::new(Icon::Ellipsis, &gettext(app.locale, "More"))
+            .show(&mut child, &palette);
         egui::Popup::menu(&more)
             .id(menu_id)
             .frame(menu_frame(&palette))
@@ -3342,28 +3338,22 @@ pub fn search_field(
     ui.ctx()
         .accesskit_node_builder(response.id, |node| node.set_label(hint));
     if !text.is_empty() {
-        // The box must fit what `theme::icon_button` allocates around the
-        // glyph; a smaller child makes egui clamp its centered layout to
-        // the child's top edge, dropping the glyph below the midline.
-        let clear_size = 15.0;
+        // The box must fit the square the icon button allocates; a smaller
+        // child makes egui clamp its centered layout to the child's top
+        // edge, dropping the glyph below the midline.
         let clear_rect = Rect::from_center_size(
             pos2(rect.right() - 17.0, rect.center().y),
-            Vec2::splat(clear_size + theme::ICON_BUTTON_PAD),
+            Vec2::splat(IconSize::Compact.hit()),
         );
         let mut clear = ui.new_child(
             UiBuilder::new()
                 .max_rect(clear_rect)
                 .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
         );
-        if theme::icon_button(
-            &mut clear,
-            Icon::X,
-            clear_size,
-            palette.secondary,
-            palette.text,
-            &gettext(locale, "Clear"),
-        )
-        .clicked()
+        if IconButton::new(Icon::X, &gettext(locale, "Clear"))
+            .size(IconSize::Compact)
+            .show(&mut clear, palette)
+            .clicked()
         {
             text.clear();
             ui.memory_mut(|memory| memory.request_focus(id));
@@ -3932,8 +3922,8 @@ mod tests {
     }
 
     /// The clear button sits on the search pill's midline. The button
-    /// allocates its glyph plus [`theme::ICON_BUTTON_PAD`] on every side,
-    /// so the box handed to it must be that wide: in a tighter one egui
+    /// allocates its whole hit square, so the box handed to it must be that
+    /// wide: in a tighter one egui
     /// clamps the centered layout to the box's top edge and the glyph
     /// lands below the midline.
     #[test]

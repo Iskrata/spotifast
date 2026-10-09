@@ -10,6 +10,7 @@ use crate::player::RepeatMode;
 use crate::theme::{self, Icon};
 use crate::util;
 
+use super::buttons::{IconButton, IconSize};
 use super::widgets::{SliderEvent, thin_slider};
 
 /// How much of the playing art's tint the bar's fill carries.
@@ -589,20 +590,10 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
     if !now.is_episode {
         let saved = app.is_saved(&now.uri).unwrap_or(false);
         // A liked heart stays green under the pointer, like shuffle.
-        let (icon, color, hover, tooltip) = if saved {
-            (
-                Icon::HeartFilled,
-                palette.accent,
-                palette.accent_hover,
-                gettext(app.locale, "Add to playlist"),
-            )
+        let (icon, tooltip) = if saved {
+            (Icon::HeartFilled, gettext(app.locale, "Add to playlist"))
         } else {
-            (
-                Icon::Heart,
-                palette.secondary,
-                palette.text,
-                gettext(app.locale, "Save to Liked Songs"),
-            )
+            (Icon::Heart, gettext(app.locale, "Save to Liked Songs"))
         };
         // Sit the heart just past the actual text, not at the region's far
         // edge, so it stays visually attached to the title.
@@ -613,7 +604,9 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
                 .max_rect(heart_rect)
                 .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
         );
-        let response = theme::icon_button(&mut heart_ui, icon, 17.0, color, hover, &tooltip);
+        let response = IconButton::new(icon, &tooltip)
+            .tint(saved.then_some(palette.accent))
+            .show(&mut heart_ui, &palette);
         let popup_id = egui::Id::new(LIKED_POPUP_ID);
         // A liked song's heart opens Add to playlist, as Spotify's does,
         // with Remove from Liked Songs below the playlists (#792). The first
@@ -697,9 +690,15 @@ pub(super) fn byline(
     }
 }
 
-/// The transport's button widths: icon buttons occupy icon size + 12; the
-/// disc is 36.
-const TRANSPORT_WIDTHS: [f32; 5] = [29.0, 30.0, 36.0, 30.0, 29.0];
+/// The transport's button widths: standard icon buttons, and the 36-point
+/// disc.
+const TRANSPORT_WIDTHS: [f32; 5] = [
+    IconSize::Standard.hit(),
+    IconSize::Standard.hit(),
+    36.0,
+    IconSize::Standard.hit(),
+    IconSize::Standard.hit(),
+];
 const TRANSPORT_GAP: f32 = 10.0;
 
 /// The transport's buttons from Shuffle to Repeat, centred in the bar.
@@ -724,12 +723,6 @@ fn transport(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>, region:
     let loading = now.is_some_and(|now| now.loading);
     let shuffle = now.map_or_else(|| app.playing_context_shuffle(), |now| now.shuffle);
     let repeat = now.map(|now| now.repeat).unwrap_or_default();
-    let dim = if enabled {
-        palette.secondary
-    } else {
-        palette.dim
-    };
-
     let widths = TRANSPORT_WIDTHS;
     let mut x = region.center().x - transport_width() / 2.0;
     let mut slot = |width: f32| {
@@ -745,20 +738,11 @@ fn transport(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>, region:
         )
     };
 
-    let shuffle_color = if shuffle { palette.accent } else { dim };
     let mut cell = centered(ui, slot(widths[0]));
-    let shuffle_button = theme::icon_button(
-        &mut cell,
-        Icon::Shuffle,
-        17.0,
-        shuffle_color,
-        if shuffle {
-            palette.accent_hover
-        } else {
-            palette.text
-        },
-        &gettext(app.locale, "Shuffle"),
-    );
+    let shuffle_button = IconButton::new(Icon::Shuffle, &gettext(app.locale, "Shuffle"))
+        .active(shuffle)
+        .dimmed(!enabled)
+        .show(&mut cell, &palette);
     shuffle_button.widget_info(|| {
         egui::WidgetInfo::selected(
             egui::WidgetType::Checkbox,
@@ -772,15 +756,10 @@ fn transport(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>, region:
     }
 
     let mut cell = centered(ui, slot(widths[1]));
-    if theme::icon_button(
-        &mut cell,
-        Icon::SkipBackFilled,
-        18.0,
-        dim,
-        palette.text,
-        &gettext(app.locale, "Previous"),
-    )
-    .clicked()
+    if IconButton::new(Icon::SkipBackFilled, &gettext(app.locale, "Previous"))
+        .dimmed(!enabled)
+        .show(&mut cell, &palette)
+        .clicked()
     {
         app.actions.push(Action::Previous);
     }
@@ -823,46 +802,25 @@ fn transport(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>, region:
     }
 
     let mut cell = centered(ui, slot(widths[3]));
-    if theme::icon_button(
-        &mut cell,
-        Icon::SkipForwardFilled,
-        18.0,
-        dim,
-        palette.text,
-        &gettext(app.locale, "Next"),
-    )
-    .clicked()
+    if IconButton::new(Icon::SkipForwardFilled, &gettext(app.locale, "Next"))
+        .dimmed(!enabled)
+        .show(&mut cell, &palette)
+        .clicked()
     {
         app.actions.push(Action::Next);
     }
 
-    let (repeat_icon, repeat_color, tooltip) = match repeat {
-        RepeatMode::Off => (Icon::Repeat, dim, gettext(app.locale, "Repeat")),
-        RepeatMode::Context => (
-            Icon::Repeat,
-            palette.accent,
-            gettext(app.locale, "Repeat one"),
-        ),
-        RepeatMode::Track => (
-            Icon::Repeat1,
-            palette.accent,
-            gettext(app.locale, "Repeat off"),
-        ),
+    let (repeat_icon, tooltip) = match repeat {
+        RepeatMode::Off => (Icon::Repeat, gettext(app.locale, "Repeat")),
+        RepeatMode::Context => (Icon::Repeat, gettext(app.locale, "Repeat one")),
+        RepeatMode::Track => (Icon::Repeat1, gettext(app.locale, "Repeat off")),
     };
     let mut cell = centered(ui, slot(widths[4]));
-    if theme::icon_button(
-        &mut cell,
-        repeat_icon,
-        17.0,
-        repeat_color,
-        if repeat == RepeatMode::Off {
-            palette.text
-        } else {
-            palette.accent_hover
-        },
-        &tooltip,
-    )
-    .clicked()
+    if IconButton::new(repeat_icon, &tooltip)
+        .active(repeat != RepeatMode::Off)
+        .dimmed(!enabled)
+        .show(&mut cell, &palette)
+        .clicked()
     {
         app.actions.push(Action::CycleRepeat);
     }
@@ -976,18 +934,15 @@ fn extras(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>, transport_
             34..=66 => Icon::Volume1,
             _ => Icon::Volume2,
         };
-        if theme::icon_button(
-            ui,
+        if IconButton::new(
             volume_icon,
-            18.0,
-            palette.secondary,
-            palette.text,
             &if shown == 0 {
                 gettext(app.locale, "Unmute")
             } else {
                 gettext(app.locale, "Mute")
             },
         )
+        .show(ui, &palette)
         .clicked()
         {
             app.actions.push(Action::ToggleMute);
@@ -1011,18 +966,9 @@ fn extras(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>, transport_
         .filter(|now| !now.local)
         .and_then(|now| now.device_kind.as_deref())
         .map_or(Icon::Speaker, super::devices::device_icon);
-    let devices = theme::icon_button(
-        ui,
-        icon,
-        18.0,
-        if remote {
-            palette.accent
-        } else {
-            palette.secondary
-        },
-        palette.text,
-        &gettext(app.locale, "Connect to a device"),
-    );
+    let devices = IconButton::new(icon, &gettext(app.locale, "Connect to a device"))
+        .active(remote)
+        .show(ui, &palette);
     ui.ctx().data_mut(|data| {
         data.insert_temp(egui::Id::new(super::devices::BUTTON_RECT_ID), devices.rect)
     });
@@ -1030,18 +976,9 @@ fn extras(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>, transport_
         app.actions.push(Action::ToggleDevicesPopup);
     }
     let queue_open = app.show_queue_panel || matches!(app.page(), Page::Queue);
-    let queue_button = theme::icon_button(
-        ui,
-        Icon::ListVideo,
-        18.0,
-        if queue_open {
-            palette.accent
-        } else {
-            palette.secondary
-        },
-        palette.text,
-        &gettext(app.locale, "Queue"),
-    );
+    let queue_button = IconButton::new(Icon::ListVideo, &gettext(app.locale, "Queue"))
+        .active(queue_open)
+        .show(ui, &palette);
     if queue_button.clicked() {
         app.actions.push(Action::ToggleQueuePanel);
     }
@@ -1056,39 +993,21 @@ fn extras(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>, transport_
                 .collect(),
         });
     }
-    if theme::icon_button(
-        ui,
-        Icon::Mic,
-        18.0,
-        if app.show_lyrics_panel {
-            palette.accent
-        } else {
-            palette.secondary
-        },
-        palette.text,
-        &gettext(app.locale, "Lyrics"),
-    )
-    .clicked()
+    if IconButton::new(Icon::Mic, &gettext(app.locale, "Lyrics"))
+        .active(app.show_lyrics_panel)
+        .show(ui, &palette)
+        .clicked()
     {
         app.actions.push(Action::ToggleLyricsPanel);
     }
     // The Listening activity button is the first to go in a narrow window,
     // so it never crowds the transport.
-    let left = ui.min_rect().left() - ui.spacing().item_spacing.x - (18.0 + theme::ICON_BUTTON_PAD);
+    let left = ui.min_rect().left() - ui.spacing().item_spacing.x - IconSize::Standard.hit();
     if left - transport_right >= TRANSPORT_GAP
-        && theme::icon_button(
-            ui,
-            Icon::Users,
-            18.0,
-            if app.show_friends_panel {
-                palette.accent
-            } else {
-                palette.secondary
-            },
-            palette.text,
-            &gettext(app.locale, "Listening activity"),
-        )
-        .clicked()
+        && IconButton::new(Icon::Users, &gettext(app.locale, "Listening activity"))
+            .active(app.show_friends_panel)
+            .show(ui, &palette)
+            .clicked()
     {
         app.actions.push(Action::ToggleFriendsPanel);
     }

@@ -2,6 +2,7 @@
 
 use egui::{Align, CornerRadius, Frame, Layout, Margin, Rect, Sense, Vec2, pos2, vec2};
 
+use super::buttons::{IconButton, IconSize};
 use super::tokens;
 use crate::api::models::pick_image;
 use crate::app::App;
@@ -1009,17 +1010,15 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
         ui.add_space(2.0);
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             ui.spacing_mut().item_spacing.x = 2.0;
-            if theme::icon_button(
-                ui,
+            if IconButton::new(
                 Icon::PanelLeft,
-                16.0,
-                palette.secondary,
-                palette.text,
                 super::keys::platform_shortcut(
                     &gettext(locale, "Hide sidebar (Ctrl+B)"),
                     &gettext(locale, "Hide sidebar (Cmd+B)"),
                 ),
             )
+            .size(IconSize::Compact)
+            .show(ui, &palette)
             .clicked()
             {
                 app.actions.push(Action::ToggleSidebar);
@@ -1030,20 +1029,18 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
             } else {
                 (Icon::LayoutGrid, gettext(locale, "Show as grid"))
             };
-            if theme::icon_button(ui, icon, 16.0, palette.secondary, palette.text, &label).clicked()
+            if IconButton::new(icon, &label)
+                .size(IconSize::Compact)
+                .show(ui, &palette)
+                .clicked()
             {
                 app.actions.push(Action::SetLibraryGrid(!grid));
             }
             // One item never deserved a menu: the plus creates directly.
-            if theme::icon_button(
-                ui,
-                Icon::Plus,
-                16.0,
-                palette.secondary,
-                palette.text,
-                &gettext(locale, "Create a playlist"),
-            )
-            .clicked()
+            if IconButton::new(Icon::Plus, &gettext(locale, "Create a playlist"))
+                .size(IconSize::Compact)
+                .show(ui, &palette)
+                .clicked()
             {
                 app.actions.push(Action::ShowDialog(Dialog::CreatePlaylist {
                     name: String::new(),
@@ -1051,15 +1048,10 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
                     add_uris: Vec::new(),
                 }));
             }
-            if theme::icon_button(
-                ui,
-                Icon::Search,
-                16.0,
-                palette.secondary,
-                palette.text,
-                &gettext(locale, "Search Your Library"),
-            )
-            .clicked()
+            if IconButton::new(Icon::Search, &gettext(locale, "Search Your Library"))
+                .size(IconSize::Compact)
+                .show(ui, &palette)
+                .clicked()
             {
                 show_search = !show_search;
                 if show_search {

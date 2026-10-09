@@ -15,6 +15,7 @@ use crate::model::{
 use crate::theme::{self, Icon, Palette};
 use crate::util;
 
+use super::buttons::{IconButton, IconSize};
 use super::widgets::{self, TrackRow};
 
 pub(super) enum Avatar {
@@ -327,28 +328,17 @@ pub fn actions_row(
                 }
             }
             let shuffle = app.playing_context_shuffle();
-            if theme::icon_button(
-                ui,
+            if IconButton::new(
                 Icon::Shuffle,
-                26.0,
-                if shuffle {
-                    palette.accent
-                } else {
-                    palette.secondary
-                },
-                // Keep shuffle green under the pointer, or turning it on
-                // looks like nothing happened until the pointer leaves.
-                if shuffle {
-                    palette.accent_hover
-                } else {
-                    palette.text
-                },
                 &if shuffle {
                     gettext(locale, "Shuffle off")
                 } else {
                     gettext(locale, "Shuffle")
                 },
             )
+            .size(IconSize::Large)
+            .active(shuffle)
+            .show(ui, &palette)
             .clicked()
             {
                 app.actions.push(Action::SetShuffle(!shuffle));
@@ -356,47 +346,36 @@ pub fn actions_row(
         }
         if let Some((uri, saved)) = &actions.saved {
             // A saved button stays green under the pointer, like shuffle.
-            let (icon, tooltip, color, hover) = if *saved {
+            let (icon, tooltip, color) = if *saved {
                 (
                     actions.saved_icons.1,
                     &actions.saved_tooltips.1,
-                    palette.accent,
-                    palette.accent_hover,
+                    Some(palette.accent),
                 )
             } else {
-                (
-                    actions.saved_icons.0,
-                    &actions.saved_tooltips.0,
-                    palette.secondary,
-                    palette.text,
-                )
+                (actions.saved_icons.0, &actions.saved_tooltips.0, None)
             };
-            if theme::icon_button(ui, icon, 26.0, color, hover, tooltip).clicked() {
+            if IconButton::new(icon, tooltip)
+                .size(IconSize::Large)
+                .tint(color)
+                .show(ui, &palette)
+                .clicked()
+            {
                 app.actions.push(Action::ToggleSaved(uri.clone()));
             }
         }
         if let Some(seed) = &actions.save_radio
-            && theme::icon_button(
-                ui,
-                Icon::CirclePlus,
-                26.0,
-                palette.secondary,
-                palette.text,
-                &gettext(locale, "Save as playlist"),
-            )
-            .clicked()
+            && IconButton::new(Icon::CirclePlus, &gettext(locale, "Save as playlist"))
+                .size(IconSize::Large)
+                .show(ui, &palette)
+                .clicked()
         {
             app.actions.push(Action::SaveRadio(seed.clone()));
         }
         if let Some(uri) = &actions.play_uri {
-            let more = theme::icon_button(
-                ui,
-                Icon::Ellipsis,
-                26.0,
-                palette.secondary,
-                palette.text,
-                &gettext(locale, "More"),
-            );
+            let more = IconButton::new(Icon::Ellipsis, &gettext(locale, "More"))
+                .size(IconSize::Large)
+                .show(ui, &palette);
             egui::Popup::menu(&more)
                 .frame(widgets::menu_frame(&palette))
                 .show(|ui| {

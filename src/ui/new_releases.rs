@@ -10,6 +10,7 @@ use crate::i18n::gettext;
 use crate::model::{Action, Loadable, Page, RowContext};
 use crate::theme::{self, Icon};
 
+use super::buttons::{IconButton, IconSize};
 use super::collection::{Table, remember_table_items, songs_and_duration, table, table_items_hit};
 use super::widgets;
 
@@ -126,26 +127,17 @@ pub fn page(app: &mut App, ui: &mut egui::Ui) {
             });
         }
         let shuffle = app.playing_context_shuffle();
-        if theme::icon_button(
-            ui,
+        if IconButton::new(
             Icon::Shuffle,
-            26.0,
-            if shuffle {
-                palette.accent
-            } else {
-                palette.secondary
-            },
-            if shuffle {
-                palette.accent_hover
-            } else {
-                palette.text
-            },
             &if shuffle {
                 gettext(locale, "Shuffle off")
             } else {
                 gettext(locale, "Shuffle")
             },
         )
+        .size(IconSize::Large)
+        .active(shuffle)
+        .show(ui, &palette)
         .clicked()
         {
             app.actions.push(Action::SetShuffle(!shuffle));

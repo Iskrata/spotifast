@@ -783,14 +783,18 @@ fn nav_row(
         Sense::click(),
     );
     if ui.is_rect_visible(rect) {
-        if response.hovered() {
-            ui.painter()
-                .rect_filled(rect, corner, palette.surface_hover.gamma_multiply(0.6));
+        let lift = super::motion::hover(ui.ctx(), response.id.with("hover"), response.hovered());
+        if lift > 0.0 {
+            ui.painter().rect_filled(
+                rect,
+                corner,
+                palette.surface_hover.gamma_multiply(0.6 * lift),
+            );
         }
-        let color = if active || response.hovered() {
+        let color = if active {
             palette.text
         } else {
-            palette.secondary
+            super::motion::mix(palette.secondary, palette.text, lift)
         };
         let icon_rect = Rect::from_min_size(
             pos2(rect.left() + INSET, rect.center().y - ICON / 2.0),
@@ -1292,13 +1296,15 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
                             CornerRadius::same(tokens::radius::ROW),
                             palette.surface,
                         );
-                    } else if response.hovered() {
-                        ui.painter().rect_filled(
-                            rect,
-                            CornerRadius::same(tokens::radius::ROW),
-                            palette.surface_hover.gamma_multiply(0.6),
-                        );
                     }
+                    super::motion::hover_fill(
+                        ui,
+                        response.id,
+                        !active && response.hovered(),
+                        rect,
+                        CornerRadius::same(tokens::radius::ROW),
+                        palette.surface_hover.gamma_multiply(0.6),
+                    );
                     if drop_hover {
                         ui.painter().rect_filled(
                             rect,
@@ -1645,13 +1651,15 @@ fn library_grid(
                                 CornerRadius::same(tokens::radius::ROW),
                                 palette.surface,
                             );
-                        } else if response.hovered() {
-                            ui.painter().rect_filled(
-                                rect,
-                                CornerRadius::same(tokens::radius::ROW),
-                                palette.surface_hover.gamma_multiply(0.6),
-                            );
                         }
+                        super::motion::hover_fill(
+                            ui,
+                            response.id,
+                            !active && response.hovered(),
+                            rect,
+                            CornerRadius::same(tokens::radius::ROW),
+                            palette.surface_hover.gamma_multiply(0.6),
+                        );
                         if entry.liked {
                             liked_cover(ui, cover_rect, 6.0);
                         } else if entry.folder.is_some() {

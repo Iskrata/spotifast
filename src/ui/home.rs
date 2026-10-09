@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use egui::{CornerRadius, Rect, Sense, Vec2, pos2, vec2};
 
-use super::tokens;
+use super::{motion, tokens};
 use crate::api::models::{Episode, PlayableItem, Playlist, Show, pick_image};
 use crate::app::App;
 use crate::i18n::gettext;
@@ -99,11 +99,8 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) {
                     if hovered && let Some(image) = image {
                         super::card_hover::hover(ui.ctx(), image);
                     }
-                    let fill = if hovered {
-                        palette.surface_hover
-                    } else {
-                        palette.surface
-                    };
+                    let lift = motion::hover(ui.ctx(), response.id.with("fill"), hovered);
+                    let fill = motion::mix(palette.surface, palette.surface_hover, lift);
                     ui.painter()
                         .rect_filled(rect, CornerRadius::same(tokens::radius::ROW), fill);
                     let cover = Rect::from_min_size(rect.min, Vec2::splat(60.0));
@@ -134,7 +131,11 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) {
                         theme::bold(14.5),
                         palette.text,
                     );
-                    if hovered && let Some(uri) = uri {
+                    let reveal =
+                        motion::hover(ui.ctx(), response.id.with("play"), hovered && uri.is_some());
+                    if reveal > 0.0
+                        && let Some(uri) = uri
+                    {
                         let playing_here = app.playing_context_uri().as_deref()
                             == Some(uri.as_str())
                             && app.believed_playing();
@@ -146,6 +147,7 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) {
                             ui.new_child(egui::UiBuilder::new().max_rect(button).layout(
                                 egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
                             ));
+                        child.multiply_opacity(reveal);
                         if PlayDisc::new(
                             DiscSize::Medium,
                             &gettext(app.locale, if playing_here { "Pause" } else { "Play" }),

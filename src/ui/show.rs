@@ -198,15 +198,16 @@ pub fn episode_row(
         return;
     }
     let hovered = ui.rect_contains_pointer(rect);
-    if hovered {
-        ui.painter().rect_filled(
-            rect,
-            CornerRadius::same(tokens::radius::ROW),
-            palette
-                .surface_hover
-                .gamma_multiply(if palette.dark { 0.7 } else { 1.0 }),
-        );
-    }
+    super::motion::hover_fill(
+        ui,
+        response.id,
+        hovered,
+        rect,
+        CornerRadius::same(tokens::radius::ROW),
+        palette
+            .surface_hover
+            .gamma_multiply(if palette.dark { 0.7 } else { 1.0 }),
+    );
     let inner = rect.shrink2(vec2(12.0, 12.0));
     let cover_rect = Rect::from_min_size(inner.min, Vec2::splat(96.0));
     let image = pick_image(&episode.images, 64).or(fallback_image);

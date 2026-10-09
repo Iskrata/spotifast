@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use egui::{Align, CornerRadius, Layout, Rect, Sense, Vec2, pos2, vec2};
 
-use super::tokens;
+use super::{motion, tokens};
 use crate::api::models::{Artist, ArtistRef, PlayableItem, SearchResults, pick_image};
 use crate::app::App;
 use crate::i18n::gettext;
@@ -300,11 +300,8 @@ fn top_result(
         ui.allocate_exact_size(vec2(ui.available_width(), 232.0), Sense::click());
     if ui.is_rect_visible(rect) {
         let hovered = ui.rect_contains_pointer(rect);
-        let fill = if hovered {
-            palette.surface_hover
-        } else {
-            palette.surface
-        };
+        let lift = motion::hover(ui.ctx(), response.id.with("fill"), hovered);
+        let fill = motion::mix(palette.surface, palette.surface_hover, lift);
         ui.painter()
             .rect_filled(rect, CornerRadius::same(tokens::radius::CARD), fill);
         let image_rect = Rect::from_min_size(rect.min + vec2(20.0, 20.0), Vec2::splat(96.0));
@@ -372,16 +369,21 @@ fn top_result(
                 );
             }
         }
-        if hovered
-            && let Some(uri) = &play_uri
+        let reveal = motion::hover(
+            ui.ctx(),
+            response.id.with("play"),
+            hovered && play_uri.is_some(),
+        );
+        if let Some(uri) = &play_uri
             && buttons::hover_play(
                 ui,
                 &palette,
                 rect,
                 20.0,
+                reveal,
                 PlayDisc::new(DiscSize::Medium, &gettext(app.locale, "Play")),
             )
-            .clicked()
+            .is_some_and(|play| play.clicked())
         {
             if uri.starts_with("spotify:track:") {
                 app.actions.push(Action::PlayUris {

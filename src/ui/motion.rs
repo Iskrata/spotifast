@@ -49,6 +49,23 @@ pub fn hover(ctx: &Context, id: Id, on: bool) -> f32 {
     toward(ctx, id, on, tokens::motion::FAST)
 }
 
+/// Lays `fill` under a row, card or tile as the pointer arrives, and lifts
+/// it as the pointer leaves, at [`tokens::motion::FAST`].
+pub fn hover_fill(
+    ui: &egui::Ui,
+    id: Id,
+    hovered: bool,
+    rect: egui::Rect,
+    corner: impl Into<egui::CornerRadius>,
+    fill: Color32,
+) {
+    let shown = hover(ui.ctx(), id.with("hover-fill"), hovered);
+    if shown > 0.0 {
+        ui.painter()
+            .rect_filled(rect, corner, fill.gamma_multiply(shown));
+    }
+}
+
 /// A menu or popover's opacity: in at [`tokens::motion::BASE`], out at
 /// [`tokens::motion::BASE_OUT`].
 pub fn popover(ctx: &Context, id: Id, open: bool) -> f32 {

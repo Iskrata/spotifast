@@ -4,7 +4,7 @@
 
 use egui::{Color32, CornerRadius, Response, Sense, Stroke, Ui, Vec2};
 
-use super::tokens;
+use super::{motion, tokens};
 use crate::theme::{self, Icon, Palette};
 
 /// How large an icon button is: its icon and the square it answers to.
@@ -89,27 +89,23 @@ impl<'a> IconButton<'a> {
 
     pub fn show(self, ui: &mut Ui, palette: &Palette) -> Response {
         let edge = self.size.hit();
-        let (response, lifted) = round_control(ui, palette, edge, self.label);
+        let (response, lift) = round_control(ui, palette, edge, self.label);
         let rect = response.rect;
         if ui.is_rect_visible(rect) {
             let enabled = ui.is_enabled();
-            let color = if !enabled {
-                palette.dim
+            // The colour at rest, and the one hover and focus lift it to.
+            let (rest, lifted) = if !enabled {
+                (palette.dim, palette.dim)
             } else if let Some(tint) = self.tint {
-                tint
+                (tint, tint)
             } else if self.active {
-                if lifted {
-                    palette.accent_hover
-                } else {
-                    palette.accent
-                }
-            } else if lifted {
-                palette.text
+                (palette.accent, palette.accent_hover)
             } else if self.dimmed {
-                palette.dim
+                (palette.dim, palette.text)
             } else {
-                palette.secondary
+                (palette.secondary, palette.text)
             };
+            let color = motion::mix(rest, lifted, lift);
             let size = self.size.icon();
             let icon_rect = egui::Rect::from_center_size(
                 rect.center() + theme::play_glyph_offset(self.icon, size),
@@ -132,26 +128,59 @@ impl<'a> IconButton<'a> {
 /// The frame every round control shares: an `edge`-point square that
 /// answers to clicks, named `label` for a screen reader, with the hover
 /// and press circle under its content and a round focus ring. Returns the
-/// response and whether hover or focus lifts the control.
-fn round_control(ui: &mut Ui, palette: &Palette, edge: f32, label: &str) -> (Response, bool) {
+/// response and how far hover or focus has lifted the control, from 0 to 1.
+fn round_control(ui: &mut Ui, palette: &Palette, edge: f32, label: &str) -> (Response, f32) {
     debug_assert!(!label.is_empty(), "a round control needs a label");
     let (rect, response) = ui.allocate_exact_size(Vec2::splat(edge), Sense::click());
     response.widget_info(|| {
         egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label)
     });
     let enabled = ui.is_enabled();
-    let lifted = enabled && (response.hovered() || response.has_focus());
-    let pressed = enabled && response.is_pointer_button_down_on();
-    if ui.is_rect_visible(rect) && (pressed || lifted) {
-        let fill = if pressed {
-            palette.surface_active
-        } else {
-            palette.surface_hover
-        };
+    let feedback = Feedback::of(
+        ui,
+        &response,
+        enabled && (response.hovered() || response.has_focus()),
+    );
+    if ui.is_rect_visible(rect) && feedback.shown() {
+        let fill = feedback.fill(
+            Color32::TRANSPARENT,
+            palette.surface_hover,
+            palette.surface_active,
+        );
         ui.painter().circle_filled(rect.center(), edge / 2.0, fill);
     }
     focus_ring(ui, &response, CornerRadius::same(tokens::radius::ROUND));
-    (response, lifted)
+    (response, feedback.hover)
+}
+
+/// How far hover and press have come on a control, each easing from 0 to
+/// 1 at [`tokens::motion::FAST`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Feedback {
+    pub hover: f32,
+    pub press: f32,
+}
+
+impl Feedback {
+    /// The feedback for `response`, lifted while `hovered` and pressed
+    /// while the pointer holds it down.
+    pub fn of(ui: &Ui, response: &Response, hovered: bool) -> Self {
+        let pressed = ui.is_enabled() && response.is_pointer_button_down_on();
+        Self {
+            hover: motion::hover(ui.ctx(), response.id.with("hover"), hovered),
+            press: motion::hover(ui.ctx(), response.id.with("press"), pressed),
+        }
+    }
+
+    /// Whether anything shows yet.
+    pub fn shown(self) -> bool {
+        self.hover > 0.0 || self.press > 0.0
+    }
+
+    /// The fill between `rest`, `hovered` and `pressed`.
+    pub fn fill(self, rest: Color32, hovered: Color32, pressed: Color32) -> Color32 {
+        motion::mix(motion::mix(rest, hovered, self.hover), pressed, self.press)
+    }
 }
 
 /// The account's picture in the frame of an [`IconButton`] of the same
@@ -460,20 +489,27 @@ fn text_button_inner(
         .as_ref()
         .is_some_and(|dismiss| dismiss.hovered() || dismiss.has_focus());
     let corner = tokens::capsule(height);
+    let enabled = ui.is_enabled();
+    let hovered = enabled && (response.hovered() || over_dismiss);
+    let feedback = Feedback::of(ui, &response, hovered);
     if ui.is_rect_visible(rect) {
-        let enabled = ui.is_enabled();
-        let hovered = enabled && (response.hovered() || over_dismiss);
-        let pressed = enabled && response.is_pointer_button_down_on();
         let fill = match tier {
-            Tier::Primary if pressed => palette.accent.gamma_multiply(0.92),
-            Tier::Primary if hovered => palette.accent_hover,
-            Tier::Primary => palette.accent,
+            Tier::Primary => feedback.fill(
+                palette.accent,
+                palette.accent_hover,
+                palette.accent.gamma_multiply(0.92),
+            ),
             Tier::Chip { selected: true } => palette.text,
             // The grey fills follow the Ui, so a card can lift them: see
             // `on_card`. Outside a card they are the palette's surfaces.
-            _ if pressed => ui.visuals().widgets.active.weak_bg_fill,
-            _ if hovered => ui.visuals().widgets.hovered.weak_bg_fill,
-            _ => ui.visuals().widgets.inactive.weak_bg_fill,
+            _ => {
+                let widgets = &ui.visuals().widgets;
+                feedback.fill(
+                    widgets.inactive.weak_bg_fill,
+                    widgets.hovered.weak_bg_fill,
+                    widgets.active.weak_bg_fill,
+                )
+            }
         };
         let fill = if enabled {
             fill
@@ -592,10 +628,9 @@ impl<'a> PlayDisc<'a> {
         response.widget_info(|| {
             egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), self.label)
         });
+        let feedback = Feedback::of(ui, &response, response.hovered() || response.has_focus());
         if ui.is_rect_visible(rect) {
-            let hovered = response.hovered() || response.has_focus();
-            let pressed = response.is_pointer_button_down_on();
-            self.paint(ui, palette, rect.center(), hovered, pressed);
+            self.paint_feedback(ui, palette, rect.center(), feedback);
         }
         focus_ring(ui, &response, CornerRadius::same(tokens::radius::ROUND));
         response.on_hover_text(self.label)
@@ -611,6 +646,22 @@ impl<'a> PlayDisc<'a> {
         hovered: bool,
         pressed: bool,
     ) {
+        let amount = |on: bool| if on { 1.0 } else { 0.0 };
+        let feedback = Feedback {
+            hover: amount(hovered),
+            press: amount(pressed),
+        };
+        self.paint_feedback(ui, palette, center, feedback);
+    }
+
+    /// Paints the disc with hover and press part of the way in.
+    pub fn paint_feedback(
+        &self,
+        ui: &Ui,
+        palette: &Palette,
+        center: egui::Pos2,
+        feedback: Feedback,
+    ) {
         let (fill, fill_hover, icon_color) = if self.transport {
             let hover = if palette.dark {
                 Color32::WHITE
@@ -621,7 +672,7 @@ impl<'a> PlayDisc<'a> {
         } else {
             (palette.accent, palette.accent_hover, palette.on_accent)
         };
-        let scale = if pressed { 0.96 } else { 1.0 };
+        let scale = 1.0 - 0.04 * feedback.press;
         let radius = self.diameter / 2.0 * scale;
         if self.on_art {
             ui.painter().add(
@@ -637,7 +688,7 @@ impl<'a> PlayDisc<'a> {
                 ),
             );
         }
-        let fill = if hovered { fill_hover } else { fill };
+        let fill = motion::mix(fill, fill_hover, feedback.hover);
         ui.painter().circle_filled(center, radius, fill);
         let icon = if self.playing {
             Icon::PauseFilled
@@ -699,17 +750,24 @@ pub fn play_disc_spinner(ui: &mut Ui, palette: &Palette, size: DiscSize, label: 
 
 /// Draws a [`PlayDisc`] over the bottom-right corner of cover art, the
 /// way cards, tiles and the library grid reveal Play on hover. `inset` is
-/// the gap between the disc and the art's edges.
+/// the gap between the disc and the art's edges, and `reveal` how far it
+/// has faded in, from [`motion::hover`] on whatever reveals it. Nothing is
+/// drawn or clickable while it is hidden.
 pub fn hover_play(
     ui: &mut Ui,
     palette: &Palette,
     art: egui::Rect,
     inset: f32,
+    reveal: f32,
     disc: PlayDisc<'_>,
-) -> Response {
+) -> Option<Response> {
+    if reveal <= 0.0 {
+        return None;
+    }
     let rect = disc.corner_rect(art, inset);
     let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(
         egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
     ));
-    disc.on_art(true).show(&mut child, palette)
+    child.multiply_opacity(reveal);
+    Some(disc.on_art(true).show(&mut child, palette))
 }

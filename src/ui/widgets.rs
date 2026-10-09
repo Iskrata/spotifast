@@ -6,7 +6,7 @@ use egui::{
 };
 
 use super::buttons::{self, DiscSize, IconButton, IconSize, PlayDisc};
-use super::tokens;
+use super::{motion, tokens};
 use crate::api::models::*;
 use crate::app::App;
 use crate::i18n::{Locale, gettext, ngettext, pgettext};
@@ -346,13 +346,14 @@ fn menu_item_response(
         },
     );
     if ui.is_rect_visible(rect) {
-        if (response.hovered() || highlighted) && enabled {
-            ui.painter().rect_filled(
-                rect,
-                CornerRadius::same(tokens::radius::ROW),
-                palette.surface_hover,
-            );
-        }
+        motion::hover_fill(
+            ui,
+            response.id,
+            (response.hovered() || highlighted) && enabled,
+            rect,
+            CornerRadius::same(tokens::radius::ROW),
+            palette.surface_hover,
+        );
         let color = if enabled { palette.text } else { palette.dim };
         let mut x = rect.left() + 10.0;
         if let Some(icon) = icon {
@@ -468,13 +469,14 @@ fn submenu<R>(
     };
 
     if ui.is_rect_visible(rect) {
-        if response.hovered() || is_open {
-            ui.painter().rect_filled(
-                rect,
-                CornerRadius::same(tokens::radius::ROW),
-                palette.surface_hover,
-            );
-        }
+        motion::hover_fill(
+            ui,
+            response.id,
+            response.hovered() || is_open,
+            rect,
+            CornerRadius::same(tokens::radius::ROW),
+            palette.surface_hover,
+        );
         let color = palette.text;
         let mut x = rect.left() + 10.0;
         if let Some(icon) = icon {
@@ -1446,8 +1448,11 @@ fn track_row_contents(
                 .secondary
                 .gamma_multiply(if hovered { 0.30 } else { 0.20 }),
         );
-    } else if hovered {
-        ui.painter().rect_filled(
+    } else {
+        motion::hover_fill(
+            ui,
+            response.id,
+            hovered,
             rect,
             CornerRadius::same(tokens::radius::ROW),
             palette
@@ -1826,12 +1831,10 @@ fn track_row_contents(
                     .max_rect(heart_rect)
                     .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
             );
-            if !hovered
-                && saved != Some(true)
-                && !child.memory(|memory| memory.has_focus(child.next_auto_id()))
-            {
-                child.set_opacity(0.0);
-            }
+            let shown = hovered
+                || saved == Some(true)
+                || child.memory(|memory| memory.has_focus(child.next_auto_id()));
+            child.multiply_opacity(motion::hover(ui.ctx(), response.id.with("heart"), shown));
             heart_button(&mut child, app, row.item.uri(), IconSize::Compact);
         }
         x += cols.heart;
@@ -1860,12 +1863,10 @@ fn track_row_contents(
                 .max_rect(more_rect)
                 .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
         );
-        if !hovered
-            && !egui::Popup::is_id_open(ui.ctx(), menu_id)
-            && !child.memory(|memory| memory.has_focus(child.next_auto_id()))
-        {
-            child.set_opacity(0.0);
-        }
+        let shown = hovered
+            || egui::Popup::is_id_open(ui.ctx(), menu_id)
+            || child.memory(|memory| memory.has_focus(child.next_auto_id()));
+        child.multiply_opacity(motion::hover(ui.ctx(), response.id.with("more"), shown));
         let more = IconButton::new(Icon::Ellipsis, &gettext(app.locale, "More"))
             .show(&mut child, &palette);
         egui::Popup::menu(&more)
@@ -2451,18 +2452,19 @@ pub fn card(
     let mut play = false;
     if ui.is_rect_visible(rect) {
         let hovered = ui.rect_contains_pointer(rect);
-        if hovered {
-            if let Some(image) = image {
-                super::card_hover::hover(ui.ctx(), image);
-            }
-            ui.painter().rect_filled(
-                rect,
-                CornerRadius::same(tokens::radius::CARD),
-                palette
-                    .surface_hover
-                    .gamma_multiply(if palette.dark { 0.8 } else { 1.0 }),
-            );
+        if hovered && let Some(image) = image {
+            super::card_hover::hover(ui.ctx(), image);
         }
+        motion::hover_fill(
+            ui,
+            response.id,
+            hovered,
+            rect,
+            CornerRadius::same(tokens::radius::CARD),
+            palette
+                .surface_hover
+                .gamma_multiply(if palette.dark { 0.8 } else { 1.0 }),
+        );
         let image_rect = Rect::from_min_size(rect.min + vec2(PAD, PAD), Vec2::splat(image_size));
         let radius = if circular { image_size / 2.0 } else { 6.0 };
         paint_shadow(ui, &palette, image_rect, radius);
@@ -2507,20 +2509,20 @@ pub fn card(
         ui.painter()
             .galley(subtitle_pos, subtitle_galley, palette.secondary);
 
-        if playable && hovered {
-            play = buttons::hover_play(
-                ui,
-                &palette,
-                image_rect,
-                4.0,
-                PlayDisc::new(
-                    DiscSize::Medium,
-                    &gettext(app.locale, if playing { "Pause" } else { "Play" }),
-                )
-                .playing(playing),
+        let reveal = motion::hover(ui.ctx(), response.id.with("play"), playable && hovered);
+        play = buttons::hover_play(
+            ui,
+            &palette,
+            image_rect,
+            4.0,
+            reveal,
+            PlayDisc::new(
+                DiscSize::Medium,
+                &gettext(app.locale, if playing { "Pause" } else { "Play" }),
             )
-            .clicked();
-        }
+            .playing(playing),
+        )
+        .is_some_and(|play| play.clicked());
     }
     crate::autoscroll::row(ui, &response);
     theme::focus_ring(ui, &response);
@@ -3876,7 +3878,10 @@ mod tests {
                     output.textures_delta.clear();
                     output
                 };
-                draw();
+                // The highlight eases in, so it is read once it has settled.
+                for _ in 0..12 {
+                    draw();
+                }
                 let output = draw();
                 let fills: Vec<_> = output
                     .shapes

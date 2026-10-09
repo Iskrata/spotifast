@@ -10,7 +10,7 @@ use crate::i18n::gettext;
 use crate::model::{Action, Loadable, Page, RowContext};
 use crate::theme::{self, Icon};
 
-use super::buttons::{IconButton, IconSize};
+use super::buttons::{DiscSize, IconButton, IconSize, PlayDisc};
 use super::collection::{Table, remember_table_items, songs_and_duration, table, table_items_hit};
 use super::widgets;
 
@@ -108,15 +108,7 @@ pub fn page(app: &mut App, ui: &mut egui::Ui) {
         ui.spacing_mut().item_spacing.x = 18.0;
         if ui
             .add_enabled_ui(!uris.is_empty(), |ui| {
-                theme::circle_button(
-                    ui,
-                    Icon::PlayFilled,
-                    56.0,
-                    palette.accent,
-                    palette.accent_hover,
-                    palette.on_accent,
-                    &gettext(locale, "Play"),
-                )
+                PlayDisc::new(DiscSize::Large, &gettext(locale, "Play")).show(ui, &palette)
             })
             .inner
             .clicked()

@@ -11,6 +11,7 @@ use crate::i18n::gettext;
 use crate::model::{Action, Loadable, Page, RowContext, TopPeriod};
 use crate::theme::{self, Icon};
 
+use super::buttons::{DiscSize, PlayDisc};
 use super::widgets::{self, TrackRow};
 
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
@@ -261,26 +262,19 @@ fn quick_access(app: &mut App, ui: &mut egui::Ui) {
                             app.playing_context_uri().as_deref() == Some(uri.as_str());
                         let playing_here = context_here && app.believed_playing();
                         let button = Rect::from_center_size(
-                            pos2(rect.right() - 28.0, rect.center().y),
-                            Vec2::splat(40.0),
+                            pos2(rect.right() - 30.0, rect.center().y),
+                            Vec2::splat(DiscSize::Medium.diameter()),
                         );
                         let mut child =
                             ui.new_child(egui::UiBuilder::new().max_rect(button).layout(
                                 egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
                             ));
-                        if theme::circle_button(
-                            &mut child,
-                            if playing_here {
-                                Icon::PauseFilled
-                            } else {
-                                Icon::PlayFilled
-                            },
-                            40.0,
-                            palette.accent,
-                            palette.accent_hover,
-                            palette.on_accent,
+                        if PlayDisc::new(
+                            DiscSize::Medium,
                             &gettext(app.locale, if playing_here { "Pause" } else { "Play" }),
                         )
+                        .playing(playing_here)
+                        .show(&mut child, &palette)
                         .clicked()
                         {
                             if context_here {

@@ -12,7 +12,7 @@ use crate::model::{Action, Loadable, Page, RowContext};
 use crate::theme::{self, Icon};
 use crate::util;
 
-use super::buttons::{IconButton, IconSize};
+use super::buttons::{self, DiscSize, IconButton, IconSize, PlayDisc};
 use super::collection::{Hero, HeroArt, hero, hero_images, refresh_menu_item};
 use super::widgets;
 
@@ -212,23 +212,15 @@ fn show_actions(
         ui.spacing_mut().item_spacing.x = 18.0;
         if let Some(latest) = latest {
             if app.play_pending(&latest.uri) {
-                theme::circle_spinner(
+                buttons::play_disc_spinner(
                     ui,
-                    56.0,
-                    palette.accent,
-                    palette.on_accent,
+                    &palette,
+                    DiscSize::Large,
                     &gettext(locale, "Starting…"),
                 );
-            } else if theme::circle_button(
-                ui,
-                Icon::PlayFilled,
-                56.0,
-                palette.accent,
-                palette.accent_hover,
-                palette.on_accent,
-                &gettext(locale, "Play latest episode"),
-            )
-            .clicked()
+            } else if PlayDisc::new(DiscSize::Large, &gettext(locale, "Play latest episode"))
+                .show(ui, &palette)
+                .clicked()
             {
                 app.actions.push(Action::PlayEpisode {
                     uri: latest.uri.clone(),
@@ -360,33 +352,17 @@ pub fn episode_row(
             .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
     );
     let playing_here = is_current && now_playing.as_ref().is_some_and(|now| now.playing);
-    let icon = if playing_here {
-        Icon::PauseFilled
-    } else {
-        Icon::PlayFilled
-    };
     if app.play_pending(&episode.uri) {
-        theme::circle_spinner(
+        buttons::play_disc_spinner(
             &mut child,
-            32.0,
-            palette.text,
-            palette.window,
+            &palette,
+            DiscSize::Small,
             &gettext(locale, "Starting…"),
         );
-    } else if theme::circle_button(
-        &mut child,
-        icon,
-        32.0,
-        palette.text,
-        if palette.dark {
-            egui::Color32::WHITE
-        } else {
-            palette.text
-        },
-        palette.window,
-        &gettext(locale, "Play"),
-    )
-    .clicked()
+    } else if PlayDisc::new(DiscSize::Small, &gettext(locale, "Play"))
+        .playing(playing_here)
+        .show(&mut child, &palette)
+        .clicked()
     {
         if is_current {
             app.actions.push(Action::TogglePlay);

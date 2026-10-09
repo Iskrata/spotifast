@@ -1,5 +1,5 @@
-//! The interface's buttons: one icon button in three sizes and three
-//! tiers of text button. Every control draws through here,
+//! The interface's buttons: one icon button in three sizes, three tiers
+//! of text button, and the Play disc. Every control draws through here,
 //! so its sizes, states and focus ring agree everywhere.
 
 use egui::{Color32, CornerRadius, Response, Sense, Stroke, Ui, Vec2};
@@ -423,4 +423,183 @@ fn text_button_inner(
         focus_ring(ui, &dismiss, CornerRadius::same(tokens::radius::ROUND));
     }
     (response, dismissed)
+}
+
+/// The green Play disc's three sizes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DiscSize {
+    /// A page header: album, playlist, artist, show.
+    Large,
+    /// Cards, tiles, the top search result and the library grid.
+    Medium,
+    /// Rows, episodes and covers in a list.
+    Small,
+}
+
+impl DiscSize {
+    pub const fn diameter(self) -> f32 {
+        match self {
+            Self::Large => tokens::disc::LARGE,
+            Self::Medium => tokens::disc::MEDIUM,
+            Self::Small => tokens::disc::SMALL,
+        }
+    }
+}
+
+/// The icon inside a disc, as a share of its diameter.
+const DISC_ICON: f32 = 0.42;
+
+/// The one control that starts playback of a context: a green disc with
+/// Play, or Pause while that context plays. The player bar's own Play and
+/// Pause is [`PlayDisc::transport`], a neutral disc.
+#[must_use = "a play disc does nothing until shown"]
+pub struct PlayDisc<'a> {
+    diameter: f32,
+    playing: bool,
+    label: &'a str,
+    on_art: bool,
+    transport: bool,
+}
+
+impl<'a> PlayDisc<'a> {
+    pub fn new(size: DiscSize, label: &'a str) -> Self {
+        Self {
+            diameter: size.diameter(),
+            playing: false,
+            label,
+            on_art: false,
+            transport: false,
+        }
+    }
+
+    /// The player bar's neutral Play and Pause.
+    pub fn transport(label: &'a str) -> Self {
+        Self {
+            diameter: tokens::disc::TRANSPORT,
+            transport: true,
+            ..Self::new(DiscSize::Medium, label)
+        }
+    }
+
+    /// Shows Pause instead of Play.
+    pub fn playing(mut self, playing: bool) -> Self {
+        self.playing = playing;
+        self
+    }
+
+    /// Lifts the disc off cover art with a soft shadow.
+    pub fn on_art(mut self, on_art: bool) -> Self {
+        self.on_art = on_art;
+        self
+    }
+
+    pub fn show(self, ui: &mut Ui, palette: &Palette) -> Response {
+        let (rect, response) = ui.allocate_exact_size(Vec2::splat(self.diameter), Sense::click());
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), self.label)
+        });
+        if ui.is_rect_visible(rect) {
+            let hovered = response.hovered() || response.has_focus();
+            let pressed = response.is_pointer_button_down_on();
+            self.paint(ui, palette, rect.center(), hovered, pressed);
+        }
+        focus_ring(ui, &response, CornerRadius::same(tokens::radius::ROUND));
+        response.on_hover_text(self.label)
+    }
+
+    /// Paints the disc at `center` for a control that handles its own
+    /// clicks, such as a row whose cover plays it.
+    pub fn paint(
+        &self,
+        ui: &Ui,
+        palette: &Palette,
+        center: egui::Pos2,
+        hovered: bool,
+        pressed: bool,
+    ) {
+        let (fill, fill_hover, icon_color) = if self.transport {
+            let hover = if palette.dark {
+                Color32::WHITE
+            } else {
+                palette.text
+            };
+            (palette.text, hover, palette.window)
+        } else {
+            (palette.accent, palette.accent_hover, palette.on_accent)
+        };
+        let scale = if pressed { 0.96 } else { 1.0 };
+        let radius = self.diameter / 2.0 * scale;
+        if self.on_art {
+            ui.painter().add(
+                egui::epaint::Shadow {
+                    offset: [0, 4],
+                    blur: 12,
+                    spread: 0,
+                    color: Color32::from_black_alpha(90),
+                }
+                .as_shape(
+                    egui::Rect::from_center_size(center, Vec2::splat(radius * 2.0)),
+                    CornerRadius::same(tokens::radius::ROUND),
+                ),
+            );
+        }
+        let fill = if hovered { fill_hover } else { fill };
+        ui.painter().circle_filled(center, radius, fill);
+        let icon = if self.playing {
+            Icon::PauseFilled
+        } else {
+            Icon::PlayFilled
+        };
+        let size = self.diameter * DISC_ICON * scale;
+        let icon_rect = egui::Rect::from_center_size(
+            center + theme::play_glyph_offset(icon, size),
+            Vec2::splat(size),
+        );
+        icon.image(icon_color, size).paint_at(ui, icon_rect);
+    }
+
+    /// Where the disc sits over the bottom-right corner of `art`, `inset`
+    /// in from its edges.
+    pub fn corner_rect(&self, art: egui::Rect, inset: f32) -> egui::Rect {
+        egui::Rect::from_center_size(
+            art.right_bottom() - Vec2::splat(inset + self.diameter / 2.0),
+            Vec2::splat(self.diameter),
+        )
+    }
+}
+
+/// A [`PlayDisc`] whose icon is replaced by a spinner while playback
+/// starts: the pressed disc itself shows that Spotify is reacting.
+pub fn play_disc_spinner(ui: &mut Ui, palette: &Palette, size: DiscSize, label: &str) -> Response {
+    let diameter = size.diameter();
+    let (rect, response) = ui.allocate_exact_size(Vec2::splat(diameter), Sense::hover());
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(egui::WidgetType::ProgressIndicator, ui.is_enabled(), label)
+    });
+    if ui.is_rect_visible(rect) {
+        ui.painter()
+            .circle_filled(rect.center(), diameter / 2.0, palette.accent);
+        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(
+            egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
+        ));
+        theme::spinner(&mut child, diameter * 0.55, palette.on_accent);
+    }
+    response.on_hover_text(label)
+}
+
+/// Draws a [`PlayDisc`] over the bottom-right corner of cover art, the
+/// way cards, tiles and the library grid reveal Play on hover. `inset` is
+/// the gap between the disc and the art's edges.
+pub fn hover_play(
+    ui: &mut Ui,
+    palette: &Palette,
+    art: egui::Rect,
+    inset: f32,
+    disc: PlayDisc<'_>,
+) -> Response {
+    let rect = disc.corner_rect(art, inset);
+    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect).layout(
+        egui::Layout::centered_and_justified(egui::Direction::LeftToRight),
+    ));
+    disc.on_art(true).show(&mut child, palette)
 }

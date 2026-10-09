@@ -2,7 +2,7 @@
 
 use egui::{Align, CornerRadius, Frame, Layout, Margin, Rect, Sense, Vec2, pos2, vec2};
 
-use super::buttons::{self, IconButton, IconSize};
+use super::buttons::{self, DiscSize, IconButton, IconSize, PlayDisc};
 use super::tokens;
 use crate::api::models::pick_image;
 use crate::app::App;
@@ -91,37 +91,16 @@ fn cover_play_button(
     );
     let play_hover = play.hovered();
     if play_hover || parent.hovered() {
-        let radius = if entry.round {
-            (cover_rect.width() / 2.0).min(127.0) as u8
-        } else {
-            tokens::radius::ROW
-        };
-        ui.painter().rect_filled(
-            cover_rect,
-            CornerRadius::same(radius),
-            egui::Color32::from_black_alpha(120),
-        );
-        let icon = if playing {
-            Icon::PauseFilled
-        } else {
-            Icon::PlayFilled
-        };
-        let icon_size = (cover_rect.width() * 0.24).clamp(18.0, 26.0);
-        icon.image(
-            if play_hover {
-                app.palette.accent
-            } else {
-                egui::Color32::WHITE
-            },
-            icon_size,
-        )
-        .paint_at(
-            ui,
-            Rect::from_center_size(
-                cover_rect.center() + theme::play_glyph_offset(icon, icon_size),
-                Vec2::splat(icon_size),
-            ),
-        );
+        PlayDisc::new(DiscSize::Small, "")
+            .playing(playing)
+            .on_art(true)
+            .paint(
+                ui,
+                &app.palette,
+                cover_rect.center(),
+                play_hover,
+                play.is_pointer_button_down_on(),
+            );
     }
     if !play.clicked() {
         return false;
@@ -141,13 +120,17 @@ fn cover_play_button(
     true
 }
 
+/// The grid's play disc: medium on covers large enough to carry it.
+fn grid_disc(cover_rect: Rect) -> DiscSize {
+    if cover_rect.width() * 0.3 >= DiscSize::Medium.diameter() {
+        DiscSize::Medium
+    } else {
+        DiscSize::Small
+    }
+}
+
 fn grid_play_rect(cover_rect: Rect) -> Rect {
-    let size = (cover_rect.width() * 0.3).clamp(32.0, 44.0);
-    let inset = LIBRARY_ITEM_PADDING + size / 2.0;
-    Rect::from_center_size(
-        pos2(cover_rect.right() - inset, cover_rect.bottom() - inset),
-        Vec2::splat(size),
-    )
+    PlayDisc::new(grid_disc(cover_rect), "").corner_rect(cover_rect, LIBRARY_ITEM_PADDING)
 }
 
 fn grid_pin_rect(cover_rect: Rect) -> Rect {
@@ -166,7 +149,6 @@ fn grid_play_button(
         return false;
     };
     let rect = grid_play_rect(cover_rect);
-    let size = rect.width();
     let button = ui.interact(rect, ui.id().with("library-grid-play"), Sense::click());
     let playing = playing_here && app.believed_playing();
     let label = if playing {
@@ -181,34 +163,16 @@ fn grid_play_button(
         egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label.clone())
     });
     if parent.hovered() || playing_here || button.has_focus() {
-        let fill = if button.hovered() {
-            app.palette.accent_hover
-        } else {
-            app.palette.accent
-        };
-        ui.painter().add(
-            egui::epaint::Shadow {
-                offset: [0, 4],
-                blur: 12,
-                spread: 0,
-                color: egui::Color32::from_black_alpha(90),
-            }
-            .as_shape(rect, egui::CornerRadius::same(tokens::radius::ROUND)),
-        );
-        ui.painter().circle_filled(rect.center(), size / 2.0, fill);
-        let icon = if playing {
-            Icon::PauseFilled
-        } else {
-            Icon::PlayFilled
-        };
-        let icon_size = size * 0.42;
-        icon.image(app.palette.on_accent, icon_size).paint_at(
-            ui,
-            Rect::from_center_size(
-                rect.center() + theme::play_glyph_offset(icon, icon_size),
-                Vec2::splat(icon_size),
-            ),
-        );
+        PlayDisc::new(grid_disc(cover_rect), "")
+            .playing(playing)
+            .on_art(true)
+            .paint(
+                ui,
+                &app.palette,
+                rect.center(),
+                button.hovered(),
+                button.is_pointer_button_down_on(),
+            );
     }
     if !button.clicked() {
         return false;

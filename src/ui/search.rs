@@ -11,7 +11,7 @@ use crate::i18n::gettext;
 use crate::model::{Action, Loadable, Page, RowContext, SearchFilter};
 use crate::theme::{self, Icon};
 
-use super::buttons;
+use super::buttons::{self, DiscSize, PlayDisc};
 use super::widgets::{self, TrackRow};
 
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
@@ -372,39 +372,28 @@ fn top_result(
                 );
             }
         }
-        if hovered && let Some(uri) = &play_uri {
-            let button = Rect::from_center_size(
-                pos2(rect.right() - 44.0, rect.bottom() - 44.0),
-                Vec2::splat(48.0),
-            );
-            let mut child = ui.new_child(
-                egui::UiBuilder::new()
-                    .max_rect(button)
-                    .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
-            );
-            if theme::circle_button(
-                &mut child,
-                Icon::PlayFilled,
-                48.0,
-                palette.accent,
-                palette.accent_hover,
-                palette.on_accent,
-                &gettext(app.locale, "Play"),
+        if hovered
+            && let Some(uri) = &play_uri
+            && buttons::hover_play(
+                ui,
+                &palette,
+                rect,
+                20.0,
+                PlayDisc::new(DiscSize::Medium, &gettext(app.locale, "Play")),
             )
             .clicked()
-            {
-                if uri.starts_with("spotify:track:") {
-                    app.actions.push(Action::PlayUris {
-                        uris: vec![uri.clone()],
-                        index: 0,
-                    });
-                } else {
-                    app.actions.push(Action::PlayContext {
-                        uri: uri.clone(),
-                        offset_uri: None,
-                        offset_index: None,
-                    });
-                }
+        {
+            if uri.starts_with("spotify:track:") {
+                app.actions.push(Action::PlayUris {
+                    uris: vec![uri.clone()],
+                    index: 0,
+                });
+            } else {
+                app.actions.push(Action::PlayContext {
+                    uri: uri.clone(),
+                    offset_uri: None,
+                    offset_index: None,
+                });
             }
         }
     }

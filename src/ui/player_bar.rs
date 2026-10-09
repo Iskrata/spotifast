@@ -10,7 +10,7 @@ use crate::player::RepeatMode;
 use crate::theme::{self, Icon};
 use crate::util;
 
-use super::buttons::{IconButton, IconSize};
+use super::buttons::{IconButton, IconSize, PlayDisc};
 use super::widgets::{SliderEvent, thin_slider};
 
 /// How much of the playing art's tint the bar's fill carries.
@@ -633,30 +633,14 @@ fn transport(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>, region:
         let mut cell = centered(ui, disc);
         theme::spinner(&mut cell, 22.0, palette.window);
     } else {
-        let icon = if playing {
-            Icon::PauseFilled
-        } else {
-            Icon::PlayFilled
-        };
-        let hover = if palette.dark {
-            egui::Color32::WHITE
-        } else {
-            palette.text
-        };
         let mut cell = centered(ui, disc);
-        if theme::circle_button(
-            &mut cell,
-            icon,
-            36.0,
-            palette.text,
-            hover,
-            palette.window,
-            &if playing {
-                gettext(app.locale, "Pause")
-            } else {
-                gettext(app.locale, "Play")
-            },
-        )
+        if PlayDisc::transport(&if playing {
+            gettext(app.locale, "Pause")
+        } else {
+            gettext(app.locale, "Play")
+        })
+        .playing(playing)
+        .show(&mut cell, &palette)
         .clicked()
         {
             app.actions.push(Action::TogglePlay);

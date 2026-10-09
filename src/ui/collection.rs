@@ -15,7 +15,7 @@ use crate::model::{
 use crate::theme::{self, Icon, Palette};
 use crate::util;
 
-use super::buttons::{self, IconButton, IconSize};
+use super::buttons::{self, DiscSize, IconButton, IconSize, PlayDisc};
 use super::widgets::{self, TrackRow};
 
 pub(super) struct Hero<'a> {
@@ -187,34 +187,25 @@ pub fn actions_row(
             let play_view = actions.view.is_some()
                 && (!app.playing_context_shuffle() || is_filtered || actions.save_radio.is_some());
             let can_start = actions.view.as_ref().is_none_or(|uris| !uris.is_empty());
-            let icon = if now_playing_here {
-                Icon::PauseFilled
-            } else {
-                Icon::PlayFilled
-            };
             if app.play_pending(uri) {
-                theme::circle_spinner(
+                buttons::play_disc_spinner(
                     ui,
-                    56.0,
-                    palette.accent,
-                    palette.on_accent,
+                    &palette,
+                    DiscSize::Large,
                     &gettext(locale, "Starting…"),
                 );
             } else if ui
                 .add_enabled_ui(now_playing_here || can_start, |ui| {
-                    theme::circle_button(
-                        ui,
-                        icon,
-                        56.0,
-                        palette.accent,
-                        palette.accent_hover,
-                        palette.on_accent,
+                    PlayDisc::new(
+                        DiscSize::Large,
                         &if now_playing_here {
                             gettext(locale, "Pause")
                         } else {
                             gettext(locale, "Play")
                         },
                     )
+                    .playing(now_playing_here)
+                    .show(ui, &palette)
                 })
                 .inner
                 .on_disabled_hover_text(gettext(locale, "No playable songs in this view").as_ref())

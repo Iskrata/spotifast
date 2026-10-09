@@ -1413,7 +1413,7 @@ fn handle_draw_canvas(_view: &SpotifastCanvasView, _dirty: NSRect) {
     NSColor::whiteColor().set();
     thumb_path.fill();
 
-    // 5. Play button circular disc (Row 3, Center) - Matches Spotifast theme::circle_button (diameter 36.0)
+    // 5. Play button circular disc (Row 3, Center) - Matches the player bar's transport PlayDisc (diameter 36.0)
     let center_x = card_w / 2.0;
     let disc_rect = NSRect::new(NSPoint::new(center_x - 18.0, 97.0), NSSize::new(36.0, 36.0));
     let disc_path = NSBezierPath::bezierPathWithOvalInRect(disc_rect);

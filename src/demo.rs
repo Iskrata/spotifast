@@ -10032,6 +10032,34 @@ mod tests {
         app.backend.shutdown();
     }
 
+    /// Play is one green disc in three sizes: a page header's is 56 points,
+    /// and the player bar keeps its own 36-point transport disc.
+    #[test]
+    fn play_discs_come_in_the_shared_sizes() {
+        use egui::accesskit::Role;
+        let (ctx, mut app) = accessible_app("play-discs");
+        app.open(Page::Playlist("pl1".into()));
+        accessible_frame(&ctx, &mut app, Vec::new());
+        let tree = accessible_frame(&ctx, &mut app, Vec::new());
+        let mut widths: Vec<f64> = tree
+            .nodes
+            .iter()
+            .filter(|(_, node)| {
+                node.role() == Role::Button && matches!(node.label(), Some("Play" | "Pause"))
+            })
+            .filter_map(|(_, node)| node.bounds().map(|bounds| bounds.width()))
+            .collect();
+        widths.sort_by(f64::total_cmp);
+        assert_eq!(
+            widths,
+            vec![
+                f64::from(crate::ui::tokens::disc::TRANSPORT),
+                f64::from(crate::ui::tokens::disc::LARGE)
+            ]
+        );
+        app.backend.shutdown();
+    }
+
     /// Every icon-sized button on the main surfaces names itself to a screen
     /// reader and answers to at least the compact 28-point square.
     #[test]

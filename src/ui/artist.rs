@@ -9,7 +9,7 @@ use crate::model::{Action, DiscographyFilter, Loadable, Page, RowContext};
 use crate::theme::{self, Icon};
 use crate::util;
 
-use super::buttons::{self, IconButton, IconSize};
+use super::buttons::{self, DiscSize, IconButton, IconSize, PlayDisc};
 use super::collection::{Hero, hero, hero_images};
 use super::widgets::{self, TrackRow};
 
@@ -321,23 +321,15 @@ fn artist_actions(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
     ui.horizontal(|ui| {
         ui.spacing_mut().item_spacing.x = 18.0;
         if app.play_pending(&artist.uri) {
-            theme::circle_spinner(
+            buttons::play_disc_spinner(
                 ui,
-                56.0,
-                palette.accent,
-                palette.on_accent,
+                &palette,
+                DiscSize::Large,
                 &gettext(locale, "Starting…"),
             );
-        } else if theme::circle_button(
-            ui,
-            Icon::PlayFilled,
-            56.0,
-            palette.accent,
-            palette.accent_hover,
-            palette.on_accent,
-            &gettext(locale, "Play"),
-        )
-        .clicked()
+        } else if PlayDisc::new(DiscSize::Large, &gettext(locale, "Play"))
+            .show(ui, &palette)
+            .clicked()
         {
             app.actions.push(Action::PlayContext {
                 uri: artist.uri.clone(),

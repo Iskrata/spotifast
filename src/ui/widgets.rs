@@ -5,7 +5,7 @@ use egui::{
     pos2, vec2,
 };
 
-use super::buttons::{self, IconButton, IconSize};
+use super::buttons::{self, DiscSize, IconButton, IconSize, PlayDisc};
 use super::tokens;
 use crate::api::models::*;
 use crate::app::App;
@@ -1504,13 +1504,10 @@ fn track_row_contents(
                 );
                 theme::spinner(&mut child, 16.0, Color32::WHITE);
             } else if hovered && !unavailable {
-                scrim(140);
-                let icon = if playing {
-                    Icon::PauseFilled
-                } else {
-                    Icon::PlayFilled
-                };
-                theme::paint_icon(ui, icon, cover_rect, 16.0, Color32::WHITE);
+                PlayDisc::new(DiscSize::Small, "")
+                    .playing(playing)
+                    .on_art(true)
+                    .paint(ui, &palette, cover_rect.center(), false, false);
             } else if playing {
                 scrim(110);
                 theme::paint_icon(ui, Icon::AudioLines, cover_rect, 16.0, palette.accent);
@@ -2479,27 +2476,16 @@ pub fn card(
             .galley(subtitle_pos, subtitle_galley, palette.secondary);
 
         if playable && hovered {
-            let button_rect = Rect::from_center_size(
-                pos2(image_rect.right() - 26.0, image_rect.bottom() - 26.0),
-                Vec2::splat(44.0),
-            );
-            let mut child = ui.new_child(
-                UiBuilder::new()
-                    .max_rect(button_rect)
-                    .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
-            );
-            play = theme::circle_button(
-                &mut child,
-                if playing {
-                    Icon::PauseFilled
-                } else {
-                    Icon::PlayFilled
-                },
-                44.0,
-                palette.accent,
-                palette.accent_hover,
-                palette.on_accent,
-                &gettext(app.locale, if playing { "Pause" } else { "Play" }),
+            play = buttons::hover_play(
+                ui,
+                &palette,
+                image_rect,
+                4.0,
+                PlayDisc::new(
+                    DiscSize::Medium,
+                    &gettext(app.locale, if playing { "Pause" } else { "Play" }),
+                )
+                .playing(playing),
             )
             .clicked();
         }

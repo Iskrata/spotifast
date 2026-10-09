@@ -1,5 +1,7 @@
 //! Menus, popovers and other floating layers fade in over
 //! [`tokens::motion::BASE`] and out over [`tokens::motion::BASE_OUT`].
+//! Dialogs fade in over [`tokens::motion::CONTENT`] instead, growing to
+//! their size from [`DIALOG_SCALE`] while their scrim fades in under them.
 //!
 //! egui draws a popup only while it is open and fades it in at its own
 //! animation time, so the fade is applied to the layers once the frame's
@@ -43,10 +45,14 @@ fn state_id() -> Id {
     Id::new("popover-transitions")
 }
 
+/// How large a dialog starts as it fades in, as a share of its size.
+const DIALOG_SCALE: f32 = 0.97;
+
 /// Fades the frame's floating layers in and out. Call it once, after
 /// everything has drawn. `steady` names layers that are always there, such
-/// as the window's own controls, and never fade.
-pub fn fade(ctx: &Context, steady: &[Id]) {
+/// as the window's own controls, and never fade; `dialogs` names the modal
+/// dialogs' layers.
+pub fn fade(ctx: &Context, steady: &[Id], dialogs: &[Id]) {
     let mut state = ctx
         .data(|data| data.get_temp::<State>(state_id()))
         .unwrap_or_default();
@@ -68,7 +74,16 @@ pub fn fade(ctx: &Context, steady: &[Id]) {
         if shapes.is_empty() {
             continue;
         }
-        let opacity = opening(ctx, layer.id);
+        let dialog = dialogs.contains(&layer.id);
+        let seconds = if dialog {
+            tokens::motion::CONTENT
+        } else {
+            tokens::motion::BASE
+        };
+        let opacity = opening(ctx, layer.id, seconds);
+        if dialog && opacity < 1.0 {
+            grow(ctx, layer, egui::lerp(DIALOG_SCALE..=1.0, opacity));
+        }
         let factor = opacity / egui_fade_in(ctx, layer.id);
         if factor < 1.0 {
             ctx.graphics_mut(|graphics| {
@@ -122,12 +137,46 @@ pub fn fade(ctx: &Context, steady: &[Id]) {
     });
 }
 
-/// How far a layer that became visible recently has faded in.
-fn opening(ctx: &Context, id: Id) -> f32 {
+/// How far a layer that became visible recently has faded in over
+/// `seconds`.
+fn opening(ctx: &Context, id: Id, seconds: f32) -> f32 {
     match became_visible(ctx, id) {
-        Some(since) => motion::since(ctx, since, tokens::motion::BASE),
+        Some(since) => motion::since(ctx, since, seconds),
         None => 1.0,
     }
+}
+
+/// Scales a dialog's layer to `scale` of its size about its centre. The
+/// scrim, which covers the whole window, stays as it is.
+fn grow(ctx: &Context, layer: LayerId, scale: f32) {
+    let window = ctx.content_rect();
+    let covers_window = |shape: &Shape| shape.visual_bounding_rect().contains_rect(window);
+    ctx.graphics_mut(|graphics| {
+        let Some(list) = graphics.get_mut(layer) else {
+            return;
+        };
+        let bounds = list
+            .all_entries()
+            .filter(|clipped| !covers_window(&clipped.shape))
+            .fold(egui::Rect::NOTHING, |bounds, clipped| {
+                bounds.union(clipped.shape.visual_bounding_rect())
+            });
+        if !bounds.is_positive() {
+            return;
+        }
+        let centre = bounds.center().to_vec2();
+        let transform = egui::emath::TSTransform::from_translation(centre)
+            * egui::emath::TSTransform::from_scaling(scale)
+            * egui::emath::TSTransform::from_translation(-centre);
+        let count = list.all_entries().len();
+        for index in 0..count {
+            list.mutate_shape(ShapeIdx(index), |clipped| {
+                if !covers_window(&clipped.shape) {
+                    clipped.shape.transform(transform);
+                }
+            });
+        }
+    });
 }
 
 /// The opacity egui's own fade has given an area this frame, which the
@@ -221,7 +270,7 @@ mod tests {
                         ui.painter().rect_filled(rect, 0.0, egui::Color32::WHITE);
                     });
             }
-            fade(ui.ctx(), &[]);
+            fade(ui.ctx(), &[], &[]);
         });
         output.textures_delta.clear();
         let alpha = output

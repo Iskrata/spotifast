@@ -22,6 +22,7 @@ mod now_playing_panel;
 mod panel_header;
 pub mod player_bar;
 mod prerelease;
+mod popovers;
 pub mod queue;
 pub mod radio;
 pub mod search;
@@ -59,6 +60,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         toasts(app, ctx, 20.0);
         caption_buttons(ui, &app.palette, app.locale);
         fastframe_titlebar::resize(ui);
+        fade_popovers(ctx);
         return;
     }
     if titlebar_spans_window(cfg!(target_os = "macos"), fastframe_titlebar::enabled()) {
@@ -99,7 +101,16 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     toasts(app, ctx, theme::PLAYER_BAR_HEIGHT + 16.0);
     caption_buttons(ui, &app.palette, app.locale);
     fastframe_titlebar::resize(ui);
+    fade_popovers(ctx);
 }
+
+/// Fades menus, popovers and dialogs in and out once everything has drawn.
+/// The Windows caption buttons are always there and stay as they are.
+fn fade_popovers(ctx: &Context) {
+    popovers::fade(ctx, &[Id::new(WINDOW_CONTROLS_ID)]);
+}
+
+const WINDOW_CONTROLS_ID: &str = "windows-window-controls";
 
 /// The main window's narrowest width with these panels open: their least
 /// widths and the page's.

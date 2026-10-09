@@ -17,6 +17,7 @@ pub mod library;
 pub mod login;
 mod lyrics;
 mod now_playing_panel;
+mod panel_header;
 pub mod player_bar;
 pub mod queue;
 pub mod radio;

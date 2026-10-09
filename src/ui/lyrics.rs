@@ -9,6 +9,7 @@ use crate::model::{Action, Loadable};
 use crate::theme::{self, Icon};
 
 use super::buttons::{self, IconButton};
+use super::panel_header::PanelHeader;
 use super::widgets;
 
 const LINE_SIZE: f32 = 19.0;
@@ -62,44 +63,37 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
             ui.available_width(),
         );
         ui.add_space(window_controls.lyrics_top);
-        ui.horizontal(|ui| {
-            ui.add_space(4.0);
-            theme::text(
-                ui,
-                gettext(app.locale, "Lyrics"),
-                theme::bold(18.0),
-                palette.text,
-            );
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if IconButton::new(Icon::X, &gettext(app.locale, "Close"))
-                    .show(ui, &palette)
-                    .clicked()
-                {
-                    app.actions.push(Action::ToggleLyricsPanel);
-                }
-                if IconButton::new(Icon::Expand, &gettext(app.locale, "Full screen lyrics"))
-                    .show(ui, &palette)
-                    .clicked()
-                {
-                    app.actions.push(Action::SetLyricsFullscreen(true));
-                }
-                let loaded = matches!(&app.lyrics, Loadable::Loaded(Some(_)));
-                if loaded
-                    && !app.lyrics_following
-                    && buttons::secondary(
-                        ui,
-                        &palette,
-                        None,
-                        &pgettext(app.locale, "lyrics", "Follow"),
-                    )
-                    .clicked()
-                {
-                    app.lyrics_following = true;
-                    app.lyrics_line_shown = None;
-                }
-            });
+        let loaded = matches!(&app.lyrics, Loadable::Loaded(Some(_)));
+        let mut full_screen = false;
+        let mut follow = false;
+        let close = PanelHeader::new(
+            &gettext(app.locale, "Lyrics"),
+            &gettext(app.locale, "Close"),
+        )
+        .show(ui, &palette, |ui| {
+            full_screen = IconButton::new(Icon::Expand, &gettext(app.locale, "Full screen lyrics"))
+                .show(ui, &palette)
+                .clicked();
+            follow = loaded
+                && !app.lyrics_following
+                && buttons::secondary(
+                    ui,
+                    &palette,
+                    None,
+                    &pgettext(app.locale, "lyrics", "Follow"),
+                )
+                .clicked();
         });
-        ui.add_space(8.0);
+        if close {
+            app.actions.push(Action::ToggleLyricsPanel);
+        }
+        if full_screen {
+            app.actions.push(Action::SetLyricsFullscreen(true));
+        }
+        if follow {
+            app.lyrics_following = true;
+            app.lyrics_line_shown = None;
+        }
         contents(app, ui);
     });
     let current_width = response.response.rect.width();

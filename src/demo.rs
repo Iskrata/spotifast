@@ -2706,6 +2706,77 @@ mod tests {
         app.backend.shutdown();
     }
 
+    /// Lyrics, Queue and Friend Activity (titled Now playing while a song
+    /// plays) open with the same header: a 16-point title on the line of
+    /// a standard Close button at the panel's right.
+    #[test]
+    fn every_side_panel_shares_one_header() {
+        use egui::accesskit::Role;
+        let (ctx, mut app) = accessible_app("panel-headers");
+        for (panel, title) in [
+            ("lyrics", "Lyrics"),
+            ("queue", "Queue"),
+            ("friends", "Now playing"),
+        ] {
+            app.show_lyrics_panel = panel == "lyrics";
+            app.show_queue_panel = panel == "queue";
+            app.show_friends_panel = panel == "friends";
+            let mut output = None;
+            for _ in 0..3 {
+                let mut frame = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(1280.0, 800.0),
+                        )),
+                        ..Default::default()
+                    },
+                    |ui| app.frame_ui(ui),
+                );
+                frame.textures_delta.clear();
+                output = Some(frame);
+            }
+            let output = output.unwrap();
+            fn find(shape: &egui::epaint::Shape, title: &str) -> Option<(f32, egui::Rect)> {
+                match shape {
+                    egui::epaint::Shape::Text(text) if text.galley.job.text == title => Some((
+                        text.galley.job.sections[0].format.font_id.size,
+                        text.visual_bounding_rect(),
+                    )),
+                    egui::epaint::Shape::Vec(shapes) => {
+                        shapes.iter().find_map(|shape| find(shape, title))
+                    }
+                    _ => None,
+                }
+            }
+            // The topmost drawing of the title in the panel is the header's.
+            let (size, title_rect) = output
+                .shapes
+                .iter()
+                .filter_map(|clipped| find(&clipped.shape, title))
+                .filter(|(_, rect)| rect.left() > 900.0)
+                .min_by(|a, b| a.1.top().total_cmp(&b.1.top()))
+                .unwrap_or_else(|| panic!("{panel}: {title} was never drawn"));
+            assert_eq!(size, crate::ui::tokens::panel::TITLE, "{panel}");
+            let tree = output.platform_output.accesskit_update.unwrap();
+            let close = tree
+                .nodes
+                .iter()
+                .filter(|(_, node)| node.label() == Some("Close") && node.role() == Role::Button)
+                .filter_map(|(_, node)| node.bounds())
+                .max_by(|a, b| a.x0.total_cmp(&b.x0))
+                .unwrap_or_else(|| panic!("{panel}: no Close"));
+            assert_eq!(close.x1 - close.x0, 32.0, "{panel}: a standard Close");
+            assert!(close.x1 > 1200.0, "{panel}: Close is at the panel's right");
+            let middle = f64::from(title_rect.center().y);
+            assert!(
+                (middle - (close.y0 + close.y1) / 2.0).abs() < 3.0,
+                "{panel}: the title shares Close's line: {title_rect:?} vs {close:?}"
+            );
+        }
+        app.backend.shutdown();
+    }
+
     /// Opens Friend Activity with its sample friends and the playing song's
     /// words.
     fn open_friends_panel(app: &mut App) {
@@ -6837,7 +6908,19 @@ mod tests {
             app.show_lyrics_panel = lyrics;
             let placed = drawn(&mut app);
             if queue {
-                assert_same_row(&placed, "Queue", "Recent");
+                // The panel's title, then its tabs on the line below it.
+                let title = placed
+                    .iter()
+                    .position(|(text, _)| text == "Queue")
+                    .expect("the Queue panel's title");
+                let mut tabs = placed.clone();
+                let (_, title_rect) = tabs.remove(title);
+                assert_same_row(&tabs, "Queue", "Recent");
+                let (_, tab) = tabs.iter().find(|(text, _)| text == "Queue").unwrap();
+                assert!(
+                    title_rect.bottom() <= tab.top(),
+                    "the tabs sit under the title: {title_rect:?} vs {tab:?}"
+                );
             }
             if lyrics {
                 assert_same_row(&placed, "Lyrics", "Follow");

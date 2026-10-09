@@ -11,6 +11,7 @@ use crate::model::{Action, DragTrack, Loadable, QueueTab, RowContext};
 use crate::theme::{self, Icon};
 
 use super::buttons::{self, IconButton};
+use super::panel_header::PanelHeader;
 use super::widgets::{self, TrackRow};
 
 pub fn page(app: &mut App, ui: &mut egui::Ui) {
@@ -62,34 +63,27 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
             ui.available_width(),
         );
         ui.add_space(window_controls.queue_top);
-        // Measure buttons first and give the remaining width to the chips.
-        // Without `shrink_left`, wrapped chips can overlap the close button.
         let tab = app.queue_tab;
         let offer_save = tab == QueueTab::Queue && !app.queue_playlist_uris().is_empty();
         let mut picked = None;
-        let mut close = false;
         let mut save = false;
-        egui::Sides::new().shrink_left().show(
-            ui,
-            |ui| {
-                ui.add_space(4.0);
-                picked = widgets::chips(
-                    ui,
-                    &palette,
-                    &[
-                        (QueueTab::Queue, &gettext(app.locale, "Queue")),
-                        (QueueTab::Recents, &gettext(app.locale, "Recent")),
-                    ],
-                    tab,
-                );
-            },
-            |ui| {
-                close = IconButton::new(Icon::X, &gettext(app.locale, "Close"))
-                    .show(ui, &palette)
-                    .clicked();
-                save = save_button(ui, &palette, offer_save, app.locale);
-            },
-        );
+        let close = PanelHeader::new(&gettext(app.locale, "Queue"), &gettext(app.locale, "Close"))
+            .show_with_tabs(
+                ui,
+                &palette,
+                |ui| save = save_button(ui, &palette, offer_save, app.locale),
+                |ui| {
+                    picked = widgets::chips(
+                        ui,
+                        &palette,
+                        &[
+                            (QueueTab::Queue, &gettext(app.locale, "Queue")),
+                            (QueueTab::Recents, &gettext(app.locale, "Recent")),
+                        ],
+                        tab,
+                    );
+                },
+            );
         if let Some(tab) = picked {
             app.actions.push(Action::SetQueueTab(tab));
         }
@@ -99,7 +93,6 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
         if save {
             app.actions.push(Action::SaveQueueAsPlaylist);
         }
-        ui.add_space(8.0);
         // Lazy load recents when tab becomes visible.
         if app.queue_tab == QueueTab::Recents
             && !app.recents.loading

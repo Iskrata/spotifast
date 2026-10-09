@@ -78,6 +78,18 @@ pub mod button {
     pub const SECONDARY: f32 = 32.0;
 }
 
+/// A side panel's header.
+pub mod panel {
+    /// The title's size, the same in every panel.
+    pub const TITLE: f32 = 16.0;
+    /// How far the title and tabs sit in from the panel's edge.
+    pub const INSET: f32 = 4.0;
+    /// Between the title row and a line of tabs under it.
+    pub const TABS_GAP: f32 = 6.0;
+    /// Between the header and the panel's contents.
+    pub const BELOW: f32 = 8.0;
+}
+
 /// Spacing between controls.
 pub mod gap {
     /// Between icon buttons in one group.

@@ -12,6 +12,7 @@ use crate::model::{Action, Dialog, Loadable, Page};
 use crate::theme::{self, Icon};
 
 use super::buttons::{self, IconButton, IconSize};
+use super::panel_header::PanelHeader;
 use super::widgets;
 
 const AVATAR: f32 = 40.0;
@@ -48,23 +49,14 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
         } else {
             gettext(locale, "Friend Activity")
         };
-        let mut close = false;
         let mut refresh = false;
-        egui::Sides::new().shrink_left().show(
-            ui,
-            |ui| {
-                ui.add_space(4.0);
-                theme::text(ui, title, theme::bold(16.0), palette.text);
-            },
-            |ui| {
-                close = IconButton::new(Icon::X, &gettext(locale, "Close"))
+        let close = PanelHeader::new(&title, &gettext(locale, "Close")).show(ui, &palette, |ui| {
+            if now.is_none() {
+                refresh = IconButton::new(Icon::Refresh, &gettext(locale, "Refresh"))
                     .show(ui, &palette)
                     .clicked();
-                if now.is_none() {
-                    refresh = refresh_button(ui, &palette, locale);
-                }
-            },
-        );
+            }
+        });
         if close {
             app.actions.push(Action::ToggleFriendsPanel);
         }
@@ -75,7 +67,6 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
         }
         // Wake for the next refresh and to move the ages on.
         ui.ctx().request_repaint_after(Duration::from_secs(30));
-        ui.add_space(10.0);
         egui::ScrollArea::vertical()
             .id_salt("friends-panel-scroll")
             .auto_shrink([false, false])

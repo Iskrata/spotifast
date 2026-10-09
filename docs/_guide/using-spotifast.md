@@ -311,7 +311,8 @@ for each section. **Name** and **Recently played** are available throughout.
 Albums and podcasts also offer **Recently added**, using their actual save
 dates. Spotify does not supply equivalent dates for followed playlists or
 artists, so those sections do not offer that choice. Entries with missing save
-dates come last.
+dates come last. The same menu also lays the Library out with **Show as
+list** or **Show as grid**.
 
 **Spotify custom order** follows your playlist order and folders from Spotify.
 Set up playback on this computer to load that order. Your playlists stay

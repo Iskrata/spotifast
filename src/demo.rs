@@ -1449,12 +1449,12 @@ mod tests {
                         button.x0
                     );
                 }
-                if width >= 250.0 {
-                    assert!(
-                        label.is_some(),
-                        "{locale:?} at {width}: the heading has room"
-                    );
-                }
+                // Without the Library glyph and the layout button, the
+                // heading has room even in the narrowest sidebar.
+                assert!(
+                    label.is_some(),
+                    "{locale:?} at {width}: the heading has room"
+                );
                 app.backend.shutdown();
             }
         }
@@ -2412,25 +2412,55 @@ mod tests {
     fn library_grid_toggle_is_accessible_and_persistent() {
         use egui::accesskit::{Action as AccessibleAction, Role};
         let (ctx, mut app) = accessible_app("library-grid-toggle");
-        let tree = accessible_frame(&ctx, &mut app, vec![]);
-        let grid = accessible_node(&tree, "Show as grid", Role::Button);
-        accessible_frame(
-            &ctx,
-            &mut app,
-            vec![accessible_action(grid, AccessibleAction::Click, None)],
-        );
+        // The layout is chosen in the sort menu, beside the order.
+        let choose = |app: &mut App, label: &str| {
+            let tree = accessible_frame(&ctx, app, vec![]);
+            assert!(
+                !tree
+                    .nodes
+                    .iter()
+                    .any(|(_, node)| node.label() == Some(label)),
+                "{label} shows before the sort menu opens"
+            );
+            // The sidebar's sort button names the order it keeps; it is the
+            // leftmost button with that name.
+            let sort = tree
+                .nodes
+                .iter()
+                .filter(|(_, node)| {
+                    node.role() == Role::Button
+                        && matches!(
+                            node.label(),
+                            Some("Recently played" | "Spotify custom order" | "Local custom order")
+                        )
+                })
+                .min_by(|(_, a), (_, b)| {
+                    let x = |node: &egui::accesskit::Node| node.bounds().map_or(0.0, |r| r.x0);
+                    x(a).total_cmp(&x(b))
+                })
+                .expect("the sort button")
+                .0;
+            accessible_frame(
+                &ctx,
+                app,
+                vec![accessible_action(sort, AccessibleAction::Click, None)],
+            );
+            let menu = accessible_frame(&ctx, app, vec![]);
+            let item = accessible_node(&menu, label, Role::Button);
+            accessible_frame(
+                &ctx,
+                app,
+                vec![accessible_action(item, AccessibleAction::Click, None)],
+            );
+        };
+        choose(&mut app, "Show as grid");
         assert!(app.settings.sidebar_grid);
 
         let tree = accessible_frame(&ctx, &mut app, vec![]);
-        let list = accessible_node(&tree, "Show as list", Role::Button);
         assert!(tree.nodes.iter().any(|(_, node)| {
             node.role() == Role::Button && node.label() == Some("Discover Weekly")
         }));
-        accessible_frame(
-            &ctx,
-            &mut app,
-            vec![accessible_action(list, AccessibleAction::Click, None)],
-        );
+        choose(&mut app, "Show as list");
         assert!(!app.settings.sidebar_grid);
         app.backend.shutdown();
     }

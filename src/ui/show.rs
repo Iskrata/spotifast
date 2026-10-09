@@ -208,8 +208,7 @@ fn show_actions(
     let palette = app.palette;
     let locale = app.locale;
     let saved = app.is_saved(&show.uri).unwrap_or(false);
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 18.0;
+    buttons::action_row(ui, |ui| {
         if let Some(latest) = latest {
             if app.play_pending(&latest.uri) {
                 buttons::play_disc_spinner(
@@ -258,7 +257,6 @@ fn show_actions(
                 }
             });
     });
-    ui.add_space(16.0);
 }
 
 /// One episode with its description, date, length, and progress.

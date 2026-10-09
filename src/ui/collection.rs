@@ -254,8 +254,7 @@ pub fn actions_row(
 ) {
     let palette = app.palette;
     let locale = app.locale;
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 18.0;
+    buttons::action_row(ui, |ui| {
         if let Some(uri) = &actions.play_uri {
             let context_here = app.playing_context_uri().as_deref() == Some(uri.as_str());
             let now_playing_here = context_here && app.believed_playing();
@@ -411,7 +410,6 @@ pub fn actions_row(
             });
         }
     });
-    ui.add_space(14.0);
 }
 
 /// A page's **Refresh** menu item, which reloads it from Spotify. It reads

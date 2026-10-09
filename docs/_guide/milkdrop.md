@@ -5,7 +5,8 @@ nav_order: 5
 ---
 
 MilkDrop shows colourful animations that react to your music. Open it from
-the top bar's sparkles button, Ctrl+Shift+K, Settings, or the mini player's
+**MilkDrop visualiser** in the account menu (your picture at the top
+right), Ctrl+Shift+K (Cmd+Shift+K on macOS), Settings, or the mini player's
 **V** menu. It runs in its own window.
 
 <video autoplay loop muted playsinline preload="metadata" poster="/assets/images/milkdrop-poster.jpg" aria-label="MilkDrop running in Spotifast" style="width: 100%; height: auto;">

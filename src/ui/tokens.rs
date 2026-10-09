@@ -115,9 +115,9 @@ pub mod gap {
 /// are the floor a custom palette's own glass colours are held to.
 pub mod glass {
     /// The panels' own colour in the dark palette.
-    pub const PANEL_DARK: f32 = 0.66;
-    /// In the light palette, where the orbs show more strongly.
-    pub const PANEL_LIGHT: f32 = 0.74;
+    pub const PANEL_DARK: f32 = 0.72;
+    /// In the light palette, whose dark text reads over brighter orbs.
+    pub const PANEL_LIGHT: f32 = 0.68;
     /// The least a palette's panel glass may be, dark and light.
     pub const PANEL_LEAST_DARK: f32 = 0.55;
     pub const PANEL_LEAST_LIGHT: f32 = 0.6;

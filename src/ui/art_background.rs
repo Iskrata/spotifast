@@ -38,7 +38,7 @@ const MUSIC_FRAME: Duration = Duration::from_millis(33);
 const DRIFT_FRAME: Duration = Duration::from_millis(80);
 /// The most an orb covers the window at any point, however loud the music,
 /// so the page's words always read over it.
-const MAX_OPACITY: f32 = 0.7;
+pub(super) const MAX_OPACITY: f32 = 0.7;
 /// How much of its colour each orb gives up to the cover's average.
 const HARMONY: f32 = 0.25;
 /// Where each orb wanders around, as a share of the page, and its radius
@@ -185,6 +185,21 @@ fn vivid(rgb: [u8; 3], dark: bool) -> Rgba {
     color.v = if dark { 0.8 } else { 0.9 };
     color.a = 1.0;
     Rgba::from(color)
+}
+
+/// Every colour an orb can glow in, sampled: [`vivid`] around the hue
+/// circle at the least and the most saturation it gives, and grey, so what
+/// lies over the orbs can be checked against all of them.
+#[cfg(test)]
+pub(super) fn orb_colour_range(dark: bool) -> Vec<Color32> {
+    let mut colours = vec![Color32::from(vivid([128, 128, 128], dark))];
+    for hue in (0..360).step_by(5) {
+        for saturation in [0.4, 1.0] {
+            let rgb = Color32::from(Hsva::new(hue as f32 / 360.0, saturation, 1.0, 1.0));
+            colours.push(Color32::from(vivid([rgb.r(), rgb.g(), rgb.b()], dark)));
+        }
+    }
+    colours
 }
 
 /// How much colour shows at height `y` of the page, from 1 at the top to a

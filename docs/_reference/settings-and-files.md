@@ -593,6 +593,8 @@ Supported colors are `window`, `panel`, `surface`, `surface_hover`,
 `surface_active`, `outline`, `text`, `secondary`, `dim`, `accent`,
 `accent_hover`, `on_accent`, `danger`, `warning`, `overlay`, `shadow`, and
 `tint`. Values must be `#RRGGBB` or `#RRGGBBAA`.
+Buttons on cards, such as the artist card and Settings sections, rest on
+`surface_active` so they stand out from the card's `surface`.
 
 `tint` is the colour the top of a page fades from when album art does not
 colour it: with **Colour from album art** off, or on a page without a cover.

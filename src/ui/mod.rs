@@ -20,6 +20,7 @@ pub mod motion;
 mod now_playing_panel;
 mod panel_header;
 pub mod player_bar;
+mod popovers;
 pub mod queue;
 pub mod radio;
 pub mod search;
@@ -57,6 +58,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         toasts(app, ctx, 20.0);
         window_controls(ui, &app.palette, app.locale);
         window_resize(ui);
+        fade_popovers(ctx);
         return;
     }
     if titlebar_spans_window(cfg!(target_os = "macos"), crate::window::custom_titlebar()) {
@@ -97,7 +99,16 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     toasts(app, ctx, theme::PLAYER_BAR_HEIGHT + 16.0);
     window_controls(ui, &app.palette, app.locale);
     window_resize(ui);
+    fade_popovers(ctx);
 }
+
+/// Fades menus, popovers and dialogs in and out once everything has drawn.
+/// The Windows caption buttons are always there and stay as they are.
+fn fade_popovers(ctx: &Context) {
+    popovers::fade(ctx, &[Id::new(WINDOW_CONTROLS_ID)]);
+}
+
+const WINDOW_CONTROLS_ID: &str = "windows-window-controls";
 
 /// The main window's narrowest width with these panels open: their least
 /// widths and the page's.
@@ -521,7 +532,7 @@ pub fn window_controls(ui: &mut egui::Ui, palette: &theme::Palette, locale: crat
     let maximized = ui
         .ctx()
         .input(|input| input.viewport().maximized.unwrap_or(false));
-    egui::Area::new(egui::Id::new("windows-window-controls"))
+    egui::Area::new(egui::Id::new(WINDOW_CONTROLS_ID))
         .anchor(
             Align2::RIGHT_TOP,
             vec2(-WINDOW_RESIZE_BORDER, WINDOW_RESIZE_BORDER),

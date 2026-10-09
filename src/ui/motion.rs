@@ -66,17 +66,6 @@ pub fn hover_fill(
     }
 }
 
-/// A menu or popover's opacity: in at [`tokens::motion::BASE`], out at
-/// [`tokens::motion::BASE_OUT`].
-pub fn popover(ctx: &Context, id: Id, open: bool) -> f32 {
-    let seconds = if open {
-        tokens::motion::BASE
-    } else {
-        tokens::motion::BASE_OUT
-    };
-    toward(ctx, id, open, seconds)
-}
-
 /// The colour `t` of the way from `from` to `to`.
 pub fn mix(from: Color32, to: Color32, t: f32) -> Color32 {
     if t <= 0.0 {
@@ -203,22 +192,6 @@ mod tests {
         assert!(!reduced(&ctx));
         assert_eq!(ctx.global_style().animation_time, tokens::motion::FAST);
         assert_eq!(time(&ctx, tokens::motion::CONTENT), tokens::motion::CONTENT);
-    }
-
-    #[test]
-    fn menus_close_faster_than_they_open() {
-        let ctx = Context::default();
-        let id = Id::new("menu");
-        let mut now = 0.0;
-        let dt = 0.06;
-        let _ = frame(&ctx, &mut now, dt, |ctx| popover(ctx, id, false));
-        let (opening, _) = frame(&ctx, &mut now, dt, |ctx| popover(ctx, id, true));
-        for _ in 0..4 {
-            let _ = frame(&ctx, &mut now, dt, |ctx| popover(ctx, id, true));
-        }
-        let (closing, _) = frame(&ctx, &mut now, dt, |ctx| popover(ctx, id, false));
-        // One step of 60 ms covers a third of 180 ms and half of 120 ms.
-        assert!(1.0 - closing > opening);
     }
 
     #[test]

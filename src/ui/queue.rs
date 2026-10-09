@@ -284,7 +284,7 @@ fn contents(app: &mut App, ui: &mut egui::Ui, compact: bool) {
         widgets::empty_state(
             ui,
             &palette,
-            Icon::ListVideo,
+            Icon::ListMusic,
             &gettext(app.locale, "Nothing queued"),
             &gettext(app.locale, "Queued songs appear here."),
         );

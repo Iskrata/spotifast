@@ -1886,7 +1886,8 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 {
                     app.actions.push(Action::CheckForUpdates);
                 }
-                if buttons::secondary(ui, &palette, Some(Icon::Info), &keyboard_shortcuts).clicked()
+                if buttons::secondary(ui, &palette, Some(Icon::Keyboard), &keyboard_shortcuts)
+                    .clicked()
                 {
                     app.actions.push(Action::ShowDialog(Dialog::Shortcuts));
                 }

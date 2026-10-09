@@ -20,10 +20,10 @@ const SPINNER_SIZE: f32 = 15.0;
 /// A badge is as tall as its text plus this, and as wide as its text plus
 /// the padding its own label needs.
 const BADGE_PADDING_Y: f32 = 12.0;
-const DEVICE_BADGE_PADDING: f32 = 28.0;
-/// The text starts 24 px in; leave 8 px after it to match the space before
+const DEVICE_BADGE_PADDING: f32 = 30.0;
+/// The text starts 26 px in; leave 8 px after it to match the space before
 /// the icon.
-const UPDATE_BADGE_PADDING: f32 = 32.0;
+const UPDATE_BADGE_PADDING: f32 = 34.0;
 /// The width the search field aims for, the most it ever takes, and the
 /// least it shrinks to before the badges give up their labels instead.
 const SEARCH_IDEAL: f32 = 200.0;
@@ -156,13 +156,14 @@ fn badge(
     } else {
         rect.center()
     };
-    icon.image(palette.accent, 13.0).paint_at(
+    let size = super::tokens::icon::SMALL;
+    icon.image(palette.accent, size).paint_at(
         ui,
-        egui::Rect::from_center_size(icon_center, Vec2::splat(13.0)),
+        egui::Rect::from_center_size(icon_center, Vec2::splat(size)),
     );
     if labels {
         ui.painter().galley(
-            pos2(rect.left() + 24.0, rect.center().y - galley.size().y / 2.0),
+            pos2(rect.left() + 26.0, rect.center().y - galley.size().y / 2.0),
             galley,
             palette.accent,
         );
@@ -469,7 +470,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                         if super::widgets::menu_item(
                             ui,
                             &palette,
-                            Some(Icon::Info),
+                            Some(Icon::Keyboard),
                             &gettext(locale, "Keyboard shortcuts"),
                         ) {
                             app.actions
@@ -523,7 +524,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                     && badge(
                         ui,
                         &palette,
-                        Icon::Info,
+                        Icon::CircleArrowDown,
                         galley,
                         UPDATE_BADGE_PADDING,
                         fit.labels,
@@ -554,7 +555,7 @@ fn folding_buttons(app: &mut App, ui: &mut egui::Ui) {
         app.actions.push(Action::Open(Page::Settings));
     }
     if IconButton::new(
-        Icon::AudioLines,
+        Icon::Sparkles,
         super::keys::platform_shortcut(
             &gettext(locale, "MilkDrop visualiser (Ctrl+Shift+K)"),
             &gettext(locale, "MilkDrop visualiser (Cmd+Shift+K)"),
@@ -567,7 +568,7 @@ fn folding_buttons(app: &mut App, ui: &mut egui::Ui) {
         app.actions.push(Action::ToggleWinampMilkdrop);
     }
     if IconButton::new(
-        Icon::Shrink,
+        Icon::PictureInPicture,
         super::keys::platform_shortcut(
             &gettext(locale, "Winamp mini player (Ctrl+M)"),
             &gettext(locale, "Winamp mini player (Cmd+Shift+M)"),
@@ -588,7 +589,7 @@ fn folded_items(app: &mut App, ui: &mut egui::Ui) {
     if super::widgets::menu_item(
         ui,
         &palette,
-        Some(Icon::Shrink),
+        Some(Icon::PictureInPicture),
         super::keys::platform_shortcut(
             &gettext(locale, "Winamp mini player (Ctrl+M)"),
             &gettext(locale, "Winamp mini player (Cmd+Shift+M)"),
@@ -599,7 +600,7 @@ fn folded_items(app: &mut App, ui: &mut egui::Ui) {
     if super::widgets::menu_item(
         ui,
         &palette,
-        Some(Icon::AudioLines),
+        Some(Icon::Sparkles),
         super::keys::platform_shortcut(
             &gettext(locale, "MilkDrop visualiser (Ctrl+Shift+K)"),
             &gettext(locale, "MilkDrop visualiser (Cmd+Shift+K)"),

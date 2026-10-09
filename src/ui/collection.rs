@@ -272,7 +272,7 @@ pub fn actions_row(
             }
         }
         if let Some(seed) = &actions.save_radio
-            && IconButton::new(Icon::CirclePlus, &gettext(locale, "Save as playlist"))
+            && IconButton::new(Icon::ListPlus, &gettext(locale, "Save as playlist"))
                 .size(IconSize::Large)
                 .show(ui, &palette)
                 .clicked()
@@ -293,7 +293,7 @@ pub fn actions_row(
                         if widgets::menu_item(
                             ui,
                             &palette,
-                            Some(Icon::CirclePlus),
+                            Some(Icon::ListPlus),
                             &gettext(locale, "Save as playlist"),
                         ) {
                             app.actions.push(Action::SaveRadio(seed.clone()));

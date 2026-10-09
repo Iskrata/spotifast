@@ -817,7 +817,7 @@ fn extras(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>) {
         app.actions.push(Action::ToggleDevicesPopup);
     }
     let queue_open = app.show_queue_panel || matches!(app.page(), Page::Queue);
-    let queue_button = IconButton::new(Icon::ListVideo, &gettext(app.locale, "Queue"))
+    let queue_button = IconButton::new(Icon::ListMusic, &gettext(app.locale, "Queue"))
         .active(queue_open)
         .show(ui, &palette);
     if queue_button.clicked() {

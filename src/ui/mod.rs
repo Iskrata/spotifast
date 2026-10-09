@@ -11,6 +11,7 @@ pub mod collection;
 pub(crate) mod devices;
 mod dialogs;
 pub(crate) mod friends;
+pub mod glass;
 pub mod home;
 mod keys;
 pub mod library;
@@ -76,6 +77,15 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             ),
         );
     }
+    // Glass floats over the window: its colour and the art backdrop are
+    // laid first, under every panel, and the page fills them in once it
+    // knows its backdrop.
+    let backdrop = glass::on(ctx).then(|| {
+        let painter = ui.painter().clone();
+        painter.rect_filled(painter.clip_rect(), 0.0, app.palette.window);
+        let slot = painter.add(egui::Shape::Noop);
+        (painter, slot)
+    });
     player_bar::show(app, ui);
     if app.lyrics_fullscreen.is_some() {
         lyrics::fullscreen(app, ui);
@@ -86,7 +96,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
         };
         sidebar::show(app, ui, sidebar);
         sliding::right_panels(app, ui);
-        central(app, ui);
+        central(app, ui, backdrop);
     }
     keep_room_for_panels(app, ctx);
     devices::popup(app, ctx);
@@ -359,11 +369,23 @@ fn backdrop(
     }
 }
 
-fn central(app: &mut App, ui: &mut egui::Ui) {
+/// The page between the panels. `window_backdrop` is where the backdrop
+/// goes when it lies under the whole window, beneath the glass panels,
+/// instead of under the page alone.
+fn central(
+    app: &mut App,
+    ui: &mut egui::Ui,
+    window_backdrop: Option<(egui::Painter, egui::layers::ShapeIdx)>,
+) {
     let palette = app.palette;
     let page_art = page_art(app);
+    let fill = if window_backdrop.is_some() {
+        Color32::TRANSPARENT
+    } else {
+        palette.window
+    };
     egui::CentralPanel::default()
-        .frame(Frame::new().fill(palette.window))
+        .frame(Frame::new().fill(fill))
         .show(ui, |ui| {
             let rect = ui.max_rect();
             let page = app.page().clone();
@@ -433,8 +455,22 @@ fn central(app: &mut App, ui: &mut egui::Ui) {
             ui.ctx()
                 .data_mut(|data| data.insert_temp(scrolled_id, scroll.state.offset.y));
             header_shadow(ui, scroll.inner_rect, scroll.state.offset.y, palette.dark);
-            let shape = backdrop(app, ui, rect, page_art.as_deref(), scroll.state.offset.y);
-            ui.painter().set(backdrop_slot, shape);
+            match &window_backdrop {
+                Some((painter, slot)) => {
+                    let shape = backdrop(
+                        app,
+                        ui,
+                        painter.clip_rect(),
+                        page_art.as_deref(),
+                        scroll.state.offset.y,
+                    );
+                    painter.set(*slot, shape);
+                }
+                None => {
+                    let shape = backdrop(app, ui, rect, page_art.as_deref(), scroll.state.offset.y);
+                    ui.painter().set(backdrop_slot, shape);
+                }
+            }
         });
 }
 
@@ -767,7 +803,7 @@ fn toasts(app: &mut App, ctx: &egui::Context, bottom_offset: f32) {
                     1.0
                 };
                 ui.set_opacity(alpha);
-                Frame::new()
+                let solid = Frame::new()
                     .fill(palette.overlay)
                     .stroke(Stroke::new(1.0, palette.outline))
                     .corner_radius(CornerRadius::same(tokens::radius::CARD))
@@ -777,27 +813,27 @@ fn toasts(app: &mut App, ctx: &egui::Context, bottom_offset: f32) {
                         blur: 16,
                         spread: 0,
                         color: palette.shadow,
-                    })
-                    .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            let (icon, color) = match toast.kind {
-                                ToastKind::Info => (Icon::CircleCheck, palette.accent),
-                                ToastKind::Error => (Icon::CircleAlert, palette.danger),
-                            };
-                            theme::icon(ui, icon, 16.0, color);
-                            // Laid out at its own width. The area
-                            // remembers its size, so after a short toast a
-                            // label left to wrap at the area's width broke
-                            // long messages on every word.
-                            let galley = ui.painter().layout(
-                                toast.message.clone(),
-                                theme::medium(13.5),
-                                palette.text,
-                                280.0,
-                            );
-                            ui.add(egui::Label::new(galley));
-                        });
                     });
+                glass::popover_frame(ctx, &palette, solid, tokens::radius::PANEL).show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        let (icon, color) = match toast.kind {
+                            ToastKind::Info => (Icon::CircleCheck, palette.accent),
+                            ToastKind::Error => (Icon::CircleAlert, palette.danger),
+                        };
+                        theme::icon(ui, icon, 16.0, color);
+                        // Laid out at its own width. The area
+                        // remembers its size, so after a short toast a
+                        // label left to wrap at the area's width broke
+                        // long messages on every word.
+                        let galley = ui.painter().layout(
+                            toast.message.clone(),
+                            theme::medium(13.5),
+                            palette.text,
+                            280.0,
+                        );
+                        ui.add(egui::Label::new(galley));
+                    });
+                });
             }
         });
 }

@@ -173,7 +173,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, id: &str) {
                             }
                             egui::Popup::context_menu(&card.response)
                                 .id(ui.make_persistent_id(("discography-menu", &album.uri)))
-                                .frame(widgets::menu_frame(&palette))
+                                .frame(widgets::menu_frame(ui.ctx(), &palette))
                                 .show(|ui| {
                                     widgets::context_menu_items(
                                         ui,
@@ -245,7 +245,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, id: &str) {
                         }
                         egui::Popup::context_menu(&card.response)
                             .id(ui.make_persistent_id(("related-artist-menu", &artist.uri)))
-                            .frame(widgets::menu_frame(&palette))
+                            .frame(widgets::menu_frame(ui.ctx(), &palette))
                             .show(|ui| {
                                 widgets::context_menu_items(
                                     ui,
@@ -408,7 +408,7 @@ fn artist_actions(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
             .size(IconSize::Large)
             .show(ui, &palette);
         egui::Popup::menu(&more)
-            .frame(widgets::menu_frame(&palette))
+            .frame(widgets::menu_frame(ui.ctx(), &palette))
             .show(|ui| widgets::context_menu_items(ui, app, &artist.uri, &artist.name, None));
     });
 }

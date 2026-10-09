@@ -40,11 +40,10 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui, slide: super::sliding::Slide
         .size_range(fit.range.clone())
         .show_separator_line(false)
         .frame(
-            Frame::new()
-                .fill(palette.panel)
+            super::glass::panel_frame(ui.ctx(), &palette, palette.panel)
                 .inner_margin(Margin::symmetric(12, 12)),
         );
-    let slid = super::sliding::show(ui, panel, PANEL_ID, slide, |ui| {
+    let slid = super::sliding::show(ui, &palette, panel, PANEL_ID, slide, |ui| {
         // The panel sits where the Queue would, under the same controls.
         let window_controls =
             super::window_controls_reservation(ui.ctx(), true, false, ui.available_width());

@@ -124,7 +124,7 @@ pub(super) fn card(app: &mut App, ui: &mut egui::Ui, now: &NowPlaying) -> bool {
     }
     egui::Popup::context_menu(&response)
         .id(menu_id)
-        .frame(widgets::menu_frame(&palette))
+        .frame(widgets::menu_frame(ui.ctx(), &palette))
         .show(|ui| widgets::context_menu_items(ui, app, &shown.uri, &shown.name, None));
     true
 }

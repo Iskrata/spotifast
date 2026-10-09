@@ -248,7 +248,7 @@ fn show_actions(
             .size(IconSize::Large)
             .show(ui, &palette);
         egui::Popup::menu(&more)
-            .frame(widgets::menu_frame(&palette))
+            .frame(widgets::menu_frame(ui.ctx(), &palette))
             .show(|ui| {
                 widgets::context_menu_items(ui, app, &show.uri, &show.name, None);
                 if app.network_reachable {
@@ -440,10 +440,10 @@ pub fn episode_row(
         IconButton::new(Icon::Ellipsis, &gettext(locale, "More")).show(&mut more_ui, &palette);
     let item = PlayableItem::Episode(episode.clone());
     egui::Popup::menu(&more)
-        .frame(widgets::menu_frame(&palette))
+        .frame(widgets::menu_frame(ui.ctx(), &palette))
         .show(|ui| widgets::item_menu(ui, app, &item, None, None));
     egui::Popup::context_menu(&response)
-        .frame(widgets::menu_frame(&palette))
+        .frame(widgets::menu_frame(ui.ctx(), &palette))
         .show(|ui| widgets::item_menu(ui, app, &item, None, None));
     if response.double_clicked() {
         app.actions.push(Action::PlayEpisode {

@@ -72,7 +72,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
                 }
                 egui::Popup::context_menu(&card.response)
                     .id(ui.make_persistent_id(("library-album-menu", &album.uri)))
-                    .frame(widgets::menu_frame(&palette))
+                    .frame(widgets::menu_frame(ui.ctx(), &palette))
                     .show(|ui| widgets::context_menu_items(ui, app, &album.uri, &album.name, None));
             });
             let list = &app.library.albums;
@@ -130,7 +130,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
                 }
                 egui::Popup::context_menu(&card.response)
                     .id(ui.make_persistent_id(("library-artist-menu", &artist.uri)))
-                    .frame(widgets::menu_frame(&palette))
+                    .frame(widgets::menu_frame(ui.ctx(), &palette))
                     .show(|ui| {
                         widgets::context_menu_items(ui, app, &artist.uri, &artist.name, None)
                     });
@@ -175,7 +175,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui, page: Page) {
                 }
                 egui::Popup::context_menu(&card.response)
                     .id(ui.make_persistent_id(("library-show-menu", &show.uri)))
-                    .frame(widgets::menu_frame(&palette))
+                    .frame(widgets::menu_frame(ui.ctx(), &palette))
                     .show(|ui| widgets::context_menu_items(ui, app, &show.uri, &show.name, None));
             });
             let list = &app.library.shows;

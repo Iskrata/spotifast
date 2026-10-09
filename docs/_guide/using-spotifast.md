@@ -484,6 +484,11 @@ the visualizers, they follow the equalizer, not the volume. A song playing on
 another device gives them a slow drift of their own, and they hold still while
 paused. It is on by default.
 
+While it is on, the sidebar, the side panels, the player bar and the search
+field float over the orbs as tinted glass, with a little space between them so
+the colours glow through and around them. Menus, popovers and dialogs are
+glass too, nearly opaque. Turning the background off makes them solid again.
+
 In **Settings > Appearance**, **Compact track list** puts each song on one
 line. In narrow lists, the added date follows the artist credits with a spaced
 bullet; each artist name remains a separate link.

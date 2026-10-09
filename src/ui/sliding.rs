@@ -38,9 +38,11 @@ pub(crate) struct Slid<R> {
 
 /// Shows `panel` while any of it is in view, sliding it over the panel
 /// duration. Its id must be `id`. Dragging its edge resizes it as before;
-/// it never drags closed or open.
+/// it never drags closed or open. As glass, its shadow and edges slide
+/// with it.
 pub(crate) fn show<R>(
     ui: &mut egui::Ui,
+    palette: &crate::theme::Palette,
     panel: egui::Panel,
     id: &str,
     slide: Slide,
@@ -63,9 +65,11 @@ pub(crate) fn show<R>(
     // A drag past the panel's least width or a double-click on its edge
     // would close it here; the toggles stay the only way to.
     let mut expanded = slide.open;
+    let floating = super::glass::Floating::begin(ui);
     let inner = panel
         .drag_to_open(false)
         .show_collapsible(ui, &mut expanded, add_contents)?;
+    floating.finish(ui, palette, inner.response.rect);
     Some(Slid {
         inner,
         settled: slide.open && shown >= 1.0,
@@ -158,6 +162,7 @@ mod tests {
                 .exact_size(300.0);
             result = show(
                 ui,
+                &crate::theme::Palette::dark(),
                 panel,
                 "test-panel",
                 Slide {

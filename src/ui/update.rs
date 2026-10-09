@@ -1,7 +1,6 @@
-use egui::{Align, CornerRadius, Frame, Layout, Margin, RichText, Stroke};
+use egui::{Align, Layout, RichText};
 
 use super::buttons::{self, IconButton};
-use super::tokens;
 use crate::app::App;
 use crate::i18n::gettext;
 use crate::model::Action;
@@ -20,17 +19,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
     let locale = app.locale;
     let title = gettext(locale, "Update Spotifast");
     let mut close = ctx.input(|input| input.key_pressed(egui::Key::Escape));
-    let frame = Frame::new()
-        .fill(palette.overlay)
-        .stroke(Stroke::new(1.0, palette.outline))
-        .corner_radius(CornerRadius::same(tokens::radius::DIALOG))
-        .inner_margin(Margin::same(24))
-        .shadow(egui::epaint::Shadow {
-            offset: [0, 10],
-            blur: 40,
-            spread: 0,
-            color: palette.shadow,
-        });
+    let frame = super::dialogs::frame(ctx, &palette);
     egui::Window::new(title.as_ref())
         .id(egui::Id::new("spotifast-update"))
         .title_bar(false)

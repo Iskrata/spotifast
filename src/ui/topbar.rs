@@ -306,7 +306,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             let selected = egui::TextEdit::load_state(ui.ctx(), id)
                 .and_then(|state| state.cursor.char_range())
                 .is_some_and(|range| !range.is_empty());
-            let response = super::widgets::search_field(
+            let response = super::widgets::floating_search_field(
                 ui,
                 &palette,
                 app.locale,
@@ -508,7 +508,7 @@ fn account(app: &mut App, ui: &mut egui::Ui) {
         ),
     ];
     egui::Popup::menu(&response)
-        .frame(super::widgets::menu_frame(&palette))
+        .frame(super::widgets::menu_frame(ui.ctx(), &palette))
         .align(egui::RectAlign::BOTTOM_END)
         .show(|ui| {
             // As wide as the longest label beside its shortcut.

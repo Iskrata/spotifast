@@ -549,10 +549,10 @@ fn banner(
                     );
                     ui.add_space(6.0);
                     ui.horizontal_wrapped(|ui| {
-                        if theme::pill_button(ui, &palette, &primary, true).clicked() {
+                        if crate::ui::buttons::primary(ui, &palette, &primary).clicked() {
                             app.actions.push(primary_action);
                         }
-                        if theme::pill_button(ui, &palette, &secondary, false).clicked() {
+                        if crate::ui::buttons::secondary(ui, &palette, None, &secondary).clicked() {
                             app.actions.push(secondary_action);
                         }
                     });

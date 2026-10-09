@@ -2,6 +2,7 @@
 
 use egui::{Align, CornerRadius, Frame, Layout, Margin, Rect, Stroke, Vec2, pos2};
 
+use super::buttons;
 use super::tokens;
 use crate::app::App;
 use crate::backend::{AuthStatus, SignInProblem};
@@ -260,7 +261,9 @@ fn sign_in_column(app: &mut App, ui: &mut egui::Ui, connecting: bool, beside: Op
                 palette.secondary,
             );
             ui.add_space(6.0);
-            if theme::pill_button(ui, &palette, &gettext(locale, "Cancel"), false).clicked() {
+            if crate::ui::buttons::secondary(ui, &palette, None, &gettext(locale, "Cancel"))
+                .clicked()
+            {
                 app.actions.push(Action::CancelSignIn);
             }
         }
@@ -538,7 +541,7 @@ fn redirect_uri_row(app: &mut App, ui: &mut egui::Ui) {
         } else {
             gettext(locale, "Copy")
         };
-        if theme::pill_button(ui, &palette, &label, false).clicked() {
+        if crate::ui::buttons::secondary(ui, &palette, None, &label).clicked() {
             ui.ctx().copy_text(uri.clone());
             ui.data_mut(|data| data.insert_temp(copied_id, now));
         }
@@ -587,7 +590,7 @@ fn proxy_fields(ui: &mut egui::Ui, app: &mut App) {
             + 6.0 * (ProxyMode::ALL.len() - 1) as f32;
         ui.add_space((ui.available_width() - row_width).max(0.0) / 2.0);
         for choice in ProxyMode::ALL {
-            if theme::soft_button(
+            if buttons::chip(
                 ui,
                 &palette,
                 None,
@@ -620,9 +623,7 @@ fn proxy_fields(ui: &mut egui::Ui, app: &mut App) {
         super::widgets::proxy_scope_note(ui, &palette, app.locale, app.settings.proxy_mode);
         ui.add_space(8.0);
         ui.horizontal(|ui| {
-            if theme::pill_button(ui, &palette, &gettext(app.locale, "Apply settings"), true)
-                .clicked()
-            {
+            if buttons::primary(ui, &palette, &gettext(app.locale, "Apply settings")).clicked() {
                 apply = true;
             }
         });

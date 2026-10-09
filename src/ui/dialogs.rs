@@ -2,6 +2,7 @@
 
 use egui::{Align, CornerRadius, Frame, Layout, Margin, Stroke};
 
+use super::buttons;
 use super::tokens;
 use crate::app::App;
 use crate::i18n::{Locale, gettext, ngettext};
@@ -47,11 +48,11 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                     ui.add(egui::Label::new(egui::RichText::new(gettext(locale, "You're signed in through the shared app Spotifast used before. Spotifast no longer offers it, and Spotify can stop accepting it at any time. Set up your own free Spotify app so nothing stops your music. It takes a few minutes.")).font(theme::regular(14.0)).color(palette.secondary)).wrap());
                     ui.add_space(10.0);
                     ui.add_space(8.0);
-                    buttons(ui, |ui| {
-                        if theme::pill_button(ui, &palette, &gettext(locale, "Set up personal app"), true).clicked() {
+                    button_row(ui, |ui| {
+                        if crate::ui::buttons::primary(ui, &palette, &gettext(locale, "Set up personal app")).clicked() {
                             app.actions.push(Action::OpenPersonalAppSetup);
                         }
-                        if theme::pill_button(ui, &palette, &gettext(locale, "Not now"), false).clicked() {
+                        if crate::ui::buttons::secondary(ui, &palette, None, &gettext(locale, "Not now")).clicked() {
                             app.actions.push(Action::CloseDialog);
                         }
                     });
@@ -87,22 +88,17 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                         .wrap(),
                     );
                     ui.add_space(20.0);
-                    buttons(ui, |ui| {
-                        if theme::pill_button(
-                            ui,
-                            &palette,
-                            &if owned {
+                    button_row(ui, |ui| {
+                        if crate::ui::buttons::primary(ui, &palette, &if owned {
                                 gettext(locale, "Delete")
                             } else {
                                 gettext(locale, "Remove")
-                            },
-                            true,
-                        )
+                            })
                         .clicked()
                         {
                             app.actions.push(Action::DeletePlaylist(id.clone()));
                         }
-                        if theme::pill_button(ui, &palette, &gettext(locale, "Cancel"), false).clicked() {
+                        if crate::ui::buttons::secondary(ui, &palette, None, &gettext(locale, "Cancel")).clicked() {
                             app.actions.push(Action::CloseDialog);
                         }
                     });
@@ -136,8 +132,8 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                         .wrap(),
                     );
                     ui.add_space(20.0);
-                    buttons(ui, |ui| {
-                        if theme::pill_button(ui, &palette, &gettext(locale, "Add anyway"), true).clicked() {
+                    button_row(ui, |ui| {
+                        if crate::ui::buttons::primary(ui, &palette, &gettext(locale, "Add anyway")).clicked() {
                             app.actions.push(Action::ConfirmAddToPlaylist {
                                 playlist_id: playlist_id.clone(),
                                 playlist_name: playlist_name.clone(),
@@ -145,7 +141,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                                 position,
                             });
                         }
-                        if theme::pill_button(ui, &palette, &gettext(locale, "Cancel"), false).clicked() {
+                        if buttons::secondary(ui, &palette, None, &gettext(locale, "Cancel")).clicked() {
                             app.actions.push(Action::CloseDialog);
                         }
                     });
@@ -193,8 +189,8 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                         },
                     );
                     ui.add_space(16.0);
-                    buttons(ui, |ui| {
-                        if theme::pill_button(ui, &palette, &gettext(locale, "Done"), true).clicked() {
+                    button_row(ui, |ui| {
+                        if crate::ui::buttons::primary(ui, &palette, &gettext(locale, "Done")).clicked() {
                             app.actions.push(Action::CloseDialog);
                         }
                     });
@@ -219,8 +215,8 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
                         .wrap(),
                     );
                     ui.add_space(20.0);
-                    buttons(ui, |ui| {
-                        if theme::pill_button(ui, &palette, &gettext(locale, "OK"), true).clicked() {
+                    button_row(ui, |ui| {
+                        if crate::ui::buttons::primary(ui, &palette, &gettext(locale, "OK")).clicked() {
                             app.actions.push(Action::CloseDialog);
                         }
                     });
@@ -234,7 +230,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
 }
 
 // Keep button rows content-sized when the shared modal area last held a taller dialog.
-fn buttons(ui: &mut egui::Ui, add_buttons: impl FnOnce(&mut egui::Ui)) {
+fn button_row(ui: &mut egui::Ui, add_buttons: impl FnOnce(&mut egui::Ui)) {
     ui.allocate_ui_with_layout(
         egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
         Layout::right_to_left(Align::Center),
@@ -409,13 +405,12 @@ fn create_playlist(app: &mut App, ui: &mut egui::Ui) {
     let name_value = name.trim().to_string();
     let public_value = *public;
     let uris = add_uris.clone();
-    buttons(ui, |ui| {
+    button_row(ui, |ui| {
         if busy {
             theme::spinner(ui, 18.0, palette.accent);
         } else {
-            let create = theme::pill_button(ui, &palette, &gettext(locale, "Create"), true)
-                .clicked()
-                || submit;
+            let create =
+                buttons::primary(ui, &palette, &gettext(locale, "Create")).clicked() || submit;
             if create && !name_value.is_empty() {
                 app.actions.push(Action::CreatePlaylist {
                     name: name_value.clone(),
@@ -423,7 +418,7 @@ fn create_playlist(app: &mut App, ui: &mut egui::Ui) {
                     add_uris: uris.clone(),
                 });
             }
-            if theme::pill_button(ui, &palette, &gettext(locale, "Cancel"), false).clicked() {
+            if buttons::secondary(ui, &palette, None, &gettext(locale, "Cancel")).clicked() {
                 app.actions.push(Action::CloseDialog);
             }
         }
@@ -496,19 +491,14 @@ fn edit_playlist(app: &mut App, ui: &mut egui::Ui) {
                             palette.secondary,
                         );
                     } else {
-                        if theme::pill_button(ui, &palette, &gettext(locale, "Change cover"), false)
+                        if buttons::secondary(ui, &palette, None, &gettext(locale, "Change cover"))
                             .clicked()
                         {
                             app.actions.push(Action::ChoosePlaylistCover(id.clone()));
                         }
                         if cover.selection.is_some()
-                            && theme::pill_button(
-                                ui,
-                                &palette,
-                                &gettext(locale, "Upload cover"),
-                                true,
-                            )
-                            .clicked()
+                            && buttons::primary(ui, &palette, &gettext(locale, "Upload cover"))
+                                .clicked()
                         {
                             app.actions.push(Action::UploadPlaylistCover(id.clone()));
                         }
@@ -590,11 +580,11 @@ fn edit_playlist(app: &mut App, ui: &mut egui::Ui) {
     let name_value = name.trim().to_string();
     let description_value = description.trim().to_string();
     let public_value = *public;
-    buttons(ui, |ui| {
+    button_row(ui, |ui| {
         if busy {
             theme::spinner(ui, 18.0, palette.accent);
         } else {
-            if theme::pill_button(ui, &palette, &gettext(locale, "Save"), true).clicked()
+            if buttons::primary(ui, &palette, &gettext(locale, "Save")).clicked()
                 && !name_value.is_empty()
             {
                 app.actions.push(Action::UpdatePlaylist {
@@ -604,7 +594,7 @@ fn edit_playlist(app: &mut App, ui: &mut egui::Ui) {
                     public: public_value,
                 });
             }
-            if theme::pill_button(ui, &palette, &gettext(locale, "Cancel"), false).clicked() {
+            if buttons::secondary(ui, &palette, None, &gettext(locale, "Cancel")).clicked() {
                 app.actions.push(Action::CloseDialog);
             }
         }

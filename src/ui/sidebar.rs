@@ -2,7 +2,7 @@
 
 use egui::{Align, CornerRadius, Frame, Layout, Margin, Rect, Sense, Vec2, pos2, vec2};
 
-use super::buttons::{IconButton, IconSize};
+use super::buttons::{self, IconButton, IconSize};
 use super::tokens;
 use crate::api::models::pick_image;
 use crate::app::App;
@@ -1090,7 +1090,7 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
             (Filter::Artists, gettext(locale, "Artists")),
             (Filter::Podcasts, gettext(locale, "Podcasts")),
         ] {
-            if theme::soft_button(ui, &palette, None, &label, filter == value).clicked() {
+            if buttons::chip(ui, &palette, None, &label, filter == value).clicked() {
                 filter = value;
             }
         }
@@ -1103,7 +1103,7 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
             // Translators: Library filter for playlists created by the signed-in user.
             let label = gettext(locale, "By You");
             let by_you = app.settings.library_by_you;
-            let response = theme::soft_button(ui, &palette, None, &label, by_you);
+            let response = crate::ui::buttons::chip(ui, &palette, None, &label, by_you);
             response.widget_info(|| {
                 egui::WidgetInfo::selected(
                     egui::WidgetType::Button,

@@ -5,7 +5,7 @@ use egui::{
     pos2, vec2,
 };
 
-use super::buttons::{IconButton, IconSize};
+use super::buttons::{self, IconButton, IconSize};
 use super::tokens;
 use crate::api::models::*;
 use crate::app::App;
@@ -2982,12 +2982,11 @@ pub fn error_row(ui: &mut Ui, app: &mut App, message: &str, retry: Option<Page>)
             palette.secondary,
         );
         if let Some(page) = retry
-            && theme::soft_button(
+            && buttons::secondary(
                 ui,
                 &palette,
                 Some(Icon::Refresh),
                 &gettext(app.locale, "Retry"),
-                false,
             )
             .clicked()
         {
@@ -3186,7 +3185,7 @@ pub fn chips<T: PartialEq + Copy>(
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing.x = 8.0;
         for (value, label) in options {
-            if theme::soft_button(ui, palette, None, label, *value == current).clicked() {
+            if buttons::chip(ui, palette, None, label, *value == current).clicked() {
                 selected = Some(*value);
             }
         }

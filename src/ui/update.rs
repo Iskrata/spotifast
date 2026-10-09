@@ -1,6 +1,6 @@
 use egui::{Align, CornerRadius, Frame, Layout, Margin, RichText, Stroke};
 
-use super::buttons::IconButton;
+use super::buttons::{self, IconButton};
 use super::tokens;
 use crate::app::App;
 use crate::i18n::gettext;
@@ -172,7 +172,7 @@ pub fn show(app: &mut App, ctx: &egui::Context) {
             ui.horizontal(|ui| {
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                     if let Some((label, action)) = action
-                        && theme::pill_button(ui, &palette, &label, true).clicked()
+                        && buttons::primary(ui, &palette, &label).clicked()
                     {
                         app.actions.push(action);
                     }

@@ -69,6 +69,8 @@ pub mod disc {
 pub mod button {
     /// The one green action a view leads with.
     pub const PRIMARY: f32 = 36.0;
+    /// The sign-in screen's one action.
+    pub const PRIMARY_LARGE: f32 = 44.0;
     /// Every other labelled action, and segmented chips.
     pub const SECONDARY: f32 = 32.0;
 }

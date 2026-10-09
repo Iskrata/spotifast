@@ -1546,6 +1546,59 @@ mod tests {
         }
     }
 
+    /// Motion asks for frames only while something moves: once a page,
+    /// a side panel and the sidebar have finished their transitions, a
+    /// paused window with nothing else moving schedules no frame sooner
+    /// than its slow polling.
+    #[test]
+    fn a_settled_window_asks_for_no_frames() {
+        let (ctx, mut app) = accessible_app("idle-repaint");
+        if let Some(remote) = app.remote.as_mut() {
+            remote.state.is_playing = false;
+        }
+        app.settings.art_background = false;
+        let mut time = 0.0;
+        let mut frame = |app: &mut App, events: Vec<egui::Event>| {
+            time += 1.0 / 60.0;
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(1280.0, 800.0),
+                    )),
+                    time: Some(time),
+                    predicted_dt: 1.0 / 60.0,
+                    events,
+                    ..Default::default()
+                },
+                |ui| app.frame_ui(ui),
+            );
+            output.textures_delta.clear();
+            output.viewport_output[&egui::ViewportId::ROOT].repaint_delay
+        };
+        let settle = |frame: &mut dyn FnMut(&mut App, Vec<egui::Event>) -> std::time::Duration,
+                      app: &mut App| {
+            let mut delay = std::time::Duration::ZERO;
+            for _ in 0..60 {
+                delay = frame(app, Vec::new());
+            }
+            delay
+        };
+        assert!(settle(&mut frame, &mut app) >= std::time::Duration::from_secs(1));
+        // Each transition runs and then lets the window rest again. (A
+        // song still loading shows a spinner, which moves on purpose.)
+        app.open(Page::Settings);
+        app.actions.push(Action::ToggleQueuePanel);
+        app.actions.push(Action::ToggleSidebar);
+        assert!(frame(&mut app, Vec::new()).is_zero(), "moving, so drawing");
+        let delay = settle(&mut frame, &mut app);
+        assert!(
+            delay >= std::time::Duration::from_secs(1),
+            "settled, yet the next frame is asked for in {delay:?}"
+        );
+        app.backend.shutdown();
+    }
+
     fn accessible_frame(
         ctx: &egui::Context,
         app: &mut App,

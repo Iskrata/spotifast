@@ -451,24 +451,13 @@ has no place in Spotify's playlist tree. Returning to **Local custom order**
 restores its saved position. Dragging a song onto Liked Songs still saves that
 song, wherever the row sits.
 
-**Player bar visualizer** in **Settings > Appearance** shows the song moving
-behind the player bar's controls: **Spectrum** draws glowing bars from bass
-to treble with peaks that hang and fall, and **Waveform** draws the sound's
-wave as a glowing line. With **Colour from album art** on, both sweep from
-bass to treble across up to four colours read from the cover, its hues first
-and its greys after, so a black and white cover moves in grey; with it off,
-they take the accent colour. It follows the equalizer, not the volume, and moves only while the
-song plays on this computer. It is off by default. Clicking the player
-bar's empty space switches it, as Winamp's visualizer did: off, then
-Spectrum, then Waveform, then off again. **Frame rate** in **Settings >
-Appearance** sets how often it and the mini player's analyser draw: 30, 60
-(the default), the rate of the screen showing the window, or Uncapped,
-which follows the display. They draw at half that rate while Spotifast's
-window is out of focus, at most 30 frames a second while the system saves
-energy, and not at all while nobody can see the window: minimised, in the
-tray, with the display off or the screen locked. MilkDrop has its own frame
-rate. Disable **Click player bar to change
-visualizer** in **Settings > Appearance** to prevent accidental changes.
+**Frame rate** in **Settings > Appearance** sets how often the mini
+player's analyser draws: 30, 60 (the default), the rate of the screen showing
+the window, or Uncapped, which follows the display. It draws at half that rate
+while Spotifast's window is out of focus, at most 30 frames a second while the
+system saves energy, and not at all while nobody can see the window:
+minimised, in the tray, with the display off or the screen locked. MilkDrop
+has its own frame rate.
 
 Spotifast follows the system when it asks for less motion: **Animation
 effects** turned off in Windows, **Reduce motion** on macOS, or GNOME's

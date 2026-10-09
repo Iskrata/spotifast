@@ -351,12 +351,10 @@ main fields are:
 | `custom_theme_cache` | absent | Last accepted custom palette; preserves appearance if its file is missing or invalid |
 | `system_theme_cache` | absent | Last accepted Omarchy palette for Follow system; retained across restarts |
 | `theme_pair` | absent | The themes Follow system uses in light and dark mode: `{"light": {"filename": "Catppuccin Latte.json", "palette": {...}}, "dark": {...}}`. Each `palette` is the last accepted copy of that file's colours. A missing side, or the whole field, is Spotifast's own Light or Dark; it is written only once you choose one |
-| `accent_from_art` | `true` | Tint pages with album art, and colour the player bar visualizer with the cover's colours |
+| `accent_from_art` | `true` | Tint pages with album art |
 | `art_background` | `true` | Soft, slowly drifting orbs of colour behind pages from album art, strongest at the top: the cover of a card the pointer rests on, else the cover of an album, playlist, artist, podcast or radio page, else the playing song's. While a song plays on this computer they follow its loudness, tempo and beats, read from the visualizers' sound after the equalizer and before the volume; a song on another device gives them a gentle drift, and they hold still while paused. Files that store `false` keep it off |
 | `reduce_transparency` | absent | The sidebar, side panels, player bar, search field, menus and dialogs are drawn solid instead of as glass over the moving album art background. Absent until chosen in Settings, and while absent it follows the system: macOS's Reduce transparency accessibility setting, read when Spotifast starts; off elsewhere |
-| `player_bar_vis` | `off` | Since 0.11.0: what moves behind the player bar while a song plays on this computer: `off`, `spectrum` or `waveform` |
-| `player_bar_vis_click` | `true` | Allow clicks on empty player bar space to cycle visualizer modes |
-| `visualizer_fps` | `60` | Frame rate of the player bar and mini player visualizers; `0` is uncapped. Half that out of focus, at most 30 while the system saves energy, none while the window is hidden. MilkDrop uses `milkdrop_fps` |
+| `visualizer_fps` | `60` | Frame rate of the mini player visualizer; `0` is uncapped. Half that out of focus, at most 30 while the system saves energy, none while the window is hidden. MilkDrop uses `milkdrop_fps` |
 | `library_sort` | `{}` | Per-section Library order overrides, since 0.8.0: `library`, `recently_played`, `name`, `recently_added`, `local`, or `spotify`, where supported |
 | `library_by_you` | `false` | Show only playlists owned by the signed-in account, alongside Liked Songs; applies only to the Playlists shelf |
 | `sidebar_order` | `[]` | Saved local playlist arrangement, including an unpinned Liked Songs, retained when another sort is selected |
@@ -442,7 +440,7 @@ and `--demo-show` adds surfaces on top of it: a comma separated list of
 `focus`, `winamp`, `playlist`, `eq`, `eq-shade`, `compact`, `update`, `personal-app`, `slow-banner`, `audio-key-banner`,
 `collection-loading`, `shuffle-selected`, `shuffle-started`, `library-list`,
 `library-list-narrow`, `library-list-wide`, `library-grid`, `library-grid-narrow`,
-`library-grid-wide`, `eq-user-presets`, `start-in-tray`, `rtl`, `player-bar-spectrum`, `player-bar-waveform`,
+`library-grid-wide`, `eq-user-presets`, `start-in-tray`, `rtl`,
 `lyrics-fullscreen-view`, `lyrics-fullscreen-instrumental`, `signed-out`, `connecting`,
 `waiting-for-browser`, `sign-in-returning`, `sign-in-malformed`, `sign-in-shared-retired`,
 `sign-in-unknown-client`, `sign-in-not-allowed`, `shared-grant`, and `own-app`. The Library variants show the list or cover grid with
@@ -470,8 +468,6 @@ Settings for a listener still on a shared grant from before 0.14.2, and
 light or dark (on Linux), to show the light and dark mode themes; with an
 explicit `--demo-data` directory, its `config/settings.json` and
 `config/themes` supply them.
-`player-bar-spectrum` and `player-bar-waveform` play a fixed, music-like
-sound on this computer with that player bar visualizer on.
 `lyrics-fullscreen-view` and `lyrics-fullscreen-instrumental` draw full-screen
 lyrics, with words or without, at the window's own size.
 `eq-user-presets` saves a sample equalizer preset and puts it in use.

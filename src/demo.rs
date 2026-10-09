@@ -1230,21 +1230,6 @@ fn apply_surfaces(app: &mut App, page: Option<&str>, show: Option<&str>) {
                 play_here(app);
                 app.local.playback = crate::player::Playback::Paused;
             }
-            "player-bar-spectrum" | "player-bar-waveform" => {
-                app.settings.player_bar_vis = if surface == "player-bar-spectrum" {
-                    crate::settings::PlayerBarVis::Spectrum
-                } else {
-                    crate::settings::PlayerBarVis::Waveform
-                };
-                play_here(app);
-                app.local.playback = crate::player::Playback::Playing;
-                app.winamp.tap.push(&demo_sound(), 1.0);
-                // Read the cover's colours, as a change of song does, so the
-                // visualizer draws in them.
-                if let Some(now) = app.now_playing() {
-                    app.tint_for(now.art_small.or(now.art_url).as_deref());
-                }
-            }
             // The sign-in card and the card while the session connects.
             "signed-out" => {
                 app.auth = AuthStatus::SignedOut;
@@ -6121,15 +6106,13 @@ mod tests {
         view_frame(ctx, app, events, crate::ui::search::show)
     }
 
-    /// Beside an artist line shorter than the title, the player bar's empty
-    /// space is the visualizer's control (#979), and the words keep their
-    /// links.
+    /// Beside an artist line shorter than the title, a click on the player
+    /// bar's empty space does nothing, and the words keep their links.
     #[test]
-    fn a_click_beside_the_playing_artist_changes_the_visualizer() {
+    fn a_click_beside_the_playing_artist_does_nothing() {
         use crate::player::{LocalState, LocalTrack, Playback};
 
         let (ctx, mut app) = accessible_app("player-bar-beside-artist");
-        app.settings.player_bar_vis_click = true;
         app.local = LocalState {
             playback: Playback::Playing,
             track: Some(LocalTrack {
@@ -6161,11 +6144,7 @@ mod tests {
             pointer_click(beside, egui::PointerButton::Primary),
             view,
         );
-        assert!(
-            matches!(app.actions.as_slice(), [Action::CyclePlayerBarVis]),
-            "{:?}",
-            app.actions
-        );
+        assert!(app.actions.is_empty(), "{:?}", app.actions);
 
         app.actions.clear();
         view_frame(
@@ -6490,86 +6469,12 @@ mod tests {
         );
     }
 
-    /// The player bar's visualizer draws only when chosen and while the
-    /// song plays on this computer, and asks for frames only then.
+    /// A click on the player bar's empty space does nothing: it no longer
+    /// changes a visualizer, and the bar's controls keep their clicks.
     #[cfg(feature = "demo")]
     #[test]
-    fn the_player_bar_visualizer_moves_only_when_chosen_and_playing() {
-        use crate::settings::PlayerBarVis;
-        let (ctx, mut app) = accessible_app("player-bar-vis");
-        let draw = |app: &mut App| {
-            let mut output = ctx.run_ui(
-                egui::RawInput {
-                    screen_rect: Some(egui::Rect::from_min_size(
-                        egui::Pos2::ZERO,
-                        egui::vec2(1280.0, 800.0),
-                    )),
-                    ..Default::default()
-                },
-                |ui| crate::ui::player_bar::show(app, ui),
-            );
-            output.textures_delta.clear();
-            output
-        };
-        // Both draw an untextured mesh; the waveform also strokes its line
-        // in many short runs.
-        let lines = |output: &egui::FullOutput| {
-            output
-                .shapes
-                .iter()
-                .filter(|shape| matches!(&shape.shape, egui::Shape::Path(_)))
-                .count()
-        };
-        let drawn = |output: &egui::FullOutput| {
-            output.shapes.iter().any(|shape| {
-                matches!(&shape.shape, egui::Shape::Mesh(mesh)
-                    if mesh.texture_id == egui::TextureId::default() && !mesh.vertices.is_empty())
-            })
-        };
-        let spectrum = |output: &egui::FullOutput| drawn(output) && lines(output) < 20;
-        let waveform = |output: &egui::FullOutput| drawn(output) && lines(output) >= 20;
-        let wants_frames = |output: &egui::FullOutput| {
-            output
-                .viewport_output
-                .get(&egui::ViewportId::ROOT)
-                .is_some_and(|viewport| {
-                    viewport.repaint_delay < std::time::Duration::from_millis(100)
-                })
-        };
-
-        // #given a song playing here with the spectrum chosen
-        apply_flags(&mut app, None, Some("player-bar-spectrum"));
-        draw(&mut app);
-        let output = draw(&mut app);
-        assert!(spectrum(&output), "the spectrum is drawn");
-        assert!(wants_frames(&output));
-
-        // #when the waveform is chosen
-        app.settings.player_bar_vis = PlayerBarVis::Waveform;
-        let output = draw(&mut app);
-        assert!(waveform(&output), "the waveform is drawn");
-        assert!(!spectrum(&output));
-
-        // #when it is turned off
-        app.settings.player_bar_vis = PlayerBarVis::Off;
-        let output = draw(&mut app);
-        assert!(!drawn(&output));
-        assert!(!wants_frames(&output), "nothing to animate");
-
-        // #when the song is paused
-        app.settings.player_bar_vis = PlayerBarVis::Waveform;
-        app.local.playback = crate::player::Playback::Paused;
-        let output = draw(&mut app);
-        assert!(!waveform(&output), "a paused song is still");
-        app.backend.shutdown();
-    }
-
-    /// A click on the player bar's empty space moves the visualizer to its
-    /// next mode, and a click on a control does not.
-    #[cfg(feature = "demo")]
-    #[test]
-    fn clicking_the_player_bars_empty_space_cycles_the_visualizer() {
-        let (ctx, mut app) = accessible_app("player-bar-cycle");
+    fn clicking_the_player_bars_empty_space_does_nothing() {
+        let (ctx, mut app) = accessible_app("player-bar-empty-click");
         let draw = |app: &mut App, events: Vec<egui::Event>| {
             let mut output = ctx.run_ui(
                 egui::RawInput {
@@ -6585,96 +6490,16 @@ mod tests {
             output.textures_delta.clear();
         };
         draw(&mut app, vec![]);
-        // The margin at the bar's left edge, beside the cover.
+        app.actions.clear();
+        let before = serde_json::to_string(&app.settings).unwrap();
+
+        // #when the margin at the bar's left edge, beside the cover, is clicked
         let empty = egui::pos2(6.0, 796.0);
         draw(&mut app, pointer_click(empty, egui::PointerButton::Primary));
-        assert!(
-            app.actions
-                .iter()
-                .any(|action| matches!(action, Action::CyclePlayerBarVis))
-        );
 
-        app.actions.clear();
-        app.settings.player_bar_vis_click = false;
-        draw(&mut app, pointer_click(empty, egui::PointerButton::Primary));
-        assert!(
-            !app.actions
-                .iter()
-                .any(|action| matches!(action, Action::CyclePlayerBarVis))
-        );
-        app.settings.player_bar_vis_click = true;
-
-        // The play button, in the middle of the bar, is still the play button.
-        app.actions.clear();
-        let play = egui::pos2(640.0, 800.0 - crate::theme::PLAYER_BAR_HEIGHT / 2.0 - 10.0);
-        draw(&mut app, pointer_click(play, egui::PointerButton::Primary));
-        assert!(
-            !app.actions
-                .iter()
-                .any(|action| matches!(action, Action::CyclePlayerBarVis)),
-            "{:?}",
-            app.actions
-        );
-        app.backend.shutdown();
-    }
-
-    /// The empty space's tooltip belongs to the empty space: once shown, it
-    /// closes when the pointer moves onto a control drawn over the bar.
-    #[cfg(feature = "demo")]
-    #[test]
-    fn the_visualizer_tooltip_stays_off_the_player_bar_controls() {
-        let (ctx, mut app) = accessible_app("player-bar-tooltip");
-        ctx.global_style_mut(|style| style.interaction.tooltip_delay = 0.0);
-        let mut time = 0.0;
-        let mut draw = |app: &mut App, pos: egui::Pos2| {
-            time += 1.0;
-            let mut output = ctx.run_ui(
-                egui::RawInput {
-                    screen_rect: Some(egui::Rect::from_min_size(
-                        egui::Pos2::ZERO,
-                        egui::vec2(1280.0, 800.0),
-                    )),
-                    time: Some(time),
-                    events: vec![egui::Event::PointerMoved(pos)],
-                    ..Default::default()
-                },
-                |ui| crate::ui::player_bar::show(app, ui),
-            );
-            output.textures_delta.clear();
-            fn texts(shape: &egui::epaint::Shape, found: &mut Vec<String>) {
-                match shape {
-                    egui::epaint::Shape::Text(text) => found.push(text.galley.job.text.clone()),
-                    egui::epaint::Shape::Vec(shapes) => {
-                        shapes.iter().for_each(|shape| texts(shape, found));
-                    }
-                    _ => {}
-                }
-            }
-            let mut found = Vec::new();
-            output
-                .shapes
-                .iter()
-                .for_each(|clipped| texts(&clipped.shape, &mut found));
-            found
-        };
-        let tip = "Click to change the visualizer";
-
-        // #given the tooltip shown over the empty margin beside the cover
-        let empty = egui::pos2(6.0, 796.0);
-        for _ in 0..3 {
-            draw(&mut app, empty);
-        }
-        assert!(draw(&mut app, empty).iter().any(|text| text == tip));
-
-        // #when the pointer moves onto the play button
-        let play = egui::pos2(640.0, 800.0 - crate::theme::PLAYER_BAR_HEIGHT / 2.0 - 10.0);
-        for _ in 0..3 {
-            draw(&mut app, play);
-        }
-
-        // #then the tooltip is gone
-        let shown = draw(&mut app, play);
-        assert!(!shown.iter().any(|text| text == tip), "{shown:?}");
+        // #then no action follows and no setting changes
+        assert!(app.actions.is_empty(), "{:?}", app.actions);
+        assert_eq!(serde_json::to_string(&app.settings).unwrap(), before);
         app.backend.shutdown();
     }
 

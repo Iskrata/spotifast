@@ -578,9 +578,6 @@ pub struct App {
     /// Optimistic library writes that a stale contains response must not undo.
     saved_writes: HashMap<String, bool>,
     pub accents: HashMap<String, Color32>,
-    /// Each cover's colours, as read from the art, by the same URL, for the
-    /// visualizer to sweep across.
-    art_sweeps: HashMap<String, Vec<[u8; 3]>>,
     /// Each quarter's colour of the art in `accents`, unsoftened.
     pub art_palettes: HashMap<String, [[u8; 3]; 4]>,
     accent_pending: HashSet<String>,
@@ -813,8 +810,6 @@ pub struct App {
     held_update: Option<HeldUpdate>,
     /// Winamp window state and active skin.
     pub winamp: crate::winamp::WinampState,
-    /// The spectrum behind the player bar, when that is chosen.
-    pub player_bar_analyser: crate::vis::WideAnalyser,
     /// The window's pixels per point when it last drew, so artwork chosen
     /// away from the drawing code fits the display it lands on.
     pub pixels_per_point: f32,
@@ -1218,7 +1213,6 @@ impl App {
             saved_recordings: HashSet::new(),
             saved_writes: HashMap::new(),
             accents: HashMap::new(),
-            art_sweeps: HashMap::new(),
             art_palettes: HashMap::new(),
             accent_pending: HashSet::new(),
             dialog: None,
@@ -1346,7 +1340,6 @@ impl App {
             update_receipt: None,
             held_update: None,
             winamp: crate::winamp::WinampState::new(session.winamp_pos, tap, eq),
-            player_bar_analyser: crate::vis::WideAnalyser::default(),
             pixels_per_point: 1.0,
         };
         app.local.volume = app.settings.volume;
@@ -2278,16 +2271,6 @@ impl App {
         self.accents.get(&url).copied()
     }
 
-    /// The playing art's colours, the accent first, for the visualizer.
-    pub fn now_playing_palette(&self) -> Option<&[[u8; 3]]> {
-        if !self.settings.accent_from_art {
-            return None;
-        }
-        let now = self.now_playing()?;
-        let url = now.art_small.or(now.art_url)?;
-        self.art_sweeps.get(&url).map(Vec::as_slice)
-    }
-
     /// The quarter colours of `url`'s art, asking for them the first time
     /// this art is seen.
     pub fn art_palette(&mut self, url: &str) -> Option<[[u8; 3]; 4]> {
@@ -2606,13 +2589,11 @@ impl App {
                 Event::Accent {
                     url,
                     color,
-                    sweep,
                     palette,
                 } => {
                     self.accent_pending.remove(&url);
                     self.art_palettes.insert(url.clone(), palette);
                     let tint = self.palette.tint_from_art(color);
-                    self.art_sweeps.insert(url.clone(), sweep);
                     self.accents.insert(url, tint);
                 }
                 Event::ProxyRestored { config, password } => {
@@ -12415,10 +12396,6 @@ impl App {
             // The same request the window's own close button makes, so the
             // close-to-tray setting decides what follows.
             Action::CloseWindow => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
-            Action::CyclePlayerBarVis => {
-                self.settings.player_bar_vis = self.settings.player_bar_vis.next();
-                self.settings_dirty = true;
-            }
             Action::CycleVisualiser => {
                 self.settings.vis = self.settings.vis.next();
                 self.settings_dirty = true;
@@ -21243,17 +21220,13 @@ mod tests {
         app.handle_backend_events(vec![Event::Accent {
             url: url.into(),
             color: [200, 40, 40],
-            sweep: vec![[200, 40, 40], [40, 40, 200]],
             palette: [[200, 40, 40]; 4],
         }]);
         assert_eq!(
             app.tint_for(Some(url)),
             Some(app.palette.tint_from_art([200, 40, 40]))
         );
-        assert_eq!(
-            app.art_sweeps.get(url).map(Vec::as_slice),
-            Some(&[[200, 40, 40], [40, 40, 200]][..])
-        );
+        assert_eq!(app.art_palettes.get(url), Some(&[[200, 40, 40]; 4]));
     }
 
     /// Two lookups of one adder can overlap; the one that found nothing

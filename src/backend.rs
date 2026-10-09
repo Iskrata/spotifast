@@ -1034,8 +1034,6 @@ pub enum Event {
     Accent {
         url: String,
         color: [u8; 3],
-        /// The cover's colours, the accent first, for the visualizer.
-        sweep: Vec<[u8; 3]>,
         /// The dominant colour of each quarter of the art, in reading order.
         palette: [[u8; 3]; 4],
     },
@@ -4894,7 +4892,6 @@ impl Worker {
                     let _ = events.send(Event::Accent {
                         url,
                         color: sweep[0],
-                        sweep,
                         palette,
                     });
                     waker.wake();

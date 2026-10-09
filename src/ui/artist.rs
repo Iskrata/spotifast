@@ -318,8 +318,7 @@ fn artist_actions(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
     let palette = app.palette;
     let locale = app.locale;
     let following = app.is_saved(&artist.uri).unwrap_or(false);
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 18.0;
+    buttons::action_row(ui, |ui| {
         if app.play_pending(&artist.uri) {
             buttons::play_disc_spinner(
                 ui,
@@ -358,5 +357,4 @@ fn artist_actions(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
             .frame(widgets::menu_frame(&palette))
             .show(|ui| widgets::context_menu_items(ui, app, &artist.uri, &artist.name, None));
     });
-    ui.add_space(20.0);
 }

@@ -6184,6 +6184,68 @@ mod tests {
         }
     }
 
+    /// Album, playlist, artist and podcast pages lead with the same row:
+    /// the 56-point Play disc, then 40-point icon buttons (Follow, for an
+    /// artist) ending with More, centred on one line and spaced alike.
+    #[test]
+    fn every_page_action_row_matches() {
+        use egui::accesskit::Role;
+        let (ctx, mut app) = accessible_app("page-action-rows");
+        for page in [
+            Page::Album("alb0".into()),
+            Page::Playlist("pl1".into()),
+            Page::Artist("art0".into()),
+            Page::Show("sh0".into()),
+        ] {
+            app.open(page.clone());
+            let mut tree = accessible_frame(&ctx, &mut app, vec![]);
+            for _ in 0..3 {
+                tree = accessible_frame(&ctx, &mut app, vec![]);
+            }
+            let buttons: Vec<_> = tree
+                .nodes
+                .iter()
+                .filter(|(_, node)| node.role() == Role::Button)
+                .filter_map(|(_, node)| Some((node.label()?.to_string(), node.bounds()?)))
+                .collect();
+            let middle = |rect: &egui::accesskit::Rect| (rect.y0 + rect.y1) / 2.0;
+            let (_, disc) = buttons
+                .iter()
+                .find(|(_, rect)| rect.x1 - rect.x0 == 56.0 && rect.y1 - rect.y0 == 56.0)
+                .unwrap_or_else(|| panic!("{page:?}: no Play disc in {buttons:?}"));
+            let mut row: Vec<_> = buttons
+                .iter()
+                .filter(|(_, rect)| rect.x0 >= disc.x0 && (middle(rect) - middle(disc)).abs() < 1.0)
+                .collect();
+            row.sort_by(|a, b| a.1.x0.total_cmp(&b.1.x0));
+            let labels: Vec<_> = row.iter().map(|(label, _)| label.as_str()).collect();
+            assert_eq!(
+                labels.last(),
+                Some(&"More"),
+                "{page:?}: More ends {labels:?}"
+            );
+            assert!(row.len() >= 3, "{page:?}: {labels:?}");
+            for (label, rect) in &row[1..] {
+                let height = rect.y1 - rect.y0;
+                if label == "Follow" || label == "Following" {
+                    assert_eq!(height, 32.0, "{page:?}: Follow is a secondary button");
+                } else {
+                    assert_eq!(height, 40.0, "{page:?}: {label} is a large icon button");
+                    assert_eq!(rect.x1 - rect.x0, 40.0, "{page:?}: {label}");
+                }
+            }
+            for pair in row.windows(2) {
+                let gap = pair[1].1.x0 - pair[0].1.x1;
+                assert_eq!(
+                    gap as f32,
+                    crate::ui::tokens::gap::ACTIONS,
+                    "{page:?}: {labels:?}"
+                );
+            }
+        }
+        app.backend.shutdown();
+    }
+
     #[test]
     fn song_top_result_artist_name_opens_the_available_profile_or_the_album() {
         for artist_id in [Some("ween"), None] {

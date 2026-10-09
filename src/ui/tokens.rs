@@ -96,6 +96,10 @@ pub mod gap {
     pub const ICONS: f32 = 4.0;
     /// Between groups of controls.
     pub const GROUP: f32 = 12.0;
+    /// Between the Play disc and the icons of a page's action row.
+    pub const ACTIONS: f32 = 16.0;
+    /// Below a page's action row, before what the page lists.
+    pub const BELOW_ACTIONS: f32 = 16.0;
 }
 
 /// Durations in seconds. Everything that moves eases through egui's

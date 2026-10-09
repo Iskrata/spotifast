@@ -648,6 +648,22 @@ impl<'a> PlayDisc<'a> {
     }
 }
 
+/// The row under a page's header: album, playlist, radio, artist and
+/// podcast. It leads with the large [`PlayDisc`], then large icon buttons
+/// (or Follow, for an artist) and More last, all spaced alike, and keeps
+/// the same gap before the page's list.
+pub fn action_row<R>(ui: &mut Ui, contents: impl FnOnce(&mut Ui) -> R) -> R {
+    let inner = ui
+        .horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = tokens::gap::ACTIONS;
+            ui.set_min_height(tokens::disc::LARGE);
+            contents(ui)
+        })
+        .inner;
+    ui.add_space(tokens::gap::BELOW_ACTIONS);
+    inner
+}
+
 /// A [`PlayDisc`] whose icon is replaced by a spinner while playback
 /// starts: the pressed disc itself shows that Spotify is reacting.
 pub fn play_disc_spinner(ui: &mut Ui, palette: &Palette, size: DiscSize, label: &str) -> Response {

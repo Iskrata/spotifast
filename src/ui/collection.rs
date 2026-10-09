@@ -176,8 +176,7 @@ pub fn actions_row(
 ) {
     let palette = app.palette;
     let locale = app.locale;
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 18.0;
+    buttons::action_row(ui, |ui| {
         if let Some(uri) = &actions.play_uri {
             let now_playing_here = app.playing_context_uri().as_deref() == Some(uri.as_str())
                 && app.believed_playing();
@@ -343,7 +342,6 @@ pub fn actions_row(
             });
         }
     });
-    ui.add_space(14.0);
 }
 
 /// A track table with virtualised rows and paging.

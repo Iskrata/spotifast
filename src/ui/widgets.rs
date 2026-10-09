@@ -5,6 +5,7 @@ use egui::{
     pos2, vec2,
 };
 
+use super::buttons::{IconButton, IconSize};
 use super::tokens;
 use crate::api::models::*;
 use crate::app::App;
@@ -656,17 +657,12 @@ pub(crate) fn add_to_playlist_button(
     ui: &mut Ui,
     app: &mut App,
     items: &[PlayableItem],
-    size: f32,
+    size: IconSize,
 ) {
     let palette = app.palette;
-    let button = theme::icon_button(
-        ui,
-        Icon::ListPlus,
-        size,
-        palette.secondary,
-        palette.text,
-        &gettext(app.locale, "Add to playlist"),
-    );
+    let button = IconButton::new(Icon::ListPlus, &gettext(app.locale, "Add to playlist"))
+        .size(size)
+        .show(ui, &palette);
     let query_id = button.id.with("add-to-playlist-query");
     let opened = egui::Popup::menu(&button)
         .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
@@ -699,23 +695,31 @@ fn remembered_playlist_picker(
 }
 
 /// The Like heart for `uri`, filled while the song is in Liked Songs.
-pub(crate) fn heart_button(ui: &mut Ui, app: &mut App, uri: &str, size: f32) -> egui::Response {
+pub(crate) fn heart_button(
+    ui: &mut Ui,
+    app: &mut App,
+    uri: &str,
+    size: IconSize,
+) -> egui::Response {
     let palette = app.palette;
     let saved = app.is_saved(uri).unwrap_or(false);
     let (icon, color, tooltip) = if saved {
         (
             Icon::HeartFilled,
-            palette.accent,
+            Some(palette.accent),
             gettext(app.locale, "Remove from Liked Songs"),
         )
     } else {
         (
             Icon::Heart,
-            palette.secondary,
+            None,
             gettext(app.locale, "Save to Liked Songs"),
         )
     };
-    let response = theme::icon_button(ui, icon, size, color, palette.text, &tooltip);
+    let response = IconButton::new(icon, &tooltip)
+        .size(size)
+        .tint(color)
+        .show(ui, &palette);
     if response.clicked() {
         app.actions.push(Action::ToggleSaved(uri.to_string()));
     }
@@ -1799,7 +1803,7 @@ fn track_row_contents(
             {
                 child.set_opacity(0.0);
             }
-            heart_button(&mut child, app, row.item.uri(), 16.0);
+            heart_button(&mut child, app, row.item.uri(), IconSize::Compact);
         }
         x += cols.heart;
     }
@@ -1833,14 +1837,8 @@ fn track_row_contents(
         {
             child.set_opacity(0.0);
         }
-        let more = theme::icon_button(
-            &mut child,
-            Icon::Ellipsis,
-            18.0,
-            palette.secondary,
-            palette.text,
-            &gettext(app.locale, "More"),
-        );
+        let more = IconButton::new(Icon::Ellipsis, &gettext(app.locale, "More"))
+            .show(&mut child, &palette);
         egui::Popup::menu(&more)
             .id(menu_id)
             .frame(menu_frame(&palette))
@@ -2928,15 +2926,10 @@ pub fn search_field(
                 .max_rect(clear_rect)
                 .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
         );
-        if theme::icon_button(
-            &mut clear,
-            Icon::X,
-            15.0,
-            palette.secondary,
-            palette.text,
-            &gettext(locale, "Clear"),
-        )
-        .clicked()
+        if IconButton::new(Icon::X, &gettext(locale, "Clear"))
+            .size(IconSize::Compact)
+            .show(&mut clear, palette)
+            .clicked()
         {
             text.clear();
             ui.memory_mut(|memory| memory.request_focus(id));

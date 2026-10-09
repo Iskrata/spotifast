@@ -10,6 +10,7 @@ use crate::i18n::{Locale, gettext};
 use crate::model::{Action, DragTrack, Loadable, QueueTab, RowContext};
 use crate::theme::{self, Icon};
 
+use super::buttons::IconButton;
 use super::widgets::{self, TrackRow};
 
 pub fn page(app: &mut App, ui: &mut egui::Ui) {
@@ -83,15 +84,9 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
                 );
             },
             |ui| {
-                close = theme::icon_button(
-                    ui,
-                    Icon::X,
-                    18.0,
-                    palette.secondary,
-                    palette.text,
-                    &gettext(app.locale, "Close"),
-                )
-                .clicked();
+                close = IconButton::new(Icon::X, &gettext(app.locale, "Close"))
+                    .show(ui, &palette)
+                    .clicked();
                 save = save_button(ui, &palette, offer_save, app.locale);
             },
         );
@@ -143,15 +138,9 @@ fn save_button(
     locale: Locale,
 ) -> bool {
     offer
-        && theme::icon_button(
-            ui,
-            Icon::ListPlus,
-            18.0,
-            palette.secondary,
-            palette.text,
-            &gettext(locale, "Save as a playlist"),
-        )
-        .clicked()
+        && IconButton::new(Icon::ListPlus, &gettext(locale, "Save as a playlist"))
+            .show(ui, palette)
+            .clicked()
 }
 
 /// Clears manual rows from the active local queue.
@@ -160,15 +149,9 @@ fn clear_button(app: &mut App, ui: &mut egui::Ui) {
         return;
     }
     let palette = app.palette;
-    if theme::icon_button(
-        ui,
-        Icon::Trash,
-        18.0,
-        palette.secondary,
-        palette.text,
-        &gettext(app.locale, "Clear queue"),
-    )
-    .clicked()
+    if IconButton::new(Icon::Trash, &gettext(app.locale, "Clear queue"))
+        .show(ui, &palette)
+        .clicked()
     {
         app.actions.push(Action::ClearQueue);
     }

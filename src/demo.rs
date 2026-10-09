@@ -10029,6 +10029,53 @@ mod tests {
         app.backend.shutdown();
     }
 
+    /// Every icon-sized button on the main surfaces names itself to a screen
+    /// reader and answers to at least the compact 28-point square.
+    #[test]
+    fn icon_buttons_are_labelled_and_large_enough_to_hit() {
+        use egui::accesskit::Role;
+        let (ctx, mut app) = accessible_app("icon-buttons");
+        app.show_friends_panel = true;
+        for page in [
+            Page::Home,
+            Page::Playlist("pl1".into()),
+            Page::Artist("art0".into()),
+            Page::Queue,
+        ] {
+            app.open(page.clone());
+            accessible_frame(&ctx, &mut app, Vec::new());
+            let tree = accessible_frame(&ctx, &mut app, Vec::new());
+            let mut seen = 0;
+            for (_, node) in &tree.nodes {
+                if node.role() != Role::Button {
+                    continue;
+                }
+                let Some(bounds) = node.bounds() else {
+                    continue;
+                };
+                let (width, height) = (bounds.width(), bounds.height());
+                // Icon buttons are square; rows, cards and text buttons are
+                // wider than they are tall.
+                if width > 44.0 || (width - height).abs() > 0.5 {
+                    continue;
+                }
+                assert!(
+                    node.label().is_some_and(|label| !label.is_empty()),
+                    "{page:?}: an unlabelled {width}x{height} button"
+                );
+                assert!(
+                    width >= f64::from(crate::ui::tokens::hit::COMPACT) - 0.5,
+                    "{page:?}: {:?} is {width} points wide",
+                    node.label()
+                );
+                seen += 1;
+            }
+            // The player bar alone has Previous, Next, Repeat and more.
+            assert!(seen >= 8, "{page:?}: only {seen} icon buttons found");
+        }
+        app.backend.shutdown();
+    }
+
     /// B3 of the UX audit: beside the queue, Friend Activity heads with the
     /// playing song and the player bar shows it as well, so the queue's own
     /// Now playing row made three. The queue leaves it out there, and the

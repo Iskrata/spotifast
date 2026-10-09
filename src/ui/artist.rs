@@ -9,6 +9,7 @@ use crate::model::{Action, DiscographyFilter, Loadable, Page, RowContext};
 use crate::theme::{self, Icon};
 use crate::util;
 
+use super::buttons::{IconButton, IconSize};
 use super::collection::{Hero, hero, hero_images};
 use super::widgets::{self, TrackRow};
 
@@ -365,14 +366,9 @@ fn artist_actions(app: &mut App, ui: &mut egui::Ui, artist: &Artist) {
         {
             app.actions.push(Action::ToggleSaved(artist.uri.clone()));
         }
-        let more = theme::icon_button(
-            ui,
-            Icon::Ellipsis,
-            26.0,
-            palette.secondary,
-            palette.text,
-            &gettext(locale, "More"),
-        );
+        let more = IconButton::new(Icon::Ellipsis, &gettext(locale, "More"))
+            .size(IconSize::Large)
+            .show(ui, &palette);
         egui::Popup::menu(&more)
             .frame(widgets::menu_frame(&palette))
             .show(|ui| widgets::context_menu_items(ui, app, &artist.uri, &artist.name, None));

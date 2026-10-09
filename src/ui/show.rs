@@ -12,6 +12,7 @@ use crate::model::{Action, Loadable, Page, RowContext};
 use crate::theme::{self, Icon};
 use crate::util;
 
+use super::buttons::{IconButton, IconSize};
 use super::collection::{Hero, hero, hero_images};
 use super::widgets;
 
@@ -166,27 +167,23 @@ fn show_actions(app: &mut App, ui: &mut egui::Ui, show: &Show, latest: Option<&E
         let (icon, color, tooltip) = if saved {
             (
                 Icon::CircleCheck,
-                palette.accent,
+                Some(palette.accent),
                 gettext(locale, "Remove from Your Library"),
             )
         } else {
-            (
-                Icon::CirclePlus,
-                palette.secondary,
-                gettext(locale, "Follow podcast"),
-            )
+            (Icon::CirclePlus, None, gettext(locale, "Follow podcast"))
         };
-        if theme::icon_button(ui, icon, 26.0, color, palette.text, &tooltip).clicked() {
+        if IconButton::new(icon, &tooltip)
+            .size(IconSize::Large)
+            .tint(color)
+            .show(ui, &palette)
+            .clicked()
+        {
             app.actions.push(Action::ToggleSaved(show.uri.clone()));
         }
-        let more = theme::icon_button(
-            ui,
-            Icon::Ellipsis,
-            26.0,
-            palette.secondary,
-            palette.text,
-            &gettext(locale, "More"),
-        );
+        let more = IconButton::new(Icon::Ellipsis, &gettext(locale, "More"))
+            .size(IconSize::Large)
+            .show(ui, &palette);
         egui::Popup::menu(&more)
             .frame(widgets::menu_frame(&palette))
             .show(|ui| widgets::context_menu_items(ui, app, &show.uri, &show.name, None));
@@ -386,14 +383,8 @@ pub fn episode_row(
             .max_rect(more_rect)
             .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
     );
-    let more = theme::icon_button(
-        &mut more_ui,
-        Icon::Ellipsis,
-        18.0,
-        palette.secondary,
-        palette.text,
-        &gettext(locale, "More"),
-    );
+    let more =
+        IconButton::new(Icon::Ellipsis, &gettext(locale, "More")).show(&mut more_ui, &palette);
     let item = PlayableItem::Episode(episode.clone());
     egui::Popup::menu(&more)
         .frame(widgets::menu_frame(&palette))

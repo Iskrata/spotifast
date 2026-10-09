@@ -8,6 +8,7 @@ use crate::i18n::{gettext, pgettext};
 use crate::model::{Action, Loadable};
 use crate::theme::{self, Icon};
 
+use super::buttons::IconButton;
 use super::widgets;
 
 const LINE_SIZE: f32 = 19.0;
@@ -70,27 +71,15 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
                 palette.text,
             );
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if theme::icon_button(
-                    ui,
-                    Icon::X,
-                    18.0,
-                    palette.secondary,
-                    palette.text,
-                    &gettext(app.locale, "Close"),
-                )
-                .clicked()
+                if IconButton::new(Icon::X, &gettext(app.locale, "Close"))
+                    .show(ui, &palette)
+                    .clicked()
                 {
                     app.actions.push(Action::ToggleLyricsPanel);
                 }
-                if theme::icon_button(
-                    ui,
-                    Icon::Expand,
-                    18.0,
-                    palette.secondary,
-                    palette.text,
-                    &gettext(app.locale, "Full screen lyrics"),
-                )
-                .clicked()
+                if IconButton::new(Icon::Expand, &gettext(app.locale, "Full screen lyrics"))
+                    .show(ui, &palette)
+                    .clicked()
                 {
                     app.actions.push(Action::SetLyricsFullscreen(true));
                 }
@@ -526,14 +515,12 @@ fn fullscreen_header(app: &mut App, ui: &mut egui::Ui) {
             palette.text,
         );
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            if theme::icon_button(
-                ui,
+            if IconButton::new(
                 Icon::Shrink,
-                18.0,
-                palette.text,
-                palette.text,
                 &gettext(app.locale, "Leave full screen (Esc)"),
             )
+            .tint(palette.text)
+            .show(ui, &palette)
             .clicked()
             {
                 app.actions.push(Action::SetLyricsFullscreen(false));

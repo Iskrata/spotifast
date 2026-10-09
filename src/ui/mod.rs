@@ -5,6 +5,7 @@ use std::sync::Arc;
 mod art_background;
 pub mod artist;
 mod artist_about;
+pub mod buttons;
 pub(crate) mod card_hover;
 pub mod collection;
 pub(crate) mod devices;

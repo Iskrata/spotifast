@@ -11,6 +11,7 @@ use crate::i18n::{Locale, gettext, pgettext};
 use crate::model::{Action, Dialog, Loadable, Page};
 use crate::theme::{self, Icon};
 
+use super::buttons::{IconButton, IconSize};
 use super::widgets;
 
 const AVATAR: f32 = 40.0;
@@ -56,15 +57,9 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
                 theme::text(ui, title, theme::bold(16.0), palette.text);
             },
             |ui| {
-                close = theme::icon_button(
-                    ui,
-                    Icon::X,
-                    18.0,
-                    palette.secondary,
-                    palette.text,
-                    &gettext(locale, "Close"),
-                )
-                .clicked();
+                close = IconButton::new(Icon::X, &gettext(locale, "Close"))
+                    .show(ui, &palette)
+                    .clicked();
                 if now.is_none() {
                     refresh = refresh_button(ui, &palette, locale);
                 }
@@ -113,15 +108,10 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
 }
 
 fn refresh_button(ui: &mut egui::Ui, palette: &theme::Palette, locale: Locale) -> bool {
-    theme::icon_button(
-        ui,
-        Icon::Refresh,
-        16.0,
-        palette.secondary,
-        palette.text,
-        &gettext(locale, "Refresh"),
-    )
-    .clicked()
+    IconButton::new(Icon::Refresh, &gettext(locale, "Refresh"))
+        .size(IconSize::Compact)
+        .show(ui, palette)
+        .clicked()
 }
 
 /// Friend Activity's heading below the playing song. Returns whether its
@@ -387,15 +377,15 @@ fn more_button(app: &mut App, ui: &mut egui::Ui, friend: &Friend, menu_id: egui:
             .max_rect(rect)
             .layout(Layout::centered_and_justified(egui::Direction::LeftToRight)),
     );
-    let button = theme::icon_button(
-        &mut child,
-        Icon::Ellipsis,
-        12.0,
-        palette.secondary,
-        palette.text,
+    let button = {
         // Translators: {name} is a person in Friend Activity.
-        &gettext(app.locale, "More options for {name}").replace("{name}", &friend.name),
-    );
+        IconButton::new(
+            Icon::Ellipsis,
+            &gettext(app.locale, "More options for {name}").replace("{name}", &friend.name),
+        )
+        .size(IconSize::Compact)
+        .show(&mut child, &palette)
+    };
     egui::Popup::menu(&button)
         .id(menu_id)
         .frame(widgets::menu_frame(&palette))

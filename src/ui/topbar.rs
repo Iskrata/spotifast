@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use egui::{Align, Galley, Layout, Sense, Vec2, pos2, vec2};
 
+use super::buttons::IconButton;
 use crate::api::models::pick_image;
 use crate::app::App;
 use crate::i18n::gettext;
@@ -12,11 +13,9 @@ use crate::theme::{self, Icon, Palette};
 
 /// The gap the bar keeps between everything it lays out.
 const ITEM_SPACING: f32 = 8.0;
-/// The account avatar, and the icon in each of the three buttons beside it.
+/// The account avatar, and the three standard icon buttons beside it.
 const AVATAR_SIZE: f32 = 36.0;
-const ICON_BUTTON_ICON: f32 = 19.0;
-/// `theme::icon_button` pads its icon by 12 px.
-const ICON_BUTTON_SIZE: f32 = ICON_BUTTON_ICON + 12.0;
+const ICON_BUTTON_SIZE: f32 = super::buttons::IconSize::Standard.hit();
 const SPINNER_SIZE: f32 = 15.0;
 /// A badge is as tall as its text plus this, and as wide as its text plus
 /// the padding its own label needs.
@@ -548,48 +547,33 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
 fn folding_buttons(app: &mut App, ui: &mut egui::Ui) {
     let palette = app.palette;
     let locale = app.locale;
-    if theme::icon_button(
-        ui,
-        Icon::Settings,
-        ICON_BUTTON_ICON,
-        palette.secondary,
-        palette.text,
-        &gettext(locale, "Settings"),
-    )
-    .clicked()
+    if IconButton::new(Icon::Settings, &gettext(locale, "Settings"))
+        .show(ui, &palette)
+        .clicked()
     {
         app.actions.push(Action::Open(Page::Settings));
     }
-    if theme::icon_button(
-        ui,
+    if IconButton::new(
         Icon::AudioLines,
-        ICON_BUTTON_ICON,
-        if app.settings.milkdrop_open {
-            palette.accent
-        } else {
-            palette.secondary
-        },
-        palette.text,
         super::keys::platform_shortcut(
             &gettext(locale, "MilkDrop visualiser (Ctrl+Shift+K)"),
             &gettext(locale, "MilkDrop visualiser (Cmd+Shift+K)"),
         ),
     )
+    .active(app.settings.milkdrop_open)
+    .show(ui, &palette)
     .clicked()
     {
         app.actions.push(Action::ToggleWinampMilkdrop);
     }
-    if theme::icon_button(
-        ui,
+    if IconButton::new(
         Icon::Shrink,
-        ICON_BUTTON_ICON,
-        palette.secondary,
-        palette.text,
         super::keys::platform_shortcut(
             &gettext(locale, "Winamp mini player (Ctrl+M)"),
             &gettext(locale, "Winamp mini player (Cmd+Shift+M)"),
         ),
     )
+    .show(ui, &palette)
     .clicked()
     {
         app.actions.push(Action::ToggleWinampWindow);

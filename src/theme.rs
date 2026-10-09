@@ -491,54 +491,11 @@ pub fn paint_icon(ui: &egui::Ui, icon: Icon, rect: egui::Rect, size: f32, color:
     icon.image(color, size).paint_at(ui, icon_rect);
 }
 
-/// Make keyboard focus visible without changing the control's layout.
+/// Make keyboard focus visible without changing the control's layout, for
+/// a rectangular control. Round and capsule controls pass their own shape
+/// to [`crate::ui::buttons::focus_ring`].
 pub fn focus_ring(ui: &egui::Ui, response: &Response) {
-    if response.has_focus() {
-        ui.painter().rect_stroke(
-            response.rect.expand(2.0),
-            4.0,
-            ui.visuals().selection.stroke,
-            egui::StrokeKind::Outside,
-        );
-    }
-    if response.gained_focus() {
-        response.scroll_to_me(None);
-    }
-}
-
-/// A frameless icon control whose colour lifts on hover.
-pub fn icon_button(
-    ui: &mut egui::Ui,
-    icon: Icon,
-    size: f32,
-    color: Color32,
-    hover: Color32,
-    tooltip: &str,
-) -> Response {
-    let edge = size + 12.0;
-    let (rect, response) = ui.allocate_exact_size(Vec2::splat(edge), Sense::click());
-    response.widget_info(|| {
-        egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), tooltip)
-    });
-    if ui.is_rect_visible(rect) {
-        let tint = if response.hovered() || response.has_focus() {
-            hover
-        } else {
-            color
-        };
-        let scale = if response.is_pointer_button_down_on() {
-            0.92
-        } else {
-            1.0
-        };
-        paint_icon(ui, icon, rect, size * scale, tint);
-    }
-    focus_ring(ui, &response);
-    if tooltip.is_empty() {
-        response
-    } else {
-        response.on_hover_text(tooltip)
-    }
+    crate::ui::buttons::focus_ring(ui, response, CornerRadius::same(radius::COVER_SMALL));
 }
 
 /// Horizontal offset that optically centers play triangles.

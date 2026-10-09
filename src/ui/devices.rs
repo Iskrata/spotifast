@@ -2,6 +2,7 @@
 
 use egui::{Align, CornerRadius, Layout, Rect, Sense, pos2, vec2};
 
+use super::buttons::{IconButton, IconSize};
 use super::tokens;
 use crate::api::models::Device;
 use crate::app::App;
@@ -204,14 +205,7 @@ pub fn popup(app: &mut App, ctx: &egui::Context) {
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if app.devices_loading {
                             theme::spinner(ui, 16.0, palette.accent);
-                        } else if theme::icon_button(
-                            ui,
-                            Icon::Refresh,
-                            15.0,
-                            palette.secondary,
-                            palette.text,
-                            &gettext(locale, "Refresh"),
-                        )
+                        } else if IconButton::new(Icon::Refresh, &gettext(locale, "Refresh")).size(IconSize::Compact).show(ui, &palette)
                         .clicked()
                         {
                             app.actions.push(Action::RefreshDevices);

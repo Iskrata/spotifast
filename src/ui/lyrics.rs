@@ -36,16 +36,20 @@ fn blend(from: egui::Color32, to: egui::Color32, t: f32) -> egui::Color32 {
     egui::Color32::from(egui::Rgba::from(from) * (1.0 - t) + egui::Rgba::from(to) * t)
 }
 
-pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
+/// The side panel's id, which its saved width and its slide go by.
+pub(crate) const PANEL_ID: &str = "lyrics-panel";
+
+/// The side panel, open or sliding closed.
+pub fn side_panel(app: &mut App, ui: &mut egui::Ui, slide: super::sliding::Slide) {
     let palette = app.palette;
     let fit = super::yielding_panel(
         ui.ctx(),
-        "lyrics-panel",
+        PANEL_ID,
         theme::SIDE_PANEL_MIN_WIDTH..=640.0,
         app.settings.lyrics_width,
         ui.available_width() - super::topbar::least_width(ui.ctx()),
     );
-    let panel = egui::Panel::right("lyrics-panel")
+    let panel = egui::Panel::right(PANEL_ID)
         .resizable(true)
         .default_size(app.settings.lyrics_width)
         .size_range(fit.range.clone())
@@ -55,7 +59,7 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
                 .fill(palette.panel)
                 .inner_margin(Margin::symmetric(12, 12)),
         );
-    let response = panel.show(ui, |ui| {
+    let slid = super::sliding::show(ui, panel, PANEL_ID, slide, |ui| {
         let window_controls = super::window_controls_reservation(
             ui.ctx(),
             app.show_queue_panel || app.show_friends_panel,
@@ -96,9 +100,13 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
         }
         contents(app, ui);
     });
-    let current_width = response.response.rect.width();
+    let Some(slid) = slid else {
+        return;
+    };
+    let current_width = slid.inner.response.rect.width();
     if (app.settings.lyrics_width - current_width).abs() > 1.0
-        && super::panel_width_chosen(ui.ctx(), "lyrics-panel", &fit)
+        && slid.settled
+        && super::panel_width_chosen(ui.ctx(), PANEL_ID, &fit)
     {
         app.settings.lyrics_width = current_width;
         app.actions.push(Action::SettingsChanged);

@@ -446,7 +446,11 @@ fn order_entries(app: &App, shelf: Filter, sort: LibrarySort, entries: &mut [Ent
     }
 }
 
-pub fn show(app: &mut App, ui: &mut egui::Ui) {
+/// The sidebar's id, which its saved width and its slide go by.
+const PANEL_ID: &str = "sidebar";
+
+/// The sidebar, shown or sliding closed.
+pub fn show(app: &mut App, ui: &mut egui::Ui, slide: super::sliding::Slide) {
     let palette = app.palette;
     let expanded_art = has_expanded_art(app);
     let floating_art = app.settings.sidebar_grid && expanded_art;
@@ -460,12 +464,12 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     };
     let fit = super::yielding_panel(
         ui.ctx(),
-        "sidebar",
+        PANEL_ID,
         super::SIDEBAR_MIN_WIDTH..=600.0,
         app.settings.sidebar_width,
         ui.available_width() - super::topbar::least_width(ui.ctx()) - beside,
     );
-    let panel = egui::Panel::left("sidebar")
+    let panel = egui::Panel::left(PANEL_ID)
         .resizable(true)
         .default_size(app.settings.sidebar_width)
         .size_range(fit.range.clone())
@@ -476,7 +480,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             top,
             bottom: if expanded_art { 0 } else { 8 },
         }));
-    let response = panel.show(ui, |ui| {
+    let slid = super::sliding::show(ui, panel, PANEL_ID, slide, |ui| {
         let art_rect = expanded_art.then(|| expanded_art_rect(ui));
         if let Some(rect) = art_rect.filter(|_| !floating_art) {
             reserve_expanded_art(ui, rect);
@@ -489,9 +493,13 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
             paint_expanded_art(app, ui, rect);
         }
     });
-    let width = response.response.rect.width();
+    let Some(slid) = slid else {
+        return;
+    };
+    let width = slid.inner.response.rect.width();
     if (width - app.settings.sidebar_width).abs() > 1.0
-        && super::panel_width_chosen(ui.ctx(), "sidebar", &fit)
+        && slid.settled
+        && super::panel_width_chosen(ui.ctx(), PANEL_ID, &fit)
     {
         app.settings.sidebar_width = width;
         app.actions.push(Action::SettingsChanged);

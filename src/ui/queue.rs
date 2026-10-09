@@ -36,16 +36,20 @@ pub fn page(app: &mut App, ui: &mut egui::Ui) {
     contents(app, ui, false);
 }
 
-pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
+/// The side panel's id, which its saved width and its slide go by.
+pub(crate) const PANEL_ID: &str = "queue-panel";
+
+/// The side panel, open or sliding closed.
+pub fn side_panel(app: &mut App, ui: &mut egui::Ui, slide: super::sliding::Slide) {
     let palette = app.palette;
     let fit = super::yielding_panel(
         ui.ctx(),
-        "queue-panel",
+        PANEL_ID,
         theme::SIDE_PANEL_MIN_WIDTH..=560.0,
         app.settings.queue_width,
         ui.available_width() - super::topbar::least_width(ui.ctx()),
     );
-    let panel = egui::Panel::right("queue-panel")
+    let panel = egui::Panel::right(PANEL_ID)
         .resizable(true)
         .default_size(app.settings.queue_width)
         .size_range(fit.range.clone())
@@ -55,7 +59,7 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
                 .fill(palette.panel)
                 .inner_margin(Margin::symmetric(12, 12)),
         );
-    let response = panel.show(ui, |ui| {
+    let slid = super::sliding::show(ui, panel, PANEL_ID, slide, |ui| {
         let window_controls = super::window_controls_reservation(
             ui.ctx(),
             app.show_queue_panel || app.show_friends_panel,
@@ -114,9 +118,13 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
             },
         );
     });
-    let width = response.response.rect.width();
+    let Some(slid) = slid else {
+        return;
+    };
+    let width = slid.inner.response.rect.width();
     if (width - app.settings.queue_width).abs() > 1.0
-        && super::panel_width_chosen(ui.ctx(), "queue-panel", &fit)
+        && slid.settled
+        && super::panel_width_chosen(ui.ctx(), PANEL_ID, &fit)
     {
         app.settings.queue_width = width;
         app.actions.push(Action::SettingsChanged);

@@ -21507,7 +21507,9 @@ mod tests {
                     events,
                     ..Default::default()
                 },
-                |ui| crate::ui::queue::side_panel(&mut app, ui),
+                |ui| {
+                    crate::ui::queue::side_panel(&mut app, ui, crate::ui::sliding::Slide::OPEN);
+                },
             );
             output.textures_delta.clear();
             app.apply_actions(&ctx);

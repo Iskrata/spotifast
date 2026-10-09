@@ -99,6 +99,30 @@ impl Palette {
         };
         Color32::from_rgb((r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8)
     }
+
+    /// The fill of a labelled button laid on a card, which is already
+    /// `surface`: one step further from the window, so the button stands
+    /// out from the card, lighter in dark themes and darker in light ones.
+    /// Derived, so custom palettes get it too.
+    pub fn on_card(&self) -> Color32 {
+        self.surface_active
+    }
+
+    /// [`Self::on_card`] under the pointer: another step toward the text.
+    pub fn on_card_hover(&self) -> Color32 {
+        mix(self.surface_active, self.text, 0.1)
+    }
+}
+
+/// `from` moved `amount` of the way toward `to`.
+fn mix(from: Color32, to: Color32, amount: f32) -> Color32 {
+    let channel =
+        |a: u8, b: u8| (f32::from(a) + (f32::from(b) - f32::from(a)) * amount).round() as u8;
+    Color32::from_rgb(
+        channel(from.r(), to.r()),
+        channel(from.g(), to.g()),
+        channel(from.b(), to.b()),
+    )
 }
 
 impl fastframe_theme::Palette for Palette {
@@ -648,6 +672,27 @@ pub fn subtle(ui: &mut egui::Ui, palette: &Palette, label: &str) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A button on a card sits further from the window than the card does,
+    /// in both themes, and hovering takes it another step toward the text,
+    /// so it never reads as plain text on the card.
+    #[test]
+    fn buttons_on_cards_stand_out_from_the_card() {
+        let level =
+            |color: Color32| u32::from(color.r()) + u32::from(color.g()) + u32::from(color.b());
+        for palette in [Palette::dark(), Palette::light()] {
+            let (card, rest, hover) = (
+                level(palette.surface),
+                level(palette.on_card()),
+                level(palette.on_card_hover()),
+            );
+            if palette.dark {
+                assert!(card + 30 <= rest && rest < hover, "{card} {rest} {hover}");
+            } else {
+                assert!(rest + 30 <= card && hover < rest, "{card} {rest} {hover}");
+            }
+        }
+    }
 
     /// The logo drawn in the app is the app icon's own picture, not a
     /// disc in the theme's accent colour: it uploads the icon's pixels.

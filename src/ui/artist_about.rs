@@ -100,6 +100,7 @@ pub(super) fn card(app: &mut App, ui: &mut egui::Ui, now: &NowPlaying) -> bool {
             .inner_margin(Margin::same(12))
             .show(ui, |ui| {
                 ui.set_width(ui.available_width());
+                buttons::on_card(ui, &palette);
                 contents(app, ui, &shown);
             });
     });

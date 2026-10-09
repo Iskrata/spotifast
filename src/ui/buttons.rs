@@ -469,9 +469,11 @@ fn text_button_inner(
             Tier::Primary if hovered => palette.accent_hover,
             Tier::Primary => palette.accent,
             Tier::Chip { selected: true } => palette.text,
-            _ if pressed => palette.surface_active,
-            _ if hovered => palette.surface_hover,
-            _ => palette.surface,
+            // The grey fills follow the Ui, so a card can lift them: see
+            // `on_card`. Outside a card they are the palette's surfaces.
+            _ if pressed => ui.visuals().widgets.active.weak_bg_fill,
+            _ if hovered => ui.visuals().widgets.hovered.weak_bg_fill,
+            _ => ui.visuals().widgets.inactive.weak_bg_fill,
         };
         let fill = if enabled {
             fill
@@ -503,6 +505,18 @@ fn text_button_inner(
         focus_ring(ui, &dismiss, CornerRadius::same(tokens::radius::ROUND));
     }
     (response, dismissed)
+}
+
+/// Makes the grey text buttons and chips drawn in `ui` stand out from a
+/// card filled with `surface`, such as the artist card or a Settings
+/// section: they rest on [`Palette::on_card`] instead of the card's own
+/// grey. Call it once at the top of the card's contents; it lasts for
+/// that Ui and everything inside it.
+pub fn on_card(ui: &mut Ui, palette: &Palette) {
+    let widgets = &mut ui.visuals_mut().widgets;
+    widgets.inactive.weak_bg_fill = palette.on_card();
+    widgets.hovered.weak_bg_fill = palette.on_card_hover();
+    widgets.active.weak_bg_fill = palette.surface_hover;
 }
 
 /// The green Play disc's three sizes.

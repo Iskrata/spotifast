@@ -425,6 +425,8 @@ Supported colors are `window`, `panel`, `surface`, `surface_hover`,
 `surface_active`, `outline`, `text`, `secondary`, `dim`, `accent`,
 `accent_hover`, `on_accent`, `danger`, `warning`, `overlay`, and `shadow`.
 Values must be `#RRGGBB` or `#RRGGBBAA`.
+Buttons on cards, such as the artist card and Settings sections, rest on
+`surface_active` so they stand out from the card's `surface`.
 
 Files are read in the background at launch and when `spotifast reload-themes`
 is called. The command updates the selected palette without interrupting

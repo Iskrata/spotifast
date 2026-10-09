@@ -190,6 +190,7 @@ fn section(
         .inner_margin(Margin::symmetric(20, 16))
         .show(ui, |ui| {
             ui.set_width(ui.available_width().min(760.0));
+            buttons::on_card(ui, palette);
             add_contents(ui);
         });
     ui.add_space(8.0);

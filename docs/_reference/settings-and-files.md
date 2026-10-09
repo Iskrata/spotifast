@@ -446,6 +446,16 @@ Values must be `#RRGGBB` or `#RRGGBBAA`.
 Buttons on cards, such as the artist card and Settings sections, rest on
 `surface_active` so they stand out from the card's `surface`.
 
+Four more colors shape the glass the sidebar, side panels, player bar and
+menus are drawn in over the moving album art background: `glass` (the
+floating panels' fill), `glass_popover` (menus, popovers and dialogs),
+`glass_highlight` (the light along a surface's top edge) and
+`glass_border` (the faint edge it fades into). Give them an alpha with
+`#RRGGBBAA`. Left out, `glass` is `panel` at 66% opacity in a dark palette
+and 74% in a light one, and `glass_popover` is `overlay` at 96%. The panels
+are never less than 55% opaque in a dark palette or 60% in a light one, and
+menus never less than 85%, so text stays readable over the art.
+
 Files are read in the background at launch and when `spotifast reload-themes`
 is called. The command updates the selected palette without interrupting
 playback, changing your selection or showing the window. It does not start a

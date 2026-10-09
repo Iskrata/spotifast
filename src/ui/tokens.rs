@@ -19,8 +19,11 @@ pub mod radius {
     pub const PANEL: u8 = 10;
     /// Dialogs and the update window.
     pub const DIALOG: u8 = 12;
-    /// The sign-in card.
+    /// The sign-in card, and dialogs drawn as glass.
     pub const SHEET: u8 = 16;
+    /// Surfaces floating as glass over the album art: the sidebar, the
+    /// side panels and the player bar.
+    pub const FLOATING: u8 = 20;
     /// As round as egui draws: a circle for any square up to 254 points.
     pub const ROUND: u8 = 127;
 }
@@ -103,6 +106,33 @@ pub mod gap {
     pub const BELOW_ACTIONS: f32 = 16.0;
 }
 
+/// Liquid glass (see [`crate::ui::glass`]): how much of each glass
+/// surface is its own colour rather than the album art behind it, and how
+/// the floating surfaces sit apart.
+///
+/// The defaults keep body text at a WCAG contrast of at least 4.5 over
+/// the brightest orbs the album art background draws; the least opacities
+/// are the floor a custom palette's own glass colours are held to.
+pub mod glass {
+    /// The panels' own colour in the dark palette.
+    pub const PANEL_DARK: f32 = 0.66;
+    /// In the light palette, where the orbs show more strongly.
+    pub const PANEL_LIGHT: f32 = 0.74;
+    /// The least a palette's panel glass may be, dark and light.
+    pub const PANEL_LEAST_DARK: f32 = 0.55;
+    pub const PANEL_LEAST_LIGHT: f32 = 0.6;
+    /// Menus, popovers and dialogs, which hold the most text.
+    pub const POPOVER: f32 = 0.96;
+    /// The least a palette's popover glass may be.
+    pub const POPOVER_LEAST: f32 = 0.85;
+    /// The space around each floating surface, so the art shows between
+    /// them: twice this between two surfaces, once at the window's edge.
+    pub const GUTTER: i8 = 6;
+    /// How far down the light along a surface's top edge fades into its
+    /// faint border.
+    pub const HIGHLIGHT_DEPTH: f32 = 32.0;
+}
+
 /// Durations in seconds, and the one curve everything eases along.
 /// Everything that moves goes through [`crate::ui::motion`], which stops
 /// asking for frames once it settles and makes every duration zero with
@@ -131,6 +161,14 @@ pub mod motion {
         egui::emath::easing::cubic_out(t)
     }
 }
+
+// Glass never lets more of the art through than its floor allows.
+const _: () = assert!(
+    glass::PANEL_DARK >= glass::PANEL_LEAST_DARK
+        && glass::PANEL_LIGHT >= glass::PANEL_LEAST_LIGHT
+        && glass::POPOVER >= glass::POPOVER_LEAST
+        && glass::POPOVER_LEAST > glass::PANEL_LEAST_LIGHT
+);
 
 // Closing is never slower than opening, and feedback is quicker than
 // the panels it opens.
@@ -166,6 +204,7 @@ mod tests {
             radius::PANEL,
             radius::DIALOG,
             radius::SHEET,
+            radius::FLOATING,
         ];
         assert!(radii.windows(2).all(|pair| pair[0] < pair[1]));
     }

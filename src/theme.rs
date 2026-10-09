@@ -5,7 +5,7 @@
 //! consistent.
 
 use crate::i18n::{Locale, gettext};
-use crate::ui::tokens::radius;
+use crate::ui::tokens::{glass, radius};
 use egui::{Color32, CornerRadius, Response, Sense, Stroke, Vec2};
 use std::borrow::Cow;
 
@@ -33,6 +33,18 @@ pub struct Palette {
     pub warning: Color32,
     pub overlay: Color32,
     pub shadow: Color32,
+    /// Liquid glass colours a palette file may set, alpha included. Left
+    /// out, they come from the colours above, so every palette has glass:
+    /// see [`Palette::glass_panel`] and the methods after it. Older cached
+    /// palettes have none and read as left out.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glass: Option<Color32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glass_popover: Option<Color32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glass_highlight: Option<Color32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub glass_border: Option<Color32>,
 }
 
 impl Palette {
@@ -55,6 +67,10 @@ impl Palette {
             warning: Color32::from_rgb(0xf2, 0xb8, 0x5c),
             overlay: Color32::from_rgb(0x22, 0x27, 0x2e),
             shadow: Color32::from_black_alpha(140),
+            glass: None,
+            glass_popover: None,
+            glass_highlight: None,
+            glass_border: None,
         }
     }
 
@@ -77,6 +93,10 @@ impl Palette {
             warning: Color32::from_rgb(0xb8, 0x7a, 0x14),
             overlay: Color32::from_rgb(0xff, 0xff, 0xff),
             shadow: Color32::from_black_alpha(50),
+            glass: None,
+            glass_popover: None,
+            glass_highlight: None,
+            glass_border: None,
         }
     }
 
@@ -112,6 +132,65 @@ impl Palette {
     pub fn on_card_hover(&self) -> Color32 {
         mix(self.surface_active, self.text, 0.1)
     }
+
+    /// The fill of the surfaces floating as glass over the album art: the
+    /// sidebar, the side panels, the player bar and the search capsule.
+    /// The palette's `glass`, else its panel colour, at least as opaque as
+    /// [`glass::PANEL_LEAST_DARK`] or [`glass::PANEL_LEAST_LIGHT`] allow.
+    pub fn glass_panel(&self) -> Color32 {
+        let (opacity, least) = if self.dark {
+            (glass::PANEL_DARK, glass::PANEL_LEAST_DARK)
+        } else {
+            (glass::PANEL_LIGHT, glass::PANEL_LEAST_LIGHT)
+        };
+        at_least_opaque(
+            self.glass
+                .unwrap_or_else(|| with_opacity(self.panel, opacity)),
+            least,
+        )
+    }
+
+    /// The fill of menus, popovers and dialogs drawn as glass: the
+    /// palette's `glass_popover`, else its overlay colour, nearly opaque.
+    pub fn glass_popover(&self) -> Color32 {
+        at_least_opaque(
+            self.glass_popover
+                .unwrap_or_else(|| with_opacity(self.overlay, glass::POPOVER)),
+            glass::POPOVER_LEAST,
+        )
+    }
+
+    /// The light along a glass surface's top edge.
+    pub fn glass_highlight(&self) -> Color32 {
+        self.glass_highlight.unwrap_or(if self.dark {
+            Color32::from_white_alpha(46)
+        } else {
+            Color32::from_white_alpha(230)
+        })
+    }
+
+    /// The faint border the top light fades into around the rest of a
+    /// glass surface.
+    pub fn glass_border(&self) -> Color32 {
+        self.glass_border.unwrap_or(if self.dark {
+            Color32::from_white_alpha(16)
+        } else {
+            Color32::from_black_alpha(16)
+        })
+    }
+}
+
+/// `color` with `opacity` as its alpha.
+fn with_opacity(color: Color32, opacity: f32) -> Color32 {
+    let [r, g, b, _] = color.to_srgba_unmultiplied();
+    Color32::from_rgba_unmultiplied(r, g, b, (opacity.clamp(0.0, 1.0) * 255.0).round() as u8)
+}
+
+/// `color`, made at least `least` opaque.
+fn at_least_opaque(color: Color32, least: f32) -> Color32 {
+    let [r, g, b, a] = color.to_srgba_unmultiplied();
+    let least = (least.clamp(0.0, 1.0) * 255.0).round() as u8;
+    Color32::from_rgba_unmultiplied(r, g, b, a.max(least))
 }
 
 /// `from` moved `amount` of the way toward `to`.
@@ -151,6 +230,10 @@ impl fastframe_theme::Palette for Palette {
             "warning" => self.warning = color,
             "overlay" => self.overlay = color,
             "shadow" => self.shadow = color,
+            "glass" => self.glass = Some(color),
+            "glass_popover" => self.glass_popover = Some(color),
+            "glass_highlight" => self.glass_highlight = Some(color),
+            "glass_border" => self.glass_border = Some(color),
             _ => return false,
         }
         true
@@ -742,6 +825,47 @@ mod tests {
         assert!(!light.dark);
         assert_eq!(light.accent, Color32::from_rgb(140, 63, 165));
         assert_eq!(light.window, Palette::light().window);
+    }
+
+    /// A palette file may set its glass, alpha included, but is held to
+    /// the least opacities; one that leaves glass out gets it from its own
+    /// panel and overlay colours.
+    #[test]
+    fn palette_files_set_glass_or_derive_it() {
+        let palette: Palette = fastframe_theme::parse_palette(
+            r##"{"colors":{"panel":"#102030","glass":"#40506080","glass_border":"#ffffff20"}}"##,
+        )
+        .unwrap();
+        // Color32 keeps its colour premultiplied, so the channels come
+        // back within a step of what the file said.
+        let [r, g, b, a] = palette.glass_panel().to_srgba_unmultiplied();
+        for (got, want) in [r, g, b].into_iter().zip([0x40u8, 0x50, 0x60]) {
+            assert!(got.abs_diff(want) <= 1, "{got} {want}");
+        }
+        assert_eq!(a, (glass::PANEL_LEAST_DARK * 255.0).round() as u8);
+        assert_eq!(palette.glass_border(), Color32::from_white_alpha(0x20));
+
+        let derived: Palette =
+            fastframe_theme::parse_palette(r##"{"base":"light","colors":{"panel":"#fafafa"}}"##)
+                .unwrap();
+        let [r, g, b, a] = derived.glass_panel().to_srgba_unmultiplied();
+        for got in [r, g, b] {
+            assert!(got.abs_diff(0xfa) <= 1, "{got}");
+        }
+        assert_eq!(a, (glass::PANEL_LIGHT * 255.0).round() as u8);
+        let [.., a] = derived.glass_popover().to_srgba_unmultiplied();
+        assert_eq!(a, (glass::POPOVER * 255.0).round() as u8);
+    }
+
+    /// A palette cached in settings before glass existed still reads, and
+    /// one without glass of its own writes none.
+    #[test]
+    fn cached_palettes_without_glass_still_read() {
+        let mut written = serde_json::to_value(Palette::dark()).unwrap();
+        assert!(written.get("glass").is_none());
+        written.as_object_mut().unwrap().remove("glass_popover");
+        let read: Palette = serde_json::from_value(written).unwrap();
+        assert_eq!(read, Palette::dark());
     }
 
     /// Compared line by line: a Windows checkout may turn the files' line

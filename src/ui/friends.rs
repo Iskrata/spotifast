@@ -9,7 +9,7 @@ use crate::model::{Action, Loadable, Page};
 use crate::session_reads::FriendActivity;
 use crate::theme::{self, Icon, Palette};
 
-use super::buttons::IconButton;
+use super::panel_header::PanelHeader;
 use super::widgets;
 
 const AVATAR: f32 = 40.0;
@@ -53,23 +53,10 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
         } else {
             gettext(locale, "Listening activity")
         };
-        let mut close = false;
-        egui::Sides::new().shrink_left().show(
-            ui,
-            |ui| {
-                ui.add_space(4.0);
-                theme::text(ui, title, theme::bold(16.0), palette.text);
-            },
-            |ui| {
-                close = IconButton::new(Icon::X, &gettext(locale, "Close"))
-                    .show(ui, &palette)
-                    .clicked();
-            },
-        );
+        let close = PanelHeader::new(&title, &gettext(locale, "Close")).show(ui, &palette, |_| {});
         if close {
             app.actions.push(Action::ToggleFriendsPanel);
         }
-        ui.add_space(12.0);
         egui::ScrollArea::vertical()
             .id_salt("friends-panel-scroll")
             .auto_shrink([false, false])

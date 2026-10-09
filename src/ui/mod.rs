@@ -18,6 +18,7 @@ pub mod login;
 mod lyrics;
 pub mod new_releases;
 mod now_playing_panel;
+mod panel_header;
 pub mod player_bar;
 mod prerelease;
 pub mod queue;

@@ -118,6 +118,27 @@ a selector and Previous/Next controls, and a direct link to each comparison.
 Load only the selected review. The maintainer can approve by PR number and
 give exceptions or requested adjustments in a normal message.
 
+Capture headlessly where possible. The `render` example draws demo states
+with no window, Dock icon or taskbar entry, so it can run while someone works
+at the same desktop:
+
+```sh
+packaging/render-shots.sh .cache/review/before          # on the baseline
+packaging/render-shots.sh .cache/review/after           # on the candidate
+python3 packaging/render-review.py --before .cache/review/before \
+  --after .cache/review/after --out .cache/review/index.html
+```
+
+`render-shots.sh` renders Home, an album, a playlist, an artist, Settings,
+Friend Activity and the Queue in both themes at 1280x800; pass a file of
+`NAME render-arguments...` lines for other states, and `SIZES="760x800
+1280x800"` for more sizes. The page it feeds has the state, theme and size
+selectors, Previous and Next, and Before and After. For a single state, run
+`cargo run --features render --example render -- --help`. `--demo-shot`
+(see the [demo mode reference](docs/_reference/settings-and-files.md#demo-mode))
+still captures the real window, for platform-specific chrome, but it opens
+one.
+
 Visual approval covers the described appearance and interaction; integration
 still requires the relevant checks. Retain approval across rebases that preserve
 that scope. Implement explicitly requested adjustments and update the evidence;

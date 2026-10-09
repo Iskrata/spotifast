@@ -396,6 +396,17 @@ impl BytesLoader for ArtLoader {
             })
             .sum()
     }
+
+    /// Answers `egui::Context::has_pending_images`, which a headless capture
+    /// waits on so the artwork is in the picture.
+    fn has_pending(&self) -> bool {
+        self.inner
+            .entries
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .values()
+            .any(|entry| matches!(entry, Entry::Pending))
+    }
 }
 
 /// A colour that represents an album cover (its most common saturated hue)
@@ -1211,6 +1222,44 @@ mod tests {
                 .contains_key(local),
             "a URI it cannot fetch was remembered anyway"
         );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A headless capture waits on `has_pending_images` so the covers are
+    /// in the picture: artwork on its way counts, finished or forgotten
+    /// artwork does not.
+    #[test]
+    fn artwork_on_its_way_is_pending() {
+        let dir = std::env::temp_dir().join(format!("spotifast-pending-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        // Never driven, so the download stays on its way.
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .expect("a runtime to hand the loader");
+        let loader = ArtLoader::new(
+            reqwest::Client::new(),
+            runtime.handle().clone(),
+            dir.clone(),
+        );
+        let ctx = egui::Context::default();
+        let url = "https://i.scdn.co/image/on-its-way";
+
+        assert!(!loader.has_pending(), "nothing has been asked for");
+        assert!(loader.prefetch(&ctx, url));
+        assert!(loader.has_pending(), "the download has not finished");
+        loader.inner.entries.lock().expect("the entries").insert(
+            url.to_string(),
+            Entry::Ready {
+                bytes: None,
+                last_used: Instant::now(),
+                retained: 0,
+            },
+        );
+        assert!(!loader.has_pending(), "the artwork has arrived");
+        assert!(loader.prefetch(&ctx, "https://i.scdn.co/image/another"));
+        loader.forget("https://i.scdn.co/image/another");
+        assert!(!loader.has_pending(), "forgotten artwork is not awaited");
 
         let _ = std::fs::remove_dir_all(&dir);
     }

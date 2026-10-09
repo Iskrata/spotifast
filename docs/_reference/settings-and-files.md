@@ -330,8 +330,8 @@ visible while replacing the page content, with unfinished controls disabled.
 `--demo-language <TAG>` shows the interface in one of the bundled languages,
 such as `es` or `ja`, in place of the saved setting and the system's language.
 
-`--demo-shot <PATH>` writes the window to a PNG and exits, which is useful for
-making deterministic screenshots for these pages:
+`--demo-shot <PATH>` opens a window off screen, writes it to a PNG and exits,
+which is useful for making deterministic screenshots for these pages:
 
 ```
 cargo run --release --features demo -- \
@@ -350,6 +350,22 @@ settings still apply. `--demo-data <DIRECTORY>` keeps demo caches and logs under
 that directory's `cache` and `state` folders, with settings read from `config`.
 Custom palettes and their cache are used only with an explicit `--demo-data`
 directory; the ordinary demo does not scan your real themes folder.
+
+The `render` example draws the same demo states without any window, Dock
+icon, or taskbar entry: egui's test harness runs the app's frames and wgpu
+draws them into an offscreen texture. It takes `--page`, `--show`,
+`--theme dark|light`, `--language`, `--size`, `--scale`, `--click`, and
+`--drag`, waits until the cover art has loaded, and writes `--out`:
+
+```
+cargo run --features render --example render -- \
+  --page playlist:pl1 --show queue --theme dark --size 1280x800 --out playlist.png
+```
+
+`--frames N --step-ms MS` writes N numbered pictures MS apart instead, for
+inspecting motion; a `--click` or `--drag` presses on the first of them.
+Each run starts from fresh settings; downloaded art is kept under
+`target/render-data` (or `--data <DIRECTORY>`) for the next run.
 
 ## Home shelves
 

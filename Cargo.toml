@@ -18,6 +18,10 @@ path = "src/lib.rs"
 name = "spotifast"
 path = "src/spotifast.rs"
 
+[[example]]
+name = "render"
+required-features = ["render"]
+
 [dependencies]
 anyhow = "1"
 thiserror = "2"
@@ -103,6 +107,11 @@ projectm-sys = { version = "1.2.2", default-features = false, features = ["stati
 winit = { version = "0.30", optional = true }
 glutin = { version = "0.32", optional = true }
 glutin-winit = { version = "0.5", optional = true }
+# egui's test harness, with its wgpu renderer, draws the demo interface into
+# an offscreen texture (Metal, Vulkan or DX12) for the `render` example, so a
+# UI review captures pages without opening a window. Only the `render`
+# feature builds it, and wgpu with it; the app itself stays on glow.
+egui_kittest = { version = "0.36", features = ["wgpu"], optional = true }
 # Detect the live window backend, including when MilkDrop is disabled.
 # eframe already compiles this crate.
 raw-window-handle = "0.6"
@@ -206,6 +215,9 @@ default = ["milkdrop"]
 # Sample data and screenshot flags; never part of a release build.
 # winit (already built for eframe) lets a demo screenshot run without a Dock icon.
 demo = ["dep:winit"]
+# Headless captures of the demo interface (examples/render.rs): no window,
+# Dock icon or taskbar entry. Builds wgpu; never part of a release.
+render = ["demo", "dep:egui_kittest"]
 # MilkDrop, through libprojectM: a C++ library that CMake builds into the
 # binary at compile time, so building needs cmake, a C++ compiler, and
 # libclang. `--no-default-features` leaves it out.
@@ -252,6 +264,7 @@ egui-wgpu = { git = "https://github.com/crmne/egui", rev = "ba6790fe7cf46e58e8d2
 egui-winit = { git = "https://github.com/crmne/egui", rev = "ba6790fe7cf46e58e8d27ce1524cbfdee745e938" }
 egui_extras = { git = "https://github.com/crmne/egui", rev = "ba6790fe7cf46e58e8d27ce1524cbfdee745e938" }
 egui_glow = { git = "https://github.com/crmne/egui", rev = "ba6790fe7cf46e58e8d27ce1524cbfdee745e938" }
+egui_kittest = { git = "https://github.com/crmne/egui", rev = "ba6790fe7cf46e58e8d27ce1524cbfdee745e938" }
 emath = { git = "https://github.com/crmne/egui", rev = "ba6790fe7cf46e58e8d27ce1524cbfdee745e938" }
 epaint = { git = "https://github.com/crmne/egui", rev = "ba6790fe7cf46e58e8d27ce1524cbfdee745e938" }
 epaint_default_fonts = { git = "https://github.com/crmne/egui", rev = "ba6790fe7cf46e58e8d27ce1524cbfdee745e938" }

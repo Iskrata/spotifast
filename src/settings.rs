@@ -41,9 +41,10 @@ impl LibrarySort {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ThemeChoice {
+    /// This fork starts dark rather than following the system.
+    #[default]
     Dark,
     Light,
-    #[default]
     System,
 }
 
@@ -429,7 +430,7 @@ impl Default for Settings {
             audio_buffer_ms: default_buffer_ms(),
             audio_cache: true,
             audio_cache_mb: 1024,
-            theme: ThemeChoice::System,
+            theme: ThemeChoice::Dark,
             language: LanguageChoice::System,
             custom_theme: None,
             custom_theme_cache: None,
@@ -910,13 +911,17 @@ mod tests {
     use super::Settings;
 
     #[test]
-    fn new_profiles_follow_the_system_and_saved_choices_are_preserved() {
+    fn new_profiles_start_dark_and_saved_choices_are_preserved() {
         use super::ThemeChoice;
-        assert_eq!(Settings::default().theme, ThemeChoice::System);
-        assert_eq!(ThemeChoice::default(), ThemeChoice::System);
+        assert_eq!(Settings::default().theme, ThemeChoice::Dark);
+        assert_eq!(ThemeChoice::default(), ThemeChoice::Dark);
         let empty: Settings = serde_json::from_str("{}").unwrap();
-        assert_eq!(empty.theme, ThemeChoice::System);
-        for (json, choice) in [("dark", ThemeChoice::Dark), ("light", ThemeChoice::Light)] {
+        assert_eq!(empty.theme, ThemeChoice::Dark);
+        for (json, choice) in [
+            ("dark", ThemeChoice::Dark),
+            ("light", ThemeChoice::Light),
+            ("system", ThemeChoice::System),
+        ] {
             let settings: Settings =
                 serde_json::from_value(serde_json::json!({"theme": json, "volume": 37})).unwrap();
             assert_eq!(settings.theme, choice);

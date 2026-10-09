@@ -16271,7 +16271,12 @@ mod tests {
         let mut app = test_app("system-omarchy");
         app.backend.shutdown();
         let ctx = egui::Context::default();
-        app.settings = Settings::default();
+        // A profile that follows the system, which this fork no longer
+        // starts with.
+        app.settings = Settings {
+            theme: ThemeChoice::System,
+            ..Settings::default()
+        };
         app.window_hidden = true;
         app.resume_track = Some("spotify:track:playing".into());
         app.resume_position_ms = 123_000;

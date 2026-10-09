@@ -5704,6 +5704,8 @@ mod tests {
     #[test]
     fn custom_theme_picker_applies_the_clicked_palette_and_exposes_its_name_and_value() {
         let (ctx, mut app) = accessible_app("custom-theme-picker");
+        // The picker starts from a profile that follows the system.
+        app.settings.theme = crate::settings::ThemeChoice::System;
         app.open(Page::Settings);
         ctx.data_mut(|data| {
             data.insert_temp(egui::Id::new("settings-filter"), "Appearance".to_string())

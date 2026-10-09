@@ -20,17 +20,21 @@ const ROW_GAP: f32 = 18.0;
 const TITLE_INSET: i8 = 4;
 const CLOSE_GLYPH_INSET: i8 = 6;
 
-pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
+/// The side panel's id, which its saved width and its slide go by.
+pub(crate) const PANEL_ID: &str = "friends-panel";
+
+/// The side panel, open or sliding closed.
+pub fn side_panel(app: &mut App, ui: &mut egui::Ui, slide: super::sliding::Slide) {
     let palette = app.palette;
     let locale = app.locale;
     let fit = super::yielding_panel(
         ui.ctx(),
-        "friends-panel",
+        PANEL_ID,
         theme::SIDE_PANEL_MIN_WIDTH..=560.0,
         app.settings.queue_width,
         ui.available_width() - super::topbar::least_width(ui.ctx()),
     );
-    let panel = egui::Panel::right("friends-panel")
+    let panel = egui::Panel::right(PANEL_ID)
         .resizable(true)
         .default_size(app.settings.queue_width)
         .size_range(fit.range.clone())
@@ -40,7 +44,7 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
                 .fill(palette.panel)
                 .inner_margin(Margin::symmetric(12, 12)),
         );
-    let response = panel.show(ui, |ui| {
+    let slid = super::sliding::show(ui, panel, PANEL_ID, slide, |ui| {
         // The panel sits where the Queue would, under the same controls.
         let window_controls =
             super::window_controls_reservation(ui.ctx(), true, false, ui.available_width());
@@ -79,11 +83,15 @@ pub fn side_panel(app: &mut App, ui: &mut egui::Ui) {
                 contents(app, ui);
             });
     });
+    let Some(slid) = slid else {
+        return;
+    };
     // The Listening activity panel shares the Queue panel's width, so switching
     // between the two never moves the page.
-    let width = response.response.rect.width();
+    let width = slid.inner.response.rect.width();
     if (width - app.settings.queue_width).abs() > 1.0
-        && super::panel_width_chosen(ui.ctx(), "friends-panel", &fit)
+        && slid.settled
+        && super::panel_width_chosen(ui.ctx(), PANEL_ID, &fit)
     {
         app.settings.queue_width = width;
         app.actions.push(Action::SettingsChanged);

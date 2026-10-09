@@ -19,6 +19,9 @@ pub struct Motion {
     checked: Option<Instant>,
     /// What the Linux desktop portal said at the last check.
     desktop: Option<bool>,
+    /// Held at a preference instead of following the system, for tests and
+    /// captures that must not depend on the desktop they run on.
+    held: bool,
 }
 
 impl Motion {
@@ -33,6 +36,9 @@ impl Motion {
     /// The portal wakes the app when that changes, and nothing asks again
     /// a second later, so a new answer from it applies at once.
     pub fn refresh(&mut self, now: Instant, desktop_animations: Option<bool>) -> bool {
+        if self.held {
+            return false;
+        }
         if desktop_animations == self.desktop
             && self
                 .checked
@@ -43,6 +49,13 @@ impl Motion {
         self.checked = Some(now);
         self.desktop = desktop_animations;
         self.set(system_reduced(desktop_animations))
+    }
+
+    /// Holds the preference at `reduced`, no longer asking the system.
+    #[cfg(any(test, feature = "demo"))]
+    pub fn hold(&mut self, reduced: bool) {
+        self.held = true;
+        self.reduced = reduced;
     }
 
     /// Takes `reduced` as the preference, and answers whether it changed.

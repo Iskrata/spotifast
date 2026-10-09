@@ -1185,6 +1185,9 @@ fn apply_surfaces(app: &mut App, page: Option<&str>, show: Option<&str>) {
                 app.library.filter = "No matching playlist".into();
             }
             "queue" => app.show_queue_panel = true,
+            // Friend Activity opens on launch; this starts with no right
+            // panel, for watching one open.
+            "no-panel" => app.show_friends_panel = false,
             "friends" => {
                 app.show_friends_panel = true;
                 app.friends = Loadable::Loaded(demo_friends());
@@ -2880,8 +2883,8 @@ mod tests {
             ] {
                 app.recents.loading = loading;
                 app.recents.error = error;
-                view_frame(&ctx, &mut app, vec![], crate::ui::queue::side_panel);
-                let painted = view_frame(&ctx, &mut app, vec![], crate::ui::queue::side_panel);
+                view_frame(&ctx, &mut app, vec![], open_queue_panel);
+                let painted = view_frame(&ctx, &mut app, vec![], open_queue_panel);
                 for source in sources {
                     assert!(
                         painted
@@ -2901,7 +2904,7 @@ mod tests {
                         &ctx,
                         &mut app,
                         pointer_click(retry, egui::PointerButton::Primary),
-                        crate::ui::queue::side_panel,
+                        open_queue_panel,
                     );
                     assert!(
                         app.actions
@@ -3104,7 +3107,7 @@ mod tests {
     #[test]
     fn the_podcasts_shelf_leaves_out_audiobooks() {
         let (ctx, mut app) = accessible_app("library-podcasts-audiobooks");
-        let view = crate::ui::sidebar::show;
+        let view = open_sidebar;
         view_frame(&ctx, &mut app, vec![], view);
         let painted = view_frame(&ctx, &mut app, vec![], view);
         let chip = painted
@@ -3939,7 +3942,7 @@ mod tests {
                     events,
                     ..Default::default()
                 },
-                |ui| crate::ui::sidebar::show(app, ui),
+                |ui| crate::ui::sidebar::show(app, ui, crate::ui::sliding::Slide::OPEN),
             );
             output.textures_delta.clear();
             output
@@ -4165,7 +4168,7 @@ mod tests {
         let (ctx, mut app) = accessible_app("library-grid-double-click");
         app.settings.sidebar_grid = true;
         app.open(Page::Search);
-        let view = crate::ui::sidebar::show;
+        let view = open_sidebar;
         view_frame(&ctx, &mut app, vec![], view);
         let painted = view_frame(&ctx, &mut app, vec![], view);
         let card = sidebar_text(&painted, "Sunday morning").center();
@@ -4193,7 +4196,7 @@ mod tests {
             (LibraryShelf::Podcasts, "Podcasts", Page::Podcasts),
         ] {
             let (ctx, mut app) = accessible_app(&format!("library-sort-paging-{shelf:?}"));
-            let view = crate::ui::sidebar::show;
+            let view = open_sidebar;
             app.settings.library_sort.insert(shelf, LibrarySort::Name);
             app.library.albums.next_offset = Some(50);
             app.library.artists.complete = false;
@@ -6196,6 +6199,16 @@ mod tests {
             assert_eq!(text.iter().filter(|(label, _)| label == "•").count(), 4);
         }
         app.backend.shutdown();
+    }
+
+    /// The sidebar, open and settled.
+    fn open_sidebar(app: &mut App, ui: &mut egui::Ui) {
+        crate::ui::sidebar::show(app, ui, crate::ui::sliding::Slide::OPEN);
+    }
+
+    /// The Queue side panel, open and settled.
+    fn open_queue_panel(app: &mut App, ui: &mut egui::Ui) {
+        crate::ui::queue::side_panel(app, ui, crate::ui::sliding::Slide::OPEN);
     }
 
     fn view_frame(
@@ -8482,6 +8495,9 @@ mod tests {
         app.settings.lyrics_width = crate::theme::SIDE_PANEL_MIN_WIDTH;
         app.lyrics = Loadable::Loaded(Some(sample_lyrics()));
         app.lyrics_following = false;
+        // Panels slide; these frames read the layout once it has settled.
+        app.motion.hold(true);
+        crate::motion::apply(&ctx, true);
 
         let input = egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
@@ -9374,7 +9390,7 @@ mod tests {
         for compact in [false, true] {
             let (ctx, mut app) = accessible_app(&format!("sidebar-double-click-{compact}"));
             app.settings.sidebar_compact = compact;
-            let view = crate::ui::sidebar::show;
+            let view = open_sidebar;
             view_frame(&ctx, &mut app, vec![], view);
             let painted = view_frame(&ctx, &mut app, vec![], view);
             let name = sidebar_text(&painted, "Sunday morning").center();
@@ -9397,7 +9413,7 @@ mod tests {
     #[test]
     fn single_clicking_a_sidebar_row_only_navigates() {
         let (ctx, mut app) = accessible_app("sidebar-single-click");
-        let view = crate::ui::sidebar::show;
+        let view = open_sidebar;
         view_frame(&ctx, &mut app, vec![], view);
         let painted = view_frame(&ctx, &mut app, vec![], view);
         let name = sidebar_text(&painted, "Sunday morning").center();
@@ -9420,7 +9436,7 @@ mod tests {
     #[test]
     fn double_clicking_a_sidebar_liked_row_plays_the_collection() {
         let (ctx, mut app) = accessible_app("sidebar-double-click-liked");
-        let view = crate::ui::sidebar::show;
+        let view = open_sidebar;
         view_frame(&ctx, &mut app, vec![], view);
         let painted = view_frame(&ctx, &mut app, vec![], view);
         let name = sidebar_text(&painted, "Liked Songs").center();
@@ -9445,7 +9461,7 @@ mod tests {
             RootlistEntry::Playlist("spotify:playlist:pl2".into()),
             RootlistEntry::FolderEnd,
         ];
-        let view = crate::ui::sidebar::show;
+        let view = open_sidebar;
         view_frame(&ctx, &mut app, vec![], view);
         let painted = view_frame(&ctx, &mut app, vec![], view);
         let name = sidebar_text(&painted, "Focus").center();
@@ -9462,7 +9478,7 @@ mod tests {
     #[test]
     fn double_clicking_a_sidebar_cover_plays_once() {
         let (ctx, mut app) = accessible_app("sidebar-double-click-cover");
-        let view = crate::ui::sidebar::show;
+        let view = open_sidebar;
         view_frame(&ctx, &mut app, vec![], view);
         let painted = view_frame(&ctx, &mut app, vec![], view);
         let name = sidebar_text(&painted, "Sunday morning");
@@ -9487,7 +9503,7 @@ mod tests {
     #[test]
     fn clicking_the_cover_of_the_playing_playlist_pauses() {
         let (ctx, mut app) = accessible_app("sidebar-cover-pause");
-        let view = crate::ui::sidebar::show;
+        let view = open_sidebar;
         view_frame(&ctx, &mut app, vec![], view);
         let painted = view_frame(&ctx, &mut app, vec![], view);
         // The demo's remote snapshot plays the "Late night focus" playlist.
@@ -9516,7 +9532,9 @@ mod tests {
         let (ctx, mut app) = accessible_app("sidebar-cover-resume");
         // The demo's remote snapshot plays "Late night focus"; pause it.
         app.remote.as_mut().unwrap().state.is_playing = false;
-        let view = crate::ui::sidebar::show;
+        let view = |app: &mut App, ui: &mut egui::Ui| {
+            crate::ui::sidebar::show(app, ui, crate::ui::sliding::Slide::OPEN)
+        };
         view_frame(&ctx, &mut app, vec![], view);
         let painted = view_frame(&ctx, &mut app, vec![], view);
         let name = sidebar_text(&painted, "Late night focus");
@@ -11816,6 +11834,9 @@ mod tests {
         // right edge, so the pill reaches past the rect the field reports.
         const FIELD_RIGHT_INSET: f32 = 30.0;
         let (ctx, mut app) = accessible_app("topbar-badges");
+        // Panels slide; these frames read the layout once it has settled.
+        app.motion.hold(true);
+        crate::motion::apply(&ctx, true);
         app.open(Page::Playlist("pl1".into()));
         for (panel, sidebar) in [
             (None, true),
@@ -12237,6 +12258,9 @@ mod tests {
     fn the_sidebar_steps_aside_for_a_right_panel_in_a_narrow_window() {
         use egui::accesskit::{Action as AccessibleAction, Role};
         let (ctx, mut app) = accessible_app("sidebar-steps-aside");
+        // Panels slide; these frames read the layout once it has settled.
+        app.motion.hold(true);
+        crate::motion::apply(&ctx, true);
         app.open(Page::Playlist("pl1".into()));
         let frame = |app: &mut App, width: f32, events: Vec<egui::Event>| {
             let mut tree = None;
@@ -12398,6 +12422,9 @@ mod tests {
     #[test]
     fn the_playing_song_shows_once_beside_friend_activity() {
         let (ctx, mut app) = accessible_app("now-playing-once");
+        // Panels slide; these frames read the layout once it has settled.
+        app.motion.hold(true);
+        crate::motion::apply(&ctx, true);
         let count = |tree: &egui::accesskit::TreeUpdate, text: &str| {
             tree.nodes
                 .iter()

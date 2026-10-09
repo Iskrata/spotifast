@@ -21,14 +21,15 @@ pub mod new_releases;
 mod now_playing_panel;
 mod panel_header;
 pub mod player_bar;
-mod prerelease;
 mod popovers;
+mod prerelease;
 pub mod queue;
 pub mod radio;
 pub mod search;
 pub mod settings;
 pub mod show;
 pub mod sidebar;
+pub mod sliding;
 pub mod tokens;
 pub mod topbar;
 mod update;
@@ -79,18 +80,12 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     if app.lyrics_fullscreen.is_some() {
         lyrics::fullscreen(app, ui);
     } else {
-        if sidebar_shown(app, ctx) {
-            sidebar::show(app, ui);
-        }
-        if app.show_queue_panel {
-            queue::side_panel(app, ui);
-        }
-        if app.show_lyrics_panel {
-            lyrics::side_panel(app, ui);
-        }
-        if app.show_friends_panel {
-            friends::side_panel(app, ui);
-        }
+        let sidebar = sliding::Slide {
+            open: sidebar_shown(app, ctx),
+            instant: false,
+        };
+        sidebar::show(app, ui, sidebar);
+        sliding::right_panels(app, ui);
         central(app, ui);
     }
     keep_room_for_panels(app, ctx);

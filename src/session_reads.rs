@@ -164,21 +164,44 @@ pub async fn rootlist(session: &Session) -> anyhow::Result<Vec<ListItems>> {
             .get_rootlist(from, Some(ROOTLIST_PAGE))
             .await
             .map_err(|error| anyhow::anyhow!("rootlist: {error}"))?;
-        let Some(contents) = SelectedListContent::parse_from_bytes(&bytes)?
-            .contents
-            .into_option()
+        let Some((contents, more)) =
+            rootlist_answer_page(SelectedListContent::parse_from_bytes(&bytes)?, from)?
         else {
             break;
         };
         let count = contents.items.len();
-        let truncated = contents.truncated();
         pages.push(contents);
-        if !truncated || count == 0 {
+        if !more {
             break;
         }
         from += count;
     }
     Ok(pages)
+}
+
+/// One rootlist answer read at `from`: its page, and whether rows follow
+/// it; `None` when the list ends before `from`. An answer that leaves rows
+/// out while saying some remain, either with no page where the list's
+/// length says rows are or with an empty page marked as cut short, is an
+/// error, so the read is retried rather than taken as the whole list.
+fn rootlist_answer_page(
+    response: SelectedListContent,
+    from: usize,
+) -> anyhow::Result<Option<(ListItems, bool)>> {
+    let length = response
+        .has_length()
+        .then(|| usize::try_from(response.length()).unwrap_or_default());
+    let Some(contents) = response.contents.into_option() else {
+        if let Some(length) = length.filter(|length| *length > from) {
+            anyhow::bail!("rootlist answered no rows at {from} of {length}");
+        }
+        return Ok(None);
+    };
+    let truncated = contents.truncated();
+    if truncated && contents.items.is_empty() {
+        anyhow::bail!("rootlist answered an empty page at {from} marked as cut short");
+    }
+    Ok(Some((contents, truncated)))
 }
 
 const ROOTLIST_PAGE: usize = 500;
@@ -1442,6 +1465,61 @@ mod tests {
             page.meta_items.push(meta);
         }
         page
+    }
+
+    fn rootlist_answer(length: Option<i32>, contents: Option<ListItems>) -> SelectedListContent {
+        let mut response = SelectedListContent::new();
+        if let Some(length) = length {
+            response.set_length(length);
+        }
+        if let Some(contents) = contents {
+            response.contents = protobuf::MessageField::some(contents);
+        }
+        response
+    }
+
+    fn rootlist_contents(rows: usize, truncated: bool) -> ListItems {
+        let mut contents = ListItems::new();
+        contents.set_truncated(truncated);
+        contents.items = (0..rows).map(|_| Item::new()).collect();
+        contents
+    }
+
+    /// An answer that leaves rows out while saying some remain is retried,
+    /// not taken as the whole list; one with no rows left ends the read,
+    /// and so does a present empty page, the empty library's answer.
+    #[test]
+    fn a_rootlist_answer_missing_rows_it_owes_is_an_error() {
+        let page =
+            |length, contents, from| rootlist_answer_page(rootlist_answer(length, contents), from);
+
+        assert!(
+            page(Some(700), None, 500).is_err(),
+            "no page with rows left"
+        );
+        assert!(page(Some(500), None, 500).unwrap().is_none(), "none left");
+        assert!(page(None, None, 0).unwrap().is_none(), "no length at all");
+        assert!(
+            page(Some(700), Some(rootlist_contents(0, true)), 500).is_err(),
+            "an empty page cut short"
+        );
+
+        let (empty, more) = page(Some(0), Some(rootlist_contents(0, false)), 0)
+            .unwrap()
+            .unwrap();
+        assert!(empty.items.is_empty());
+        assert!(!more);
+
+        let (first, more) = page(Some(700), Some(rootlist_contents(500, true)), 0)
+            .unwrap()
+            .unwrap();
+        assert_eq!(first.items.len(), 500);
+        assert!(more);
+        let (last, more) = page(Some(700), Some(rootlist_contents(200, false)), 500)
+            .unwrap()
+            .unwrap();
+        assert_eq!(last.items.len(), 200);
+        assert!(!more);
     }
 
     /// The rootlist's playlists become the library's rows in Spotify's

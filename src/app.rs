@@ -3847,6 +3847,7 @@ impl App {
     fn request_playlists(&mut self) {
         self.library.playlists_next = None;
         self.library.playlists_asked = None;
+        self.library.playlists_reread = None;
         self.library.playlists_generation += 1;
         self.backend.api(ApiRequest::MyPlaylists {
             offset: 0,
@@ -3867,6 +3868,111 @@ impl App {
             Loadable::Loading => self.request_playlists(),
             Loadable::Loaded(_) if self.library.playlists_partial => self.request_playlists(),
             Loadable::Loaded(_) | Loadable::NotLoaded => {}
+        }
+    }
+
+    /// Takes one page of the current load of the playlists. A load from
+    /// the top over a list already on screen, which local playback's
+    /// session starts when it comes up, is a reread: its pages gather
+    /// apart from the list, which it replaces only once its last page has
+    /// arrived, and a complete list never with a personal app's, which
+    /// leaves Spotify's own playlists out. A reread that fails keeps the
+    /// list. Rows on screen do not vanish to come back later.
+    fn take_playlists_page(
+        &mut self,
+        offset: u32,
+        partial: bool,
+        result: Result<crate::api::models::Page<Playlist>, crate::api::ApiError>,
+    ) {
+        self.library.playlists_asked = None;
+        let rereading = if offset == 0 {
+            self.library.playlists.get().is_some()
+        } else {
+            self.library.playlists_reread.is_some()
+        };
+        let mut page = match result {
+            Ok(page) => page,
+            Err(error) if rereading => {
+                self.library.playlists_reread = None;
+                log::warn!("Couldn't read the playlists again: {error}");
+                return;
+            }
+            Err(error) => {
+                if offset == 0 {
+                    self.library.playlists = Loadable::Failed(error.to_string());
+                } else {
+                    self.toast_error(
+                        // Translators: {error} is an error message.
+                        gettext(self.locale, "Couldn't load more playlists: {error}")
+                            .replace("{error}", &error.to_string()),
+                    );
+                }
+                return;
+            }
+        };
+        // The session's list names no owner; the account's own name stands
+        // in for its own playlists.
+        for playlist in &mut page.items {
+            if playlist.owner.display_name.is_none() {
+                playlist.owner.display_name = self.own_name(playlist.owner.id.as_deref());
+            }
+        }
+        let next_offset = page.next_offset();
+        if rereading {
+            if offset == 0 {
+                self.library.playlists_reread = Some(PlaylistsReread {
+                    rows: Vec::new(),
+                    partial,
+                });
+            }
+            let Some(reread) = &mut self.library.playlists_reread else {
+                return;
+            };
+            reread.rows.extend(page.items);
+            if next_offset.is_some() {
+                self.library.playlists_next = next_offset;
+                self.load_more(Page::Home);
+                return;
+            }
+            let Some(reread) = self.library.playlists_reread.take() else {
+                return;
+            };
+            if reread.partial && !self.library.playlists_partial {
+                log::debug!("kept the playlists over a partial reread");
+                return;
+            }
+            self.library.playlists_partial = reread.partial;
+            self.library.playlists = Loadable::Loaded(reread.rows);
+        } else {
+            if offset == 0 {
+                self.library.playlists_partial = partial;
+            }
+            match &mut self.library.playlists {
+                Loadable::Loaded(existing) if offset > 0 => existing.extend(page.items),
+                slot => *slot = Loadable::Loaded(page.items),
+            }
+        }
+        self.library.playlists_next = next_offset;
+        if next_offset.is_some() {
+            self.load_more(Page::Home);
+        } else {
+            // Load folder order after all playlists arrive.
+            self.backend.send(Command::Rootlist);
+        }
+        if let Some(playlists) = self.library.playlists.get() {
+            for listed in playlists {
+                self.saved.insert(listed.uri.clone(), true);
+                // A header read over the streaming session lacks what the
+                // list carries; pages that arrived before the list take it
+                // now.
+                if let Some(playlist) = self
+                    .playlist_pages
+                    .get_mut(&listed.id)
+                    .and_then(|page| page.playlist.get_mut())
+                {
+                    playlist.fill_from(listed);
+                }
+            }
         }
     }
 
@@ -5577,86 +5683,12 @@ impl App {
                 offset, generation, ..
             } if generation != self.library.playlists_generation
                 || (offset > 0 && self.library.playlists_asked != Some(offset)) => {}
-            // A load from the top over a list already on screen, which
-            // local playback's session starts when it comes up, replaces
-            // that list only with a complete one, and a complete one never
-            // with a personal app's, which leaves Spotify's own playlists
-            // out: rows on screen do not vanish to come back later.
-            ApiResponse::MyPlaylists {
-                offset: 0,
-                partial,
-                result,
-                ..
-            } if self.library.playlists.get().is_some()
-                && !matches!(&result, Ok(page) if page.next_offset().is_none()
-                    && (!partial || self.library.playlists_partial)) =>
-            {
-                self.library.playlists_asked = None;
-                match result {
-                    Ok(_) => log::debug!("kept the playlists over an incomplete reread"),
-                    Err(error) => log::warn!("Couldn't read the playlists again: {error}"),
-                }
-            }
             ApiResponse::MyPlaylists {
                 offset,
                 partial,
                 result,
                 ..
-            } => match result {
-                Ok(mut page) => {
-                    self.library.playlists_asked = None;
-                    if offset == 0 {
-                        self.library.playlists_partial = partial;
-                    }
-                    // The session's list names no owner; the account's own
-                    // name stands in for its own playlists.
-                    for playlist in &mut page.items {
-                        if playlist.owner.display_name.is_none() {
-                            playlist.owner.display_name =
-                                self.own_name(playlist.owner.id.as_deref());
-                        }
-                    }
-                    let next_offset = page.next_offset();
-                    match &mut self.library.playlists {
-                        Loadable::Loaded(existing) if offset > 0 => existing.extend(page.items),
-                        slot => *slot = Loadable::Loaded(page.items),
-                    }
-                    self.library.playlists_next = next_offset;
-                    if next_offset.is_some() {
-                        self.load_more(Page::Home);
-                    } else {
-                        // Load folder order after all playlists arrive.
-                        self.backend.send(Command::Rootlist);
-                    }
-                    if let Some(playlists) = self.library.playlists.get() {
-                        for listed in playlists {
-                            self.saved.insert(listed.uri.clone(), true);
-                            // A header read over the streaming session
-                            // lacks what the list carries; pages that
-                            // arrived before the list take it now.
-                            if let Some(playlist) = self
-                                .playlist_pages
-                                .get_mut(&listed.id)
-                                .and_then(|page| page.playlist.get_mut())
-                            {
-                                playlist.fill_from(listed);
-                            }
-                        }
-                    }
-                }
-                Err(error) => {
-                    self.library.playlists_asked = None;
-                    if offset == 0 {
-                        self.library.playlists = Loadable::Failed(error.to_string());
-                    } else {
-                        self.toast_error(
-                            // Translators: {error} is an error message.
-                            gettext(self.locale, "Couldn't load more playlists: {error}")
-                                .replace("{error}", &error.to_string()),
-                        );
-                    }
-                }
-            },
+            } => self.take_playlists_page(offset, partial, result),
             ApiResponse::Playlist {
                 id,
                 generation,
@@ -12184,7 +12216,14 @@ mod tests {
             result: Ok(playlist_page(&["a", "daily"], 0, 3)),
         });
         assert_eq!(listed_playlists(&app), complete, "a first page");
-        assert_eq!(app.library.playlists_next, None, "and asks for nothing");
+        app.handle_api(ApiResponse::MyPlaylists {
+            offset: 2,
+            generation: app.library.playlists_generation,
+            partial: false,
+            result: Err(crate::api::ApiError::RateLimited),
+        });
+        assert_eq!(listed_playlists(&app), complete, "a later page's failure");
+        assert!(app.library.playlists_reread.is_none());
 
         app.request_playlists();
         app.handle_api(ApiResponse::MyPlaylists {
@@ -12200,6 +12239,52 @@ mod tests {
         app.request_playlists();
         app.handle_api(whole_library(&app, &["daily", "b"], false));
         assert_eq!(listed_playlists(&app), playlist_ids(&["daily", "b"]));
+    }
+
+    /// A reread whose answer comes in pages keeps reading: the list on
+    /// screen stays as it was while the pages gather, and the whole reread
+    /// replaces it once its last page arrives.
+    #[test]
+    fn a_paged_reread_replaces_the_list_once_complete() {
+        let mut app = headless_app();
+        app.backend.set_offline(true);
+
+        app.load_playlists();
+        app.handle_api(whole_library(&app, &["a", "b"], true));
+        let shown = playlist_ids(&["a", "b"]);
+
+        app.request_playlists();
+        let generation = app.library.playlists_generation;
+        app.handle_api(ApiResponse::MyPlaylists {
+            offset: 0,
+            generation,
+            partial: false,
+            result: Ok(playlist_page(&["a", "daily"], 0, 5)),
+        });
+        assert_eq!(listed_playlists(&app), shown, "the first page");
+        assert_eq!(app.library.playlists_asked, Some(2), "asks for the next");
+        app.handle_api(ApiResponse::MyPlaylists {
+            offset: 2,
+            generation,
+            partial: false,
+            result: Ok(playlist_page(&["b", "c"], 2, 5)),
+        });
+        assert_eq!(listed_playlists(&app), shown, "a middle page");
+        assert_eq!(app.library.playlists_asked, Some(4));
+        app.handle_api(ApiResponse::MyPlaylists {
+            offset: 4,
+            generation,
+            partial: false,
+            result: Ok(playlist_page(&["mix"], 4, 5)),
+        });
+        assert_eq!(
+            listed_playlists(&app),
+            playlist_ids(&["a", "daily", "b", "c", "mix"])
+        );
+        assert!(!app.library.playlists_partial);
+        assert!(app.library.playlists_reread.is_none());
+        assert_eq!(app.library.playlists_asked, None);
+        assert_eq!(app.library.playlists_next, None);
     }
 
     /// When local playback's session comes up, a library still waiting on

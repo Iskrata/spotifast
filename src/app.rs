@@ -511,7 +511,7 @@ pub struct App {
     pending_local_volume: Option<(u16, Instant)>,
     /// A local seek position set here that the engine has not confirmed yet.
     pending_local_position: Option<(u32, Instant)>,
-    optimistic_playing: Option<(bool, Instant)>,
+    pub(crate) optimistic_playing: Option<(bool, Instant)>,
     /// Track shown immediately after a play or skip, until playback reports.
     intent_track: Option<TrackIntent>,
     /// Requested shuffle mode, applied to every context until changed.
@@ -1694,7 +1694,10 @@ impl App {
     }
 
     /// The quarter colours the moving background shows: the hovered card's
-    /// cover, else the page's own cover, else the playing song's. Art whose
+    /// cover, else the page's own cover, else the playing song's. While a
+    /// song plays the hovered card is ignored, so the background keeps the
+    /// music's colours instead of flashing with every card the pointer
+    /// crosses; paused or idle, hovering previews the card. Art whose
     /// colours are still being read gives way to the next, so the
     /// background never waits on a decode.
     pub fn art_background_palette(
@@ -1705,6 +1708,7 @@ impl App {
         if !self.settings.art_background {
             return None;
         }
+        let hovered_art = hovered_art.filter(|_| !self.believed_playing());
         hovered_art
             .and_then(|url| self.art_palette(url))
             .or_else(|| page_art.and_then(|url| self.art_palette(url)))

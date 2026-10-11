@@ -3327,7 +3327,7 @@ mod tests {
     }
 
     #[test]
-    fn moving_art_background_prefers_the_hovered_card_then_the_page() {
+    fn moving_art_background_prefers_the_hovered_card_while_paused_then_the_page() {
         let (_ctx, mut app) = accessible_app("art-background-sources");
         let now = app.now_playing().unwrap();
         let playing_url = now.art_small.or(now.art_url).unwrap();
@@ -3337,6 +3337,8 @@ mod tests {
         app.art_palettes.insert(playing_url, playing);
         app.art_palettes.insert("page".into(), page);
         app.art_palettes.insert("card".into(), card);
+        // Paused, so hovering previews the card.
+        app.optimistic_playing = Some((false, Instant::now()));
         assert_eq!(app.art_background_palette(None, None), Some(playing));
         assert_eq!(app.art_background_palette(Some("page"), None), Some(page));
         assert_eq!(
@@ -3351,6 +3353,12 @@ mod tests {
         assert_eq!(
             app.art_background_palette(Some("unread page"), None),
             Some(playing)
+        );
+        // While a song plays, hovering a card leaves the background alone.
+        app.optimistic_playing = Some((true, Instant::now()));
+        assert_eq!(
+            app.art_background_palette(Some("page"), Some("card")),
+            Some(page)
         );
         app.backend.shutdown();
     }

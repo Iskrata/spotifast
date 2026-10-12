@@ -209,7 +209,9 @@ pub struct AppOptions {
     /// light or dark preference (Linux) and its preferences to reduce
     /// motion and transparency (macOS). Demo and tests leave the desktop's preferences alone.
     pub media_controls: bool,
-    /// Register the system-tray item (Linux).
+    /// Let a closed window leave the app running: in the system tray on
+    /// Linux and Windows, and in the Dock on macOS, which has no menu-bar
+    /// item.
     pub tray: bool,
 }
 
@@ -263,7 +265,11 @@ pub struct App {
     /// from. Finding the file touches the disk and the controls are synced
     /// every frame, so the answer is kept until the artwork changes.
     media_art: Option<(String, PathBuf)>,
+    /// The tray item, on Linux and Windows. macOS keeps a closed app in the
+    /// Dock instead.
     tray: Option<fastframe_tray::Tray>,
+    /// Closing the window may leave the app running ([`AppOptions::tray`]).
+    resident: bool,
     /// Whether the tray menu last offered Pause rather than Play.
     tray_playing: bool,
     pub window_hidden: bool,
@@ -760,8 +766,7 @@ impl App {
             media_controls
         };
         let wake = waker.clone();
-        let tray = options
-            .tray
+        let tray = (options.tray && !cfg!(target_os = "macos"))
             .then(|| fastframe_tray::Tray::spawn(tray_config(), move || wake.wake()))
             .flatten();
 
@@ -793,6 +798,7 @@ impl App {
             system_reduce_transparency,
             media_art: None,
             tray,
+            resident: options.tray,
             tray_playing: false,
             window_hidden: false,
             hide_intent: false,
@@ -1031,6 +1037,10 @@ impl App {
         if let Some(tray) = &mut self.tray {
             tray.attach();
         }
+        // A window made while another app is in front, for a second launch
+        // or a link, comes forward with it.
+        #[cfg(target_os = "macos")]
+        crate::mac_menu::activate();
         // eframe restores the full screen fullscreen lyrics left behind when
         // the app closed in them, without the lyrics. The mode they came
         // from is known, or on Windows, where only fullscreen lyrics make
@@ -1111,13 +1121,22 @@ impl App {
         self.wants_show = false;
     }
 
-    /// Whether closing the window keeps the app in the tray rather than
-    /// quitting.
+    /// Whether closing the window keeps the app in the tray (the Dock on
+    /// macOS) rather than quitting.
     pub fn hides_to_tray(&self) -> bool {
-        self.tray
-            .as_ref()
-            .is_some_and(fastframe_tray::Tray::is_shown)
-            && self.settings.keep_playing_in_background
+        self.can_hide() && self.settings.keep_playing_in_background
+    }
+
+    /// Whether something can bring a closed window back: the Dock on macOS,
+    /// or the tray while a panel shows it.
+    fn can_hide(&self) -> bool {
+        if cfg!(target_os = "macos") {
+            self.resident
+        } else {
+            self.tray
+                .as_ref()
+                .is_some_and(fastframe_tray::Tray::is_shown)
+        }
     }
 
     // ---- derived state -----------------------------------------------------
@@ -3503,7 +3522,8 @@ impl App {
         }
     }
 
-    /// The Dock menu's playback items, read with or without a window.
+    /// The Dock menu's playback items and Dock clicks, read with or without
+    /// a window.
     #[cfg(target_os = "macos")]
     fn handle_dock_menu(&mut self) {
         use crate::mac_menu::MenuCommand;
@@ -3512,6 +3532,7 @@ impl App {
                 MenuCommand::PlayPause => self.actions.push(Action::TogglePlay),
                 MenuCommand::Next => self.actions.push(Action::Next),
                 MenuCommand::Previous => self.actions.push(Action::Previous),
+                MenuCommand::ShowWindow => self.actions.push(Action::ShowWindow),
                 _ => {}
             }
         }
@@ -9640,11 +9661,7 @@ impl App {
                 }
             }
             Action::HideWindow => {
-                if self
-                    .tray
-                    .as_ref()
-                    .is_some_and(fastframe_tray::Tray::is_shown)
-                {
+                if self.can_hide() {
                     self.hide_intent = true;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 }
@@ -18278,6 +18295,23 @@ mod tests {
         app
     }
 
+    /// macOS has no menu-bar item: the Dock brings a closed window back, so
+    /// closing it keeps the music playing when the setting asks for that.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_closes_to_the_dock_without_a_menu_bar_item() {
+        let mut app = headless_app();
+        app.resident = true;
+        app.settings.keep_playing_in_background = true;
+        assert!(app.tray.is_none());
+        assert!(app.hides_to_tray());
+        app.settings.keep_playing_in_background = false;
+        assert!(!app.hides_to_tray());
+        app.resident = false;
+        app.settings.keep_playing_in_background = true;
+        assert!(!app.hides_to_tray(), "a capture run has nowhere to hide");
+    }
+
     /// Dock menu picks wait in their own queue, which the application reads
     /// with or without a window, and never in the menu bar's, which only a
     /// window reads. A pick in the tray would otherwise wait for a window.
@@ -18290,12 +18324,18 @@ mod tests {
         mac_menu::push_dock_command(MenuCommand::PlayPause);
         mac_menu::push_dock_command(MenuCommand::Next);
         mac_menu::push_dock_command(MenuCommand::Previous);
+        mac_menu::push_dock_command(MenuCommand::ShowWindow);
         assert!(mac_menu::drain_commands().is_empty());
         app.actions.clear();
         app.handle_dock_menu();
         assert!(matches!(
             app.actions.as_slice(),
-            [Action::TogglePlay, Action::Next, Action::Previous]
+            [
+                Action::TogglePlay,
+                Action::Next,
+                Action::Previous,
+                Action::ShowWindow
+            ]
         ));
         assert!(mac_menu::drain_dock_commands().is_empty());
     }

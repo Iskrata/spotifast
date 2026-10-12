@@ -390,9 +390,9 @@ pub(crate) fn run() -> eframe::Result<()> {
             }
         });
     // The application (audio engine, Web API, MPRIS, tray) outlives any
-    // window. Closing to the tray destroys the window and the shell below
-    // creates a new one when the tray or MPRIS asks for it. Plain window
-    // lifecycle, portable across desktops.
+    // window. Closing to the tray (the Dock on macOS) destroys the window and
+    // the shell below creates a new one when the tray, the Dock or MPRIS asks
+    // for it. Plain window lifecycle, portable across desktops.
     let waker = backend::Waker::default();
 
     // A second launch surfaces the instance already running instead of
@@ -1206,6 +1206,7 @@ impl eframe::App for Shell {
                     });
                     continue;
                 }
+                MenuCommand::ShowWindow => Action::ShowWindow,
             };
             app.actions.push(action);
         }

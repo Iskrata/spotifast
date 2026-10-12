@@ -482,7 +482,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 ),
                 &gettext(
                     locale,
-                    "Spotifast hides to the system tray. Quit from the tray menu or with Cmd+Q.",
+                    "Spotifast stays in the Dock. Click its icon to bring the window back, or quit with Cmd+Q.",
                 ),
             )
             .to_owned(),

@@ -73,16 +73,16 @@ You can rename it in Settings.
 
 - **Closing the window does not stop the music.** Spotifast keeps playing
   from the system tray; reopen it from the tray icon and quit from the tray
-  menu or Ctrl+Q. On macOS you can also reopen it from the Dock. Settings can
-  turn this off, and on macOS can keep Spotifast out of the Dock, in the menu
-  bar only. On Linux, including Flatpak, a desktop with a working system
-  tray is required for this behavior.
+  menu or Ctrl+Q. On macOS this fork has no menu-bar icon: Spotifast stays in
+  the Dock, a click on its icon brings the window back, and Cmd+Q quits.
+  Settings can turn this off. On Linux, including Flatpak, a desktop with a
+  working system tray is required for this behavior.
 - **The tray icon can match your panel.** On Linux and Windows, **Settings >
   Playback on this computer > Tray icon** shows it in colour, white or black.
-  The macOS menu bar already draws it black or white to match itself.
+  macOS has no tray icon in this fork.
 - **Spotifast can start with your computer.** Under **Settings > Playback on
   this computer**, **Start with your computer** opens it when you log in,
-  **With the window** or quietly **In the tray** (**In the menu bar** on
+  **With the window** or quietly **In the tray** (**Hidden in the Dock** on
   macOS).
 - **Play and Pause fade.** With the default audio settings, music played on
   this computer fades in or out to avoid a hard cut.

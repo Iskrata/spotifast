@@ -494,7 +494,7 @@ bullet; each artist name remains a separate link.
 **Settings > Playback on this computer > Start with your computer** opens
 Spotifast when you log in. **With the window** opens it as you would;
 **In the tray** starts it without a window, ready for media keys and the tray
-icon; on macOS it reads **In the menu bar**. **Off** leaves your login alone.
+icon; on macOS it reads **Hidden in the Dock**. **Off** leaves your login alone.
 
 The setting is your system's own list of what starts at login, read back each
 time Settings opens, so turning Spotifast off there (System Settings on macOS,
@@ -549,13 +549,13 @@ on no screen is not used. Positions on connected secondary displays still
 restore. Reinstalling preserves settings; it is not needed to recover a
 position left on an unplugged display.
 
-## macOS menu bar and Dock menu
+## macOS Dock
 
-Click Spotifast's menu-bar icon to open its menu. From there you can show or
-hide the window, control playback, or quit Spotifast. The menu opens from
-either a primary or secondary click, as other macOS menu-bar items do.
-It stays available with the main window open, with the Winamp mini player,
-and after closing the window to the menu bar.
+This fork makes no menu-bar icon on macOS. With **Keep music playing when the
+window closes** on, closing the window keeps the music going and leaves
+Spotifast in the Dock; click its Dock icon to bring the window back, and quit
+with Cmd+Q or the Dock menu's **Quit**. Opening Spotifast again from Finder or
+Launchpad also brings the window back.
 
 Spotifast also shows its Dock icon when run directly through Cargo, without
 an installed app bundle.
@@ -563,23 +563,7 @@ an installed app bundle.
 Right-click or Control-click Spotifast's Dock icon for **Play** (or **Pause**
 while music plays), **Next**, and **Previous**, above the standard Dock items.
 They control the same playing device as the player bar and keep working while
-the window is closed to the menu bar.
-
-### Menu bar only
-
-Turn off **Show in Dock** under **Settings > Playback on this computer** to
-run Spotifast from the menu bar alone. The Dock icon goes at once, without a
-restart, and the window stays open in front. Spotifast then also leaves the
-Cmd+Tab switcher and shows no menu bar of its own while you use it, as other
-menu-bar apps do. Its keyboard shortcuts, including Cmd+Q, Cmd+comma and
-copy and paste, keep working in the window.
-
-The menu-bar icon stays: it is how you show the window again after closing
-it, and how you quit while the window is closed. Opening Spotifast again from
-Finder or Launchpad also brings the window back. Turn the setting on to put
-Spotifast back in the Dock. The choice survives restarts, and Spotifast
-starts without the Dock icon; the Dock may show it for a moment as the app
-launches. This option is only on macOS.
+the window is closed.
 
 ## Keeping the mini player above other windows
 

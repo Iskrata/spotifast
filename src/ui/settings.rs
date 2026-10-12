@@ -673,7 +673,7 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 // macOS has a menu bar where the others have a tray (#1006).
                 &gettext(
                     locale,
-                    "Spotifast hides to the menu bar. Quit from its menu-bar icon or with Cmd+Q.",
+                    "Spotifast stays in the Dock. Click its icon to bring the window back, or quit with Cmd+Q.",
                 ),
             )
             .to_owned(),
@@ -719,7 +719,9 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
                 "When off, Spotifast lives in the menu bar and leaves Cmd+Tab. Open it from its menu-bar icon.",
             ),
         )
-        .when(cfg!(target_os = "macos")),
+        // Only a menu-bar item could bring a window back without the Dock,
+        // and this fork makes none.
+        .when(cfg!(target_os = "macos") && app.has_tray()),
         // The macOS menu bar already draws its icon black or white to match.
         RowText::new(
             gettext(locale, "Tray icon"),
@@ -2261,7 +2263,7 @@ fn start_with_computer_choices(
         (
             Some(Start::Hidden),
             if cfg!(target_os = "macos") {
-                gettext(locale, "In the menu bar")
+                gettext(locale, "Hidden in the Dock")
             } else {
                 gettext(locale, "In the tray")
             },
@@ -2288,7 +2290,7 @@ fn start_with_computer_detail(
         if cfg!(target_os = "macos") {
             gettext(
                 locale,
-                "Starting in the menu bar needs Keep music playing when the window closes. Until then, the window opens.",
+                "Starting hidden in the Dock needs Keep music playing when the window closes. Until then, the window opens.",
             )
         } else {
             gettext(
@@ -2299,7 +2301,7 @@ fn start_with_computer_detail(
     } else if cfg!(target_os = "macos") {
         gettext(
             locale,
-            "Open Spotifast when you log in, with its window or in the menu bar.",
+            "Open Spotifast when you log in, with its window or hidden in the Dock.",
         )
     } else {
         gettext(
@@ -2570,7 +2572,7 @@ mod tests {
     /// macOS has a menu bar where Linux and Windows have a tray, and the
     /// start-up choices say so (#1006).
     #[test]
-    fn starting_hidden_names_the_menu_bar_on_macos_and_the_tray_elsewhere() {
+    fn starting_hidden_names_the_dock_on_macos_and_the_tray_elsewhere() {
         use fastframe_autostart::{Start, State};
         let locale = crate::i18n::Locale::English;
         let [_, _, (_, hidden)] = super::start_with_computer_choices(locale);
@@ -2587,15 +2589,9 @@ mod tests {
         ];
         for text in texts {
             if cfg!(target_os = "macos") {
-                assert!(
-                    text.contains("menu bar") && !text.contains("tray"),
-                    "{text}"
-                );
+                assert!(text.contains("Dock") && !text.contains("tray"), "{text}");
             } else {
-                assert!(
-                    text.contains("tray") && !text.contains("menu bar"),
-                    "{text}"
-                );
+                assert!(text.contains("tray") && !text.contains("Dock"), "{text}");
             }
         }
     }

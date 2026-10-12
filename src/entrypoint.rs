@@ -399,9 +399,9 @@ pub(crate) fn run() -> eframe::Result<()> {
             }
         });
     // The application (audio engine, Web API, MPRIS, tray) outlives any
-    // window. Closing to the tray destroys the window and the shell below
-    // creates a new one when the tray or MPRIS asks for it. Plain window
-    // lifecycle, portable across desktops.
+    // window. Closing to the tray (the Dock on macOS) destroys the window and
+    // the shell below creates a new one when the tray, the Dock or MPRIS asks
+    // for it. Plain window lifecycle, portable across desktops.
     let waker = backend::Waker::default();
 
     // A second launch surfaces the instance already running instead of
@@ -519,7 +519,8 @@ pub(crate) fn run() -> eframe::Result<()> {
     // that Settings keeps out of it starts in the menu bar only (#837).
     // Each window applies the setting again.
     #[cfg(target_os = "macos")]
-    if !app::shows_in_dock(settings.mac_show_in_dock, options.tray) {
+    // This fork makes no menu-bar item, so the Dock always shows it.
+    if !app::shows_in_dock(settings.mac_show_in_dock, false) {
         fastframe_dock::set_dock_icon_visible(false);
     }
     #[allow(unused_mut)]
@@ -1287,6 +1288,7 @@ impl Shell {
                     });
                     continue;
                 }
+                MenuCommand::ShowWindow => Action::ShowWindow,
             };
             app.actions.push(action);
         }

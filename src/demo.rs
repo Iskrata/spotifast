@@ -6900,7 +6900,7 @@ mod tests {
         sidebar_text(&painted, "Off");
         sidebar_text(&painted, "With the window");
         let (in_tray, starting_in_tray) = if cfg!(target_os = "macos") {
-            ("In the menu bar", "Starting in the menu bar")
+            ("Hidden in the Dock", "Starting hidden in the Dock")
         } else {
             ("In the tray", "Starting in the tray")
         };

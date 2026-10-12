@@ -1,5 +1,6 @@
 //! Native macOS application menu bar (File, Edit, View, Playback, Window, Help)
-//! and the Dock menu's playback items.
+//! the Dock menu's playback items, and the Dock click that brings the window
+//! back.
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MenuCommand {
@@ -28,6 +29,9 @@ pub enum MenuCommand {
     Copy,
     Paste,
     SelectAll,
+    /// A Dock icon click: bring the window back, or make one when the app
+    /// is running without a window.
+    ShowWindow,
 }
 
 /// The Dock menu's first item, which names what a click will do.
@@ -60,11 +64,12 @@ pub use mac_impl::*;
 #[cfg(target_os = "macos")]
 mod mac_impl {
     use objc2::rc::Retained;
-    use objc2::runtime::{AnyClass, AnyObject, MethodImplementation, Sel};
-    use objc2::{MainThreadOnly, define_class, sel};
+    use objc2::runtime::{AnyClass, AnyObject, Bool, MethodImplementation, Sel};
+    use objc2::{Encode, MainThreadOnly, define_class, sel};
     use objc2_app_kit::{NSApplication, NSEventModifierFlags, NSMenu, NSMenuItem};
     use objc2_foundation::{MainThreadMarker, NSObject, NSString, ns_string};
     use std::cell::OnceCell;
+    use std::ffi::CString;
     use std::sync::Mutex;
     use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -372,6 +377,69 @@ mod mac_impl {
         if !installed.as_bool() {
             log::warn!("the macOS Dock menu could not be installed");
         }
+    }
+
+    /// A Dock icon click. AppKit counts a minimized window as visible, which
+    /// is the case that most needs help, so the flag is not consulted:
+    /// asking for a window that is already up costs a focus and nothing else.
+    extern "C-unwind" fn application_should_handle_reopen(
+        _delegate: *mut AnyObject,
+        _selector: Sel,
+        _application: *mut NSApplication,
+        _has_visible_windows: Bool,
+    ) -> Bool {
+        push_dock_command(MenuCommand::ShowWindow);
+        Bool::YES
+    }
+
+    /// Answers `applicationShouldHandleReopen:hasVisibleWindows:` on winit's
+    /// application delegate, so a Dock click brings back a window that was
+    /// closed while the music kept playing.
+    fn install_reopen_handler(app: &NSApplication) {
+        let Some(delegate) = app.delegate() else {
+            log::warn!("the macOS application delegate is unavailable");
+            return;
+        };
+        let delegate: &AnyObject = AsRef::<AnyObject>::as_ref(&*delegate);
+        let class = delegate.class();
+        let selector = sel!(applicationShouldHandleReopen:hasVisibleWindows:);
+        if class.responds_to(selector) {
+            return;
+        }
+        let implementation: extern "C-unwind" fn(
+            *mut AnyObject,
+            Sel,
+            *mut NSApplication,
+            Bool,
+        ) -> Bool = application_should_handle_reopen;
+        let Ok(types) = CString::new(format!("{}@:@{}", Bool::ENCODING, Bool::ENCODING)) else {
+            return;
+        };
+        // Safety: the class is winit's delegate, which lives for the whole
+        // process, the encoding matches the function, and the selector is not
+        // yet on the class, so nothing is replaced.
+        let installed = unsafe {
+            objc2::ffi::class_addMethod(
+                class as *const AnyClass as *mut AnyClass,
+                selector,
+                implementation.__imp(),
+                types.as_ptr(),
+            )
+        };
+        if !installed.as_bool() {
+            log::warn!("the macOS Dock reopen handler could not be installed");
+        }
+    }
+
+    /// Brings Spotifast forward, for a window made while another app is in
+    /// front (a second launch, or a link).
+    pub fn activate() {
+        let Some(mtm) = MainThreadMarker::new() else {
+            return;
+        };
+        let app = NSApplication::sharedApplication(mtm);
+        #[allow(deprecated, reason = "its replacement needs macOS 14")]
+        app.activateIgnoringOtherApps(true);
     }
 
     fn create_item(
@@ -719,6 +787,7 @@ mod mac_impl {
             let _ = slot.set(handler);
         });
         install_dock_menu(&app);
+        install_reopen_handler(&app);
     }
 }
 

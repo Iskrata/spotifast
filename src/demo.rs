@@ -3398,6 +3398,9 @@ mod tests {
         let now = app.now_playing().unwrap();
         let playing_url = now.art_small.or(now.art_url).unwrap();
         app.art_palettes.insert(playing_url, [[10, 10, 240]; 4]);
+        // Paused, so hovering previews the card; while a song plays the
+        // background keeps the music's colours.
+        app.optimistic_playing = Some((false, Instant::now()));
         let tree = accessible_frame(&ctx, &mut app, vec![]);
         let card = tree
             .nodes

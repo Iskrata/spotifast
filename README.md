@@ -19,6 +19,63 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-1ed760" alt="MIT license"></a>
 </p>
 
+## About this fork
+
+This is a personal fork of [crmne/spotifast](https://github.com/crmne/spotifast).
+It keeps everything upstream does and changes how the app looks and moves.
+The rest of this README is upstream's and describes upstream's builds.
+
+![Home with the glass panels over the album art colours and the Now playing panel](docs/fork/home.jpg)
+
+**What it adds**
+
+- **Album art background.** The window is filled with soft orbs of colour
+  taken from the cover art. The colours come from the page you are on, the
+  card under the pointer, or the playing song. While music plays on this
+  computer, the orbs grow, brighten and pulse with its loudness and beats.
+  When paused they stand still and the app draws no frames.
+- **Glass panels.** The sidebar, the side panels, the player bar, menus and
+  dialogs float over the background as rounded, tinted glass. A test keeps
+  the text on them at WCAG 4.5:1 contrast over any colour the orbs can take.
+- **Motion.** Side panels and the sidebar slide, pages fade in, menus and
+  dialogs fade, the player bar cross-fades between songs, and hover feedback
+  eases in.
+- **Accessibility switches.** Settings > Appearance has *Reduce motion* and
+  *Reduce transparency*. Both follow the macOS accessibility settings until
+  you change them.
+- **Now playing and Friend Activity.** A right panel shows the playing song,
+  the current lyric lines, an About the artist card, what is next in the
+  queue, and what the people you follow are listening to. You can unfollow
+  someone from there.
+- **A tidier interface.** Sizes, corners and timings are named design
+  tokens. Icon buttons, Play buttons and text buttons each come in a few
+  fixed sizes. Lyrics, Queue, Friend Activity and Devices are toggled from
+  one group in the player bar. Settings, the Winamp mini player and MilkDrop
+  moved into the account menu.
+- **Smaller changes.** New profiles start in the dark theme. On macOS a
+  closed window stays in the Dock instead of the menu bar. The playlist
+  library and Made for you load over the playback session when the shared
+  Web API app is rate limited. The updater reads this fork's releases.
+
+| | |
+|---|---|
+| ![Album page with the Queue panel](docs/fork/album-queue.jpg) | ![Playlist page with the Lyrics panel](docs/fork/playlist-lyrics.jpg) |
+| Album page with the Queue | Playlist page with Lyrics |
+| ![Artist page in the light theme](docs/fork/artist-light.jpg) | ![Home with Reduce transparency on](docs/fork/reduce-transparency.jpg) |
+| Light theme | Reduce transparency: solid panels, same background |
+
+![Settings > Appearance with the album art background, Reduce motion and Reduce transparency switches](docs/fork/settings-appearance.jpg)
+
+**Getting it.** This fork publishes no builds yet, so build it from source as
+upstream describes below. On a Mac with a Developer ID certificate,
+`packaging/macos/install-local.sh` builds, signs and installs it to
+`/Applications`.
+
+The screenshots come from the demo data, rendered without a window by
+`cargo run --example render --features render` (see `examples/render.rs`).
+
+---
+
 Spotifast is a Spotify client written in Rust with
 [egui](https://www.egui.rs) and [fastframe](https://fastframe.dev), the
 framework behind a family of native desktop apps. It plays music through

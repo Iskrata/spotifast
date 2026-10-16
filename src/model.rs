@@ -1169,6 +1169,8 @@ pub enum Action {
         index: u32,
     },
     ShufflePlay(String),
+    /// Play the live radio station, or pause it while it plays.
+    ToggleLiveRadio,
     TogglePlay,
     Next,
     Previous,

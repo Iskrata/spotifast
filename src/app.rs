@@ -86,6 +86,8 @@ const ASSUMED_CONTEXT_HOLD: Duration = Duration::from_secs(8);
 /// has not caught up yet. Spotify can take a moment to report a command it
 /// has already carried out.
 const PLAYBACK_HOLD: Duration = Duration::from_secs(6);
+/// How long the live radio waits for its stream to send anything.
+const LIVE_RADIO_READ_TIMEOUT: Duration = Duration::from_secs(15);
 /// Whether Friend Activity is open at start. A saved open panel always is;
 /// a session that never closed it is too when `by_default`. A queue panel
 /// that was open wins, as the toggles keep one side panel at a time.
@@ -209,6 +211,8 @@ pub struct NowPlaying {
     /// The remembered song from the last session, shown paused before a
     /// first press. Nothing is playing yet.
     pub resuming: bool,
+    /// A live radio stream: no song length, seeking, skipping or saving.
+    pub live: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -663,6 +667,8 @@ pub struct App {
     last_eviction: Instant,
     /// Playback snapshot for the current frame, built once per redraw.
     frame_now: Option<NowPlaying>,
+    /// The live radio station, the playback surface while it is on.
+    pub(crate) live_radio: crate::live_radio::LiveRadio,
     pub sign_in_url: Option<String>,
     /// The verified personal Web API application, when acceleration is ready.
     pub web_app: Option<String>,
@@ -1010,6 +1016,17 @@ impl App {
             std::sync::Arc::clone(&tap),
             std::sync::Arc::clone(&eq),
         );
+        let live_radio = crate::live_radio::LiveRadio::new(
+            &crate::live_radio::RADIO_NOVA,
+            crate::live_radio::OutputConfig {
+                device: engine_config.audio_device.clone(),
+                buffer_ms: engine_config.buffer_ms,
+                tap: std::sync::Arc::clone(&tap),
+                eq: std::sync::Arc::clone(&eq),
+            },
+            settings.volume,
+            waker.clone(),
+        );
         let backend = Backend::spawn(
             dirs.clone(),
             engine_config,
@@ -1272,6 +1289,7 @@ impl App {
             milkdrop_host: None,
             last_eviction: Instant::now(),
             frame_now: None,
+            live_radio,
             sign_in_url: None,
             web_app: None,
             shared_grant: false,
@@ -1970,16 +1988,73 @@ impl App {
         if let Some(now) = &self.frame_now {
             return Some(now.clone());
         }
-        self.requested_track_preview()
+        self.live_radio_now()
+            .or_else(|| self.requested_track_preview())
             .or_else(|| self.now_playing_live())
             .or_else(|| self.resume_preview())
     }
 
     fn refresh_frame_now(&mut self) {
         self.frame_now = self
-            .requested_track_preview()
+            .live_radio_now()
+            .or_else(|| self.requested_track_preview())
             .or_else(|| self.now_playing_live())
             .or_else(|| self.resume_preview());
+    }
+
+    /// The live radio while it is the playback surface.
+    fn live_radio_now(&self) -> Option<NowPlaying> {
+        let state = self.live_radio.state();
+        if !state.on {
+            return None;
+        }
+        let station = self.live_radio.station();
+        let (title, subtitle) = state.title_and_byline(station);
+        let art = state
+            .image
+            .clone()
+            .unwrap_or_else(|| station.logo.to_string());
+        Some(NowPlaying {
+            local: true,
+            device_name: None,
+            device_kind: None,
+            uri: format!("spotifast:live:{}", station.name),
+            id: None,
+            title,
+            subtitle,
+            artists: Vec::new(),
+            album_name: String::new(),
+            album_id: None,
+            show_id: None,
+            art_url: Some(art.clone()),
+            art_small: Some(art),
+            duration_ms: 0,
+            position_ms: 0,
+            playing: state.playing,
+            loading: state.loading,
+            shuffle: false,
+            repeat: RepeatMode::Off,
+            volume_percent: volume_to_percent(self.live_radio.volume()),
+            can_control: true,
+            can_set_volume: true,
+            is_episode: false,
+            resuming: false,
+            live: true,
+        })
+    }
+
+    /// Plays the live radio, pausing whatever Spotify is playing first.
+    fn play_live_radio(&mut self) {
+        if self.now_playing_live().is_some_and(|now| now.playing) {
+            self.toggle_play();
+        }
+        match crate::http::build_blocking(&self.applied_proxy, LIVE_RADIO_READ_TIMEOUT) {
+            Ok(http) => {
+                self.live_radio.set_volume(self.settings.volume);
+                self.live_radio.play(http);
+            }
+            Err(error) => self.toast_error(error),
+        }
     }
 
     /// Keep the player bar on the same requested song as the playlist marker
@@ -2077,6 +2152,7 @@ impl App {
                 can_set_volume: true,
                 is_episode: track.is_episode,
                 resuming: false,
+                live: false,
             });
         }
         let remote = self.remote_fresh()?;
@@ -2174,6 +2250,7 @@ impl App {
             }),
             is_episode,
             resuming: false,
+            live: false,
         })
     }
 
@@ -2214,6 +2291,7 @@ impl App {
             can_set_volume: true,
             is_episode: false,
             resuming: true,
+            live: false,
         })
     }
 
@@ -3265,6 +3343,11 @@ impl App {
             self.shuffle_wanted = state.shuffle;
         }
         if state.playback != self.local.playback {
+            // Spotify started playing here, from another device or a key:
+            // the radio gives way rather than play over it.
+            if state.playback == Playback::Playing && self.live_radio.is_on() {
+                self.live_radio.leave();
+            }
             self.optimistic_playing = None;
             if matches!(state.playback, Playback::Playing | Playback::Loading) {
                 self.clear_play_pending();
@@ -9864,6 +9947,17 @@ impl App {
 
     fn set_volume(&mut self, percent: u8, settle: bool) {
         let percent = percent.min(100);
+        if self.live_radio.is_on() {
+            // The radio plays here, so the volume is this computer's: the
+            // radio's now and Spotify's when it plays here again.
+            let volume = percent_to_volume(percent);
+            self.live_radio.set_volume(volume);
+            if self.settings.volume != volume {
+                self.settings.volume = volume;
+                self.settings_dirty = true;
+            }
+            return;
+        }
         match self.target() {
             Target::Local => {
                 let volume = percent_to_volume(percent);
@@ -11038,6 +11132,42 @@ impl App {
         }
     }
 
+    /// While the live radio is on, answers the playback actions it owns and
+    /// returns whether `action` still goes on to Spotify. Playing anything
+    /// from Spotify leaves the radio; skipping, seeking, shuffle and repeat
+    /// have nothing to act on in a live stream.
+    fn live_radio_takes(&mut self, action: &Action) -> bool {
+        match action {
+            Action::TogglePlay => {
+                if self.live_radio.state().playing {
+                    self.live_radio.pause();
+                } else {
+                    self.play_live_radio();
+                }
+                false
+            }
+            Action::Next
+            | Action::Previous
+            | Action::Seek(_)
+            | Action::SeekBy(_)
+            | Action::ToggleShuffle
+            | Action::SetShuffle(_)
+            | Action::CycleRepeat
+            | Action::SetRepeat(_) => false,
+            Action::PlayContext { .. }
+            | Action::PlayEpisode { .. }
+            | Action::PlayUris { .. }
+            | Action::PlayFromRow { .. }
+            | Action::ShufflePlay(_)
+            | Action::Transfer(_)
+            | Action::ActivateReceiver(_) => {
+                self.live_radio.leave();
+                true
+            }
+            _ => true,
+        }
+    }
+
     fn leave_lyrics_fullscreen(&mut self, ctx: &egui::Context) {
         if let Some(was_fullscreen) = self.lyrics_fullscreen.take() {
             ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(was_fullscreen));
@@ -11069,6 +11199,9 @@ impl App {
             // ToggleQueuePanel is deliberately absent: in lyrics fullscreen
             // it flips the queue column instead of leaving the view.
             self.leave_lyrics_fullscreen(ctx);
+        }
+        if self.live_radio.is_on() && !self.live_radio_takes(&action) {
+            return;
         }
         if self.changes_song_by_hand(&action) {
             self.leave_repeat_one();
@@ -11241,6 +11374,14 @@ impl App {
                 // The random starting song is picked in `play_request`,
                 // which every shuffled play goes through.
                 self.play_request(PlayRequest::context(uri), true);
+            }
+            Action::ToggleLiveRadio => {
+                let state = self.live_radio.state();
+                if state.on && state.playing {
+                    self.live_radio.pause();
+                } else {
+                    self.play_live_radio();
+                }
             }
             Action::TogglePlay => self.toggle_play(),
             Action::Next if self.resume_only() => {
@@ -17535,6 +17676,7 @@ mod tests {
             can_set_volume: true,
             is_episode: true,
             resuming: false,
+            live: false,
         });
         assert_eq!(
             play(&mut app, in_progress, Some(600_000)),
@@ -29124,6 +29266,65 @@ mod tests {
             result: Ok(None),
         });
         assert!(app.pending_remote_volume.is_none());
+    }
+
+    /// The live radio is the playback surface while it is on: the bar shows
+    /// it, Play pauses it, skips and seeks do nothing, the volume is its own,
+    /// and playing anything from Spotify leaves it.
+    #[test]
+    fn the_live_radio_owns_playback_until_spotify_plays() {
+        static OFFLINE: crate::live_radio::Station = crate::live_radio::Station {
+            name: "Test FM",
+            stream: "http://127.0.0.1:9/stream",
+            meta: "http://127.0.0.1:9/meta",
+            logo: "https://example.invalid/logo.png",
+        };
+        let ctx = egui::Context::default();
+        let mut app = headless_app();
+        app.attach(&ctx);
+        crate::demo::populate(&mut app);
+        app.frame_now = None;
+        app.applied_proxy = crate::settings::ProxyConfig::Off;
+        app.live_radio = crate::live_radio::LiveRadio::new(
+            &OFFLINE,
+            crate::live_radio::OutputConfig {
+                device: None,
+                buffer_ms: crate::sink::DEFAULT_BUFFER_MS,
+                tap: crate::vis::AudioTap::new(),
+                eq: crate::eq::shared(),
+            },
+            app.settings.volume,
+            Waker::default(),
+        );
+
+        app.apply(Action::ToggleLiveRadio, &ctx);
+        let now = app.now_playing().unwrap();
+        assert!(now.live && now.playing && now.loading);
+        assert_eq!(now.title, "Test FM");
+
+        app.apply(Action::Next, &ctx);
+        app.apply(Action::Seek(10_000), &ctx);
+        assert!(app.now_playing().unwrap().live);
+
+        app.apply(Action::SetVolume(30), &ctx);
+        assert_eq!(app.now_playing().unwrap().volume_percent, 30);
+        assert_eq!(app.live_radio.volume(), percent_to_volume(30));
+
+        app.apply(Action::TogglePlay, &ctx);
+        let now = app.now_playing().unwrap();
+        assert!(now.live && !now.playing);
+        app.apply(Action::TogglePlay, &ctx);
+        assert!(app.now_playing().unwrap().playing);
+
+        app.apply(
+            Action::PlayUris {
+                uris: vec!["spotify:track:4uLU6hMCjMI75M1A2tKUQC".into()],
+                index: 0,
+            },
+            &ctx,
+        );
+        assert!(!app.live_radio.is_on());
+        assert!(!app.now_playing().is_some_and(|now| now.live));
         app.backend.shutdown();
     }
 
@@ -30985,6 +31186,7 @@ mod tests {
                 can_set_volume: true,
                 is_episode: false,
                 resuming: false,
+                live: false,
             };
             app.frame_now = Some(now.clone());
 

@@ -206,7 +206,11 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
             app.actions.push(Action::SettingsChanged);
         }
     }
-    let heart_width = if now.is_episode { 0.0 } else { 42.0 };
+    let heart_width = if now.is_episode || now.live {
+        0.0
+    } else {
+        42.0
+    };
     let text_left = cover_rect.right() + 12.0;
     let text_width = (region.right() - text_left - heart_width).max(40.0);
     let displayed_text_width: f32 = {
@@ -298,7 +302,7 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
         }
     }
 
-    if !now.is_episode {
+    if !now.is_episode && !now.live {
         let saved = app.is_saved(&now.uri).unwrap_or(false);
         // A liked heart stays green under the pointer, like shuffle.
         let (icon, tooltip) = if saved {
@@ -520,7 +524,8 @@ fn transport(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>, region:
     // on screen this puts equal breathing room above and beneath the
     // cluster.
     let cy = region.center().y - 8.0;
-    let enabled = now.is_some_and(|now| now.can_control) || app.is_connected();
+    let live = now.is_some_and(|now| now.live);
+    let enabled = !live && (now.is_some_and(|now| now.can_control) || app.is_connected());
     let playing = now.is_some_and(|now| now.playing);
     let loading = now.is_some_and(|now| now.loading);
     let shuffle = now.map_or_else(|| app.playing_context_shuffle(), |now| now.shuffle);
@@ -617,6 +622,17 @@ fn transport(app: &mut App, ui: &mut egui::Ui, now: Option<&NowPlaying>, region:
     // Progress row, just below the buttons (disc bottom + 6px gap + half of
     // the time text's line height).
     let row_cy = cy + 31.0;
+    if live {
+        // A live stream has no length to show or seek through.
+        ui.painter().text(
+            pos2(region.center().x, row_cy),
+            egui::Align2::CENTER_CENTER,
+            gettext(app.locale, "Live"),
+            theme::medium(11.5),
+            palette.secondary,
+        );
+        return;
+    }
     let slider_width = (region.width() - 120.0).clamp(120.0, 620.0);
     let (position, duration) = now
         .map(|now| (now.position_ms, now.duration_ms))

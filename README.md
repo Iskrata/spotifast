@@ -52,6 +52,10 @@ The rest of this README is upstream's and describes upstream's builds.
   fixed sizes. Lyrics, Queue, Friend Activity and Devices are toggled from
   one group in the player bar. Settings, the Winamp mini player and MilkDrop
   moved into the account menu.
+- **Radio Nova.** The sidebar's *Radio Nova* row plays the Bulgarian
+  station live through the same output, equalizer and visualisers as
+  Spotify, with the song on air in the player bar. Starting it pauses
+  Spotify; playing anything from Spotify stops it.
 - **Smaller changes.** New profiles start in the dark theme. On macOS a
   closed window stays in the Dock instead of the menu bar. The playlist
   library and Made for you load over the playback session when the shared

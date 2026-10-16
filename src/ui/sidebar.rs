@@ -978,6 +978,18 @@ fn contents(app: &mut App, ui: &mut egui::Ui, grid_art: Option<Rect>) {
     {
         app.actions.push(Action::FocusSearch);
     }
+    let radio = app.live_radio.state();
+    if nav_row(
+        ui,
+        &palette,
+        Icon::Radio,
+        app.live_radio.station().name,
+        radio.on && radio.playing,
+    )
+    .clicked()
+    {
+        app.actions.push(Action::ToggleLiveRadio);
+    }
     ui.add_space(10.0);
     ui.painter().hline(
         ui.max_rect().x_range().shrink(4.0),

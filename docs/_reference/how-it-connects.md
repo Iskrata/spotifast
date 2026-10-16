@@ -284,7 +284,11 @@ out, or a reconnection that gives up stops it.
 - Spotifast has no telemetry, analytics, or hosted service. When the lyrics
   panel or the Listening activity panel is open and neither Spotify nor a
   local file has lyrics, it sends the track's artist, title, album, and
-  length to [lrclib.net](https://lrclib.net). It also checks
+  length to [lrclib.net](https://lrclib.net). While the Radio Nova live radio
+  plays, this fork reads its stream from play.global.audio and, every 15
+  seconds, the playing song from meta.metacast.eu, both over plain HTTP (the
+  stream has no other form, and the song server's certificate chain does not
+  verify). Nothing about you is sent. It also checks
   api.github.com once a day for updates. This fork reads the releases of
   Iskrata/spotifast, not crmne/spotifast. You can turn off automatic checks in
   Settings, or request one there at any time. On macOS, **Check for Updates**

@@ -150,7 +150,8 @@ librespot-metadata = { version = "0.8", default-features = false }
 librespot-protocol = { version = "0.8", default-features = false }
 # Parses the rootlist's playlist4 protobuf, the same crate librespot generates with.
 protobuf = "3"
-# Reads a local file's embedded cover and lyrics. The same decoder librespot
+# Reads a local file's embedded cover and lyrics, and decodes the live radio
+# station's MP3 stream (src/live_radio.rs). The same decoder librespot
 # already plays local files with, with the formats it enables, so nothing
 # new is built.
 symphonia = { version = "0.5", default-features = false, features = ["mp3", "flac"] }

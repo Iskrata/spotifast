@@ -1573,6 +1573,7 @@ mod tests {
             can_set_volume: true,
             is_episode: false,
             resuming: false,
+            live: false,
         }
     }
 

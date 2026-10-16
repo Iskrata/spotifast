@@ -42,6 +42,9 @@ use crate::api::models::ArtistRef;
 use crate::sink::{AudioControl, ErrorHook, RodioSink};
 use crate::vis::{AudioTap, Tapped};
 
+/// How a volume setting maps to loudness, for Spotify and the live radio.
+pub(crate) const VOLUME_CTRL: VolumeCtrl = VolumeCtrl::Cubic(VolumeCtrl::DEFAULT_DB_RANGE);
+
 #[derive(Clone, Debug)]
 pub struct EngineConfig {
     pub device_name: String,
@@ -360,7 +363,7 @@ impl Engine {
         // top quarter. The cubic curve reaches -16 dB at the middle and -7 dB
         // at three quarters, spreading the useful range across the slider.
         let mixer = mixer_builder(MixerConfig {
-            volume_ctrl: VolumeCtrl::Cubic(VolumeCtrl::DEFAULT_DB_RANGE),
+            volume_ctrl: VOLUME_CTRL,
             ..MixerConfig::default()
         })
         .context("unable to create the mixer")?;
@@ -711,31 +714,62 @@ fn sink_builder(
             Box::new(NoOpVolume),
         );
     }
-    let volume = mixer.get_soft_volume();
     // The output applies volume to queued audio. The wrapper reads the same
     // value to calculate the pre-volume limiter ceiling.
+    let volume = mixer.get_soft_volume();
     let ceiling = mixer.get_soft_volume();
     (
         Box::new(move || {
-            let sink = Box::new(RodioSink::new(
+            own_output(OwnOutput {
                 device,
+                buffer_ms,
                 report,
                 volume,
-                buffer_ms,
-                Arc::clone(&audio),
-            ));
-            Box::new(Tapped::new(
-                sink,
+                ceiling,
                 audio,
                 tap,
-                ceiling,
-                false,
                 eq,
                 normalisation,
-            )) as Box<dyn Sink>
+            })
         }),
         Box::new(NoOpVolume),
     )
+}
+
+/// What Spotifast's own output needs, for Spotify and the live radio alike.
+pub(crate) struct OwnOutput {
+    pub device: Option<String>,
+    pub buffer_ms: u32,
+    pub report: ErrorHook,
+    /// The volume the output applies to queued audio.
+    pub volume: Box<dyn VolumeGetter + Send>,
+    /// The same volume, read by the limiter for its pre-volume ceiling.
+    pub ceiling: Box<dyn VolumeGetter + Send>,
+    pub audio: Arc<AudioControl>,
+    pub tap: Arc<AudioTap>,
+    pub eq: crate::eq::SharedEq,
+    pub normalisation: Arc<std::sync::atomic::AtomicU64>,
+}
+
+/// Spotifast's own device output behind the equalizer, limiter and the
+/// visualisers' tap, so everything played is heard and drawn the same way.
+pub(crate) fn own_output(output: OwnOutput) -> Box<dyn Sink> {
+    let sink = Box::new(RodioSink::new(
+        output.device,
+        output.report,
+        output.volume,
+        output.buffer_ms,
+        Arc::clone(&output.audio),
+    ));
+    Box::new(Tapped::new(
+        sink,
+        output.audio,
+        output.tap,
+        output.ceiling,
+        false,
+        output.eq,
+        output.normalisation,
+    ))
 }
 
 /// What an engine is heard at, for the engine that replaces it.

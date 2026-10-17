@@ -86,8 +86,6 @@ const ASSUMED_CONTEXT_HOLD: Duration = Duration::from_secs(8);
 /// has not caught up yet. Spotify can take a moment to report a command it
 /// has already carried out.
 const PLAYBACK_HOLD: Duration = Duration::from_secs(6);
-/// How long the live radio waits for its stream to send anything.
-const LIVE_RADIO_READ_TIMEOUT: Duration = Duration::from_secs(15);
 /// Whether Friend Activity is open at start. A saved open panel always is;
 /// a session that never closed it is too when `by_default`. A queue panel
 /// that was open wins, as the toggles keep one side panel at a time.
@@ -2009,11 +2007,8 @@ impl App {
             return None;
         }
         let station = self.live_radio.station();
-        let (title, subtitle) = state.title_and_byline(station);
-        let art = state
-            .image
-            .clone()
-            .unwrap_or_else(|| station.logo.to_string());
+        let (title, subtitle) = state.title_and_byline(station, &gettext(self.locale, "Ad break"));
+        let art = station.logo.to_string();
         Some(NowPlaying {
             local: true,
             device_name: None,
@@ -2048,12 +2043,9 @@ impl App {
         if self.now_playing_live().is_some_and(|now| now.playing) {
             self.toggle_play();
         }
-        match crate::http::build_blocking(&self.applied_proxy, LIVE_RADIO_READ_TIMEOUT) {
-            Ok(http) => {
-                self.live_radio.set_volume(self.settings.volume);
-                self.live_radio.play(http);
-            }
-            Err(error) => self.toast_error(error),
+        self.live_radio.set_volume(self.settings.volume);
+        if let Err(error) = self.live_radio.play(&self.applied_proxy) {
+            self.toast_error(error);
         }
     }
 
@@ -29275,8 +29267,8 @@ mod tests {
     fn the_live_radio_owns_playback_until_spotify_plays() {
         static OFFLINE: crate::live_radio::Station = crate::live_radio::Station {
             name: "Test FM",
-            stream: "http://127.0.0.1:9/stream",
-            meta: "http://127.0.0.1:9/meta",
+            mount: "TEST_FM",
+            directory: "http://127.0.0.1:9/",
             logo: "https://example.invalid/logo.png",
         };
         let ctx = egui::Context::default();

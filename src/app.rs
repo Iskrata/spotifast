@@ -733,6 +733,7 @@ impl App {
                 tap: std::sync::Arc::clone(&tap),
                 eq: std::sync::Arc::clone(&eq),
             },
+            dirs.radio_breaks_dir(),
             settings.volume,
             waker.clone(),
         );
@@ -22151,6 +22152,7 @@ mod tests {
                 tap: crate::vis::AudioTap::new(),
                 eq: crate::eq::shared(),
             },
+            std::path::PathBuf::new(),
             app.settings.volume,
             Waker::default(),
         );

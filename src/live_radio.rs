@@ -5,13 +5,17 @@
 //!
 //! The station broadcasts through Triton Digital, whose stream comes with a
 //! sideband of cue points: each song as it starts, and each advert. The cues
-//! name the song on air, and an advert cue mutes the radio until the next
-//! song's cue. News and talk carry no cues and stay audible. Every cue is
-//! stamped with its place in this connection's stream, so it is applied
-//! when the audio around it reaches the speakers, not when it arrives.
+//! name the song on air, and an advert cue starts a break that lasts until
+//! the next song's cue. Through a break the station is crossfaded out for
+//! the listener's own clips from the break folder (see [`BreakFill`]), or
+//! for silence when it has none. News and talk carry no cues and stay
+//! audible. Every cue is stamped with its place in this connection's
+//! stream, and is applied to the decoded sound at that place, so a break
+//! starts and ends with the station's own.
 
 use std::collections::VecDeque;
 use std::io::BufRead;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU16, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread;
@@ -25,9 +29,9 @@ use librespot_playback::mixer::mappings::MappedCtrl;
 use librespot_playback::{NUM_CHANNELS, SAMPLE_RATE};
 use serde::Deserialize;
 use symphonia::core::audio::SampleBuffer;
-use symphonia::core::codecs::DecoderOptions;
+use symphonia::core::codecs::{Decoder, DecoderOptions};
 use symphonia::core::errors::Error as DecodeError;
-use symphonia::core::formats::FormatOptions;
+use symphonia::core::formats::{FormatOptions, FormatReader};
 use symphonia::core::io::{MediaSourceStream, ReadOnlySource};
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
@@ -63,12 +67,13 @@ const STREAM_TIMEOUT: Duration = Duration::from_secs(15);
 /// How long the cues may be quiet before their connection is reopened. News
 /// carries none, and a long song only two, so this is generous.
 const CUE_TIMEOUT: Duration = Duration::from_secs(600);
-/// Longer than any advert break: a break whose closing cue went missing is
-/// not left muted.
+/// Longer than any advert break: a break whose closing cue went missing
+/// hands back to the station.
 const MAX_AD_BREAK: Duration = Duration::from_secs(8 * 60);
-/// About how much decoded sound waits in the output's queue (twelve chunks,
-/// see `sink::QUEUE_LIMIT`) ahead of the device's own buffer.
-const QUEUE_LAG_MS: u64 = 250;
+/// How long the station and the break cross over, each way.
+const CROSSFADE: Duration = Duration::from_millis(400);
+/// The kinds of break clip this build decodes.
+const CLIP_EXTENSIONS: [&str; 4] = ["mp3", "ogg", "oga", "flac"];
 /// How long to wait before reconnecting a stream that failed or ended.
 const RETRY_AFTER: Duration = Duration::from_secs(3);
 /// How often a sleeping thread looks whether it should stop.
@@ -84,13 +89,13 @@ pub struct RadioState {
     pub loading: bool,
     pub artist: String,
     pub song: String,
-    /// An advert break is on, and the radio is muted until it ends.
+    /// An advert break is on: the station is replaced until it ends.
     pub ad_break: bool,
 }
 
 impl RadioState {
-    /// The bar's title and byline: the song and its artist, the muted
-    /// break as `ad_break`, or the station alone.
+    /// The bar's title and byline: the song and its artist, the break as
+    /// `ad_break`, or the station alone.
     pub fn title_and_byline(&self, station: &Station, ad_break: &str) -> (String, String) {
         if self.ad_break {
             return (ad_break.to_string(), station.name.to_string());
@@ -115,22 +120,13 @@ pub struct OutputConfig {
     pub eq: crate::eq::SharedEq,
 }
 
-/// The radio's volume, on Spotify's 0 to 65535 scale and curve, silent
-/// through an advert break. The output ramps the change, so a break starts
-/// and ends without a click, and the visualisers, fed before the volume,
-/// keep moving.
+/// The radio's volume, on Spotify's 0 to 65535 scale and curve.
 #[derive(Clone)]
-struct Volume {
-    level: Arc<AtomicU16>,
-    muted: Arc<AtomicBool>,
-}
+struct Volume(Arc<AtomicU16>);
 
 impl VolumeGetter for Volume {
     fn attenuation_factor(&self) -> f64 {
-        if self.muted.load(Ordering::Relaxed) {
-            return 0.0;
-        }
-        crate::player::VOLUME_CTRL.to_mapped(self.level.load(Ordering::Relaxed))
+        crate::player::VOLUME_CTRL.to_mapped(self.0.load(Ordering::Relaxed))
     }
 }
 
@@ -139,21 +135,27 @@ pub struct LiveRadio {
     state: Arc<Mutex<RadioState>>,
     volume: Volume,
     output: OutputConfig,
+    /// The folder of clips played through advert breaks.
+    break_clips: PathBuf,
     waker: Waker,
     /// Set to end the threads of the stream playing now.
     stop: Option<Arc<AtomicBool>>,
 }
 
 impl LiveRadio {
-    pub fn new(station: &'static Station, output: OutputConfig, volume: u16, waker: Waker) -> Self {
+    pub fn new(
+        station: &'static Station,
+        output: OutputConfig,
+        break_clips: PathBuf,
+        volume: u16,
+        waker: Waker,
+    ) -> Self {
         Self {
             station,
             state: Arc::default(),
-            volume: Volume {
-                level: Arc::new(AtomicU16::new(volume)),
-                muted: Arc::default(),
-            },
+            volume: Volume(Arc::new(AtomicU16::new(volume))),
             output,
+            break_clips,
             waker,
             stop: None,
         }
@@ -175,11 +177,11 @@ impl LiveRadio {
     }
 
     pub fn volume(&self) -> u16 {
-        self.volume.level.load(Ordering::Relaxed)
+        self.volume.0.load(Ordering::Relaxed)
     }
 
     pub fn set_volume(&self, volume: u16) {
-        self.volume.level.store(volume, Ordering::Relaxed);
+        self.volume.0.store(volume, Ordering::Relaxed);
     }
 
     /// Starts the stream through `proxy`.
@@ -201,8 +203,7 @@ impl LiveRadio {
             cue_http,
             stop,
             state: Arc::clone(&self.state),
-            muted: Arc::clone(&self.volume.muted),
-            lag_ms: u64::from(self.output.buffer_ms) + QUEUE_LAG_MS,
+            break_clips: self.break_clips.clone(),
             waker: self.waker.clone(),
         };
         let output = self.output();
@@ -236,7 +237,6 @@ impl LiveRadio {
         if let Some(stop) = self.stop.take() {
             stop.store(true, Ordering::Relaxed);
         }
-        self.volume.muted.store(false, Ordering::Relaxed);
         self.state
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
@@ -300,9 +300,7 @@ struct Radio {
     cue_http: reqwest::blocking::Client,
     stop: Arc<AtomicBool>,
     state: Arc<Mutex<RadioState>>,
-    muted: Arc<AtomicBool>,
-    /// How long decoded sound takes to reach the speakers.
-    lag_ms: u64,
+    break_clips: PathBuf,
     waker: Waker,
 }
 
@@ -325,23 +323,10 @@ impl Radio {
         }
     }
 
+    /// Shows what `cue` puts on air.
     fn apply(&self, cue: Cue) {
-        if self.stopped() {
-            return;
-        }
-        let advert = cue == Cue::Advert;
-        if advert != self.muted.swap(advert, Ordering::Relaxed) {
-            log::info!(
-                "live radio: {}",
-                if advert {
-                    "advert break, muted"
-                } else {
-                    "advert break over"
-                }
-            );
-        }
         self.update(|state| {
-            state.ad_break = advert;
+            state.ad_break = cue == Cue::Advert;
             if let Cue::Song { artist, title } = cue {
                 state.artist = artist;
                 state.song = title;
@@ -351,6 +336,12 @@ impl Radio {
 
     /// Plays the station until stopped, reconnecting when the stream drops.
     fn run(self, mut sink: Box<dyn Sink>) {
+        // So the listener finds the folder to put break clips in.
+        if !self.break_clips.as_os_str().is_empty()
+            && let Err(error) = std::fs::create_dir_all(&self.break_clips)
+        {
+            log::debug!("live radio: no break folder: {error}");
+        }
         let mut started = false;
         while !self.stopped() {
             let result = self.play_once(sink.as_mut(), &mut started);
@@ -413,10 +404,11 @@ impl Radio {
             .map_err(|error| format!("unsupported stream: {error}"))?;
         let mut stereo = Stereo::default();
         let mut converter = Converter::new(None);
+        let mut mix = BreakMix::new(BreakFill::new(self.break_clips.clone()));
         // Milliseconds of this connection's stream decoded, which is how
         // its cues are stamped.
         let mut decoded_ms = 0.0f64;
-        let mut muted_since: Option<Instant> = None;
+        let mut break_since: Option<Instant> = None;
         while !self.stopped() {
             let packet = match format.next_packet() {
                 Ok(packet) => packet,
@@ -440,10 +432,29 @@ impl Radio {
                 Err(error) => return Err(format!("decoding failed: {error}")),
             };
             let spec = *decoded.spec();
-            decoded_ms += decoded.frames() as f64 * 1000.0 / f64::from(spec.rate.max(1));
             let mut buffer = SampleBuffer::<f32>::new(decoded.capacity() as u64, spec);
             buffer.copy_interleaved_ref(decoded);
-            let samples = stereo.convert(buffer.samples(), spec.channels.count(), spec.rate);
+            let mut samples = stereo.convert(buffer.samples(), spec.channels.count(), spec.rate);
+            // A cue applies to the sound at its place: this packet's start.
+            for cue in due(&pending, decoded_ms as u64) {
+                let advert = cue == Cue::Advert;
+                if advert != break_since.is_some() {
+                    log::info!(
+                        "live radio: advert break {}",
+                        if advert { "started" } else { "over" }
+                    );
+                    break_since = advert.then(Instant::now);
+                }
+                self.apply(cue);
+            }
+            if break_since.is_some_and(|since| since.elapsed() > MAX_AD_BREAK) {
+                log::warn!("live radio: no cue ended the advert break; back to the station");
+                break_since = None;
+                self.update(|state| state.ad_break = false);
+            }
+            decoded_ms += buffer.samples().len() as f64 * 1000.0
+                / (f64::from(spec.rate.max(1)) * spec.channels.count().max(1) as f64);
+            mix.mix(&mut samples, break_since.is_some());
             if samples.is_empty() {
                 continue;
             }
@@ -455,22 +466,6 @@ impl Radio {
             sink.write(AudioPacket::Samples(samples), &mut converter)
                 .map_err(|error| format!("the output failed: {error}"))?;
             self.update(|state| state.loading = false);
-            // The output applies volume to what it has queued, so a cue
-            // waits until its own sound is about to be heard.
-            let heard_ms = (decoded_ms as u64).saturating_sub(self.lag_ms);
-            for cue in due(&pending, heard_ms) {
-                self.apply(cue);
-            }
-            if self.muted.load(Ordering::Relaxed) {
-                let since = *muted_since.get_or_insert_with(Instant::now);
-                if since.elapsed() > MAX_AD_BREAK {
-                    log::warn!("live radio: no cue ended the advert break; unmuting");
-                    self.muted.store(false, Ordering::Relaxed);
-                    self.update(|state| state.ad_break = false);
-                }
-            } else {
-                muted_since = None;
-            }
         }
         Ok(())
     }
@@ -664,6 +659,209 @@ fn unescape(text: &str) -> String {
         .replace("&amp;", "&")
 }
 
+/// What reaches the output: the station, or through a break the break
+/// clips, crossing over in [`CROSSFADE`] each way.
+struct BreakMix {
+    fill: BreakFill,
+    /// How far over to the break the output is, from 0 (the station) to 1.
+    blend: f64,
+}
+
+impl BreakMix {
+    fn new(fill: BreakFill) -> Self {
+        Self { fill, blend: 0.0 }
+    }
+
+    /// Mixes interleaved stereo `samples` of the station toward the break
+    /// while `in_break`, and back once it is over.
+    fn mix(&mut self, samples: &mut [f64], in_break: bool) {
+        let target = if in_break { 1.0 } else { 0.0 };
+        if self.blend == 0.0 && target == 0.0 {
+            return;
+        }
+        if self.blend == 0.0 {
+            self.fill.start_break();
+        }
+        let step = 1.0 / (CROSSFADE.as_secs_f64() * f64::from(SAMPLE_RATE));
+        for frame in samples.as_chunks_mut::<{ NUM_CHANNELS as usize }>().0 {
+            self.blend = if target > self.blend {
+                (self.blend + step).min(target)
+            } else {
+                (self.blend - step).max(target)
+            };
+            if self.blend == 0.0 {
+                continue;
+            }
+            // Equal-power, so the crossing does not dip in loudness; fully
+            // over, the station is gone exactly, not to a rounding error.
+            let (station, clip) = if self.blend >= 1.0 {
+                (0.0, 1.0)
+            } else {
+                let angle = self.blend * std::f64::consts::FRAC_PI_2;
+                (angle.cos(), angle.sin())
+            };
+            let fill = self.fill.frame();
+            frame[0] = frame[0] * station + fill[0] * clip;
+            frame[1] = frame[1] * station + fill[1] * clip;
+        }
+        if self.blend == 0.0 {
+            self.fill.end_break();
+        }
+    }
+}
+
+/// The listener's clips for advert breaks: every MP3, Ogg or FLAC file in
+/// the break folder, played one after another in a shuffled order that
+/// carries on from break to break. A clip still playing when the station
+/// comes back fades out with the crossover, and the next break starts with
+/// the next clip. An empty or missing folder gives silence.
+struct BreakFill {
+    dir: PathBuf,
+    clips: Vec<PathBuf>,
+    next: usize,
+    playing: Option<Clip>,
+}
+
+impl BreakFill {
+    fn new(dir: PathBuf) -> Self {
+        Self {
+            dir,
+            clips: Vec::new(),
+            next: 0,
+            playing: None,
+        }
+    }
+
+    /// Reads the folder again, so clips added since the last break play.
+    fn start_break(&mut self) {
+        let mut found = clips_in(&self.dir);
+        found.sort();
+        let mut known = self.clips.clone();
+        known.sort();
+        if found != known {
+            use rand::seq::SliceRandom;
+            found.shuffle(&mut rand::rng());
+            log::info!(
+                "live radio: {} break clips in {}",
+                found.len(),
+                self.dir.display()
+            );
+            self.clips = found;
+            self.next = 0;
+        }
+    }
+
+    fn end_break(&mut self) {
+        self.playing = None;
+    }
+
+    /// The next stereo frame of the clips, or silence.
+    fn frame(&mut self) -> [f64; 2] {
+        // Each clip may be tried once per frame before giving up on them.
+        for _ in 0..=self.clips.len() {
+            if let Some(frame) = self.playing.as_mut().and_then(Clip::frame) {
+                return frame;
+            }
+            self.playing = None;
+            let Some(path) = self.clips.get(self.next % self.clips.len().max(1)).cloned() else {
+                return [0.0; 2];
+            };
+            self.next = (self.next + 1) % self.clips.len();
+            match Clip::open(&path) {
+                Ok(clip) => self.playing = Some(clip),
+                Err(error) => log::warn!("live radio: skipped {}: {error}", path.display()),
+            }
+        }
+        [0.0; 2]
+    }
+}
+
+fn clips_in(dir: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    entries
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .filter(|path| {
+            path.is_file()
+                && path
+                    .extension()
+                    .and_then(|extension| extension.to_str())
+                    .is_some_and(|extension| {
+                        CLIP_EXTENSIONS.contains(&extension.to_ascii_lowercase().as_str())
+                    })
+        })
+        .collect()
+}
+
+/// One break clip, decoded as it plays.
+struct Clip {
+    format: Box<dyn FormatReader>,
+    decoder: Box<dyn Decoder>,
+    track_id: u32,
+    stereo: Stereo,
+    /// Decoded stereo samples at Spotify's rate, waiting to be played.
+    ready: VecDeque<f64>,
+}
+
+impl Clip {
+    fn open(path: &Path) -> Result<Self, String> {
+        let file = std::fs::File::open(path).map_err(|error| error.to_string())?;
+        let source = MediaSourceStream::new(Box::new(file), Default::default());
+        let mut hint = Hint::new();
+        if let Some(extension) = path.extension().and_then(|extension| extension.to_str()) {
+            hint.with_extension(extension);
+        }
+        let format = symphonia::default::get_probe()
+            .format(
+                &hint,
+                source,
+                &FormatOptions::default(),
+                &MetadataOptions::default(),
+            )
+            .map_err(|error| error.to_string())?
+            .format;
+        let track = format
+            .default_track()
+            .ok_or_else(|| "no audio in it".to_string())?;
+        let track_id = track.id;
+        let decoder = symphonia::default::get_codecs()
+            .make(&track.codec_params, &DecoderOptions::default())
+            .map_err(|error| error.to_string())?;
+        Ok(Self {
+            format,
+            decoder,
+            track_id,
+            stereo: Stereo::default(),
+            ready: VecDeque::new(),
+        })
+    }
+
+    /// The next stereo frame, or `None` once the clip has ended.
+    fn frame(&mut self) -> Option<[f64; 2]> {
+        while self.ready.len() < 2 {
+            let packet = self.format.next_packet().ok()?;
+            if packet.track_id() != self.track_id {
+                continue;
+            }
+            let decoded = match self.decoder.decode(&packet) {
+                Ok(decoded) => decoded,
+                Err(DecodeError::DecodeError(_)) => continue,
+                Err(_) => return None,
+            };
+            let spec = *decoded.spec();
+            let mut buffer = SampleBuffer::<f32>::new(decoded.capacity() as u64, spec);
+            buffer.copy_interleaved_ref(decoded);
+            self.ready.extend(self.stereo.convert(
+                buffer.samples(),
+                spec.channels.count(),
+                spec.rate,
+            ));
+        }
+        Some([self.ready.pop_front()?, self.ready.pop_front()?])
+    }
+}
+
 /// Brings decoded audio to the output's format: stereo at Spotify's rate.
 #[derive(Default)]
 struct Stereo {
@@ -752,35 +950,113 @@ mod tests {
     }
 
     #[test]
-    fn an_advert_break_silences_the_output_and_the_next_song_restores_it() {
-        let state = Arc::new(Mutex::new(RadioState {
-            on: true,
-            playing: true,
-            ..RadioState::default()
-        }));
-        let volume = Volume {
-            level: Arc::new(AtomicU16::new(u16::MAX)),
-            muted: Arc::default(),
-        };
+    fn a_cue_shows_the_song_or_the_break() {
+        let state = Arc::new(Mutex::new(RadioState::default()));
         let radio = Radio {
             station: &RADIO_NOVA,
             stream_http: reqwest::blocking::Client::new(),
             cue_http: reqwest::blocking::Client::new(),
             stop: Arc::default(),
             state: Arc::clone(&state),
-            muted: Arc::clone(&volume.muted),
-            lag_ms: 0,
+            break_clips: PathBuf::new(),
             waker: Waker::default(),
         };
-        assert!(volume.attenuation_factor() > 0.99);
         radio.apply(Cue::Advert);
-        assert_eq!(volume.attenuation_factor(), 0.0);
         assert!(state.lock().unwrap().ad_break);
         radio.apply(parse_cue(SONG).unwrap().1);
-        assert!(volume.attenuation_factor() > 0.99);
         let state = state.lock().unwrap();
         assert!(!state.ad_break);
         assert_eq!(state.song, "All I Want");
+    }
+
+    /// One second of the station, as a constant level on both channels.
+    fn station_second() -> Vec<f64> {
+        vec![0.5; SAMPLE_RATE as usize * NUM_CHANNELS as usize]
+    }
+
+    fn crossfade_frames() -> usize {
+        (CROSSFADE.as_secs_f64() * f64::from(SAMPLE_RATE)) as usize
+    }
+
+    #[test]
+    fn without_clips_a_break_fades_the_station_to_silence_and_back() {
+        let mut mix = BreakMix::new(BreakFill::new(PathBuf::from("/nonexistent/breaks")));
+        let mut station = station_second();
+        mix.mix(&mut station, false);
+        assert!(
+            station.iter().all(|sample| *sample == 0.5),
+            "untouched outside a break"
+        );
+
+        let mut first = station_second();
+        mix.mix(&mut first, true);
+        let fade = crossfade_frames() * 2;
+        assert!(
+            first[0] > 0.49 && first[0] < 0.5,
+            "the fade starts at the station"
+        );
+        assert!(first[fade / 2] > 0.0 && first[fade / 2] < 0.5);
+        assert!(
+            first[fade..].iter().all(|sample| *sample == 0.0),
+            "then silence"
+        );
+
+        let mut back = station_second();
+        mix.mix(&mut back, false);
+        assert!(back[0] < 0.01, "the station comes back from silence");
+        assert!(
+            back[fade..].iter().all(|sample| *sample == 0.5),
+            "then is whole again"
+        );
+    }
+
+    #[test]
+    fn a_break_plays_the_clips_in_its_folder_and_the_station_takes_over_after() {
+        let dir = std::env::temp_dir().join(format!("spotifast-breaks-{}", sideband_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::copy(
+            concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/break-tone.mp3"),
+            dir.join("tone.mp3"),
+        )
+        .unwrap();
+        std::fs::write(dir.join("notes.txt"), "not a clip").unwrap();
+        assert_eq!(clips_in(&dir), vec![dir.join("tone.mp3")]);
+
+        let mut mix = BreakMix::new(BreakFill::new(dir.clone()));
+        let mut during = station_second();
+        mix.mix(&mut during, true);
+        // Past the crossfade only the clip, a 440 Hz tone, is heard: it
+        // swings both ways, which the constant station never does.
+        let after_fade = &during[crossfade_frames() * 2..];
+        assert!(after_fade.iter().any(|sample| *sample > 0.05));
+        assert!(after_fade.iter().any(|sample| *sample < -0.05));
+
+        let mut back = station_second();
+        mix.mix(&mut back, false);
+        assert!(
+            back[crossfade_frames() * 2..]
+                .iter()
+                .all(|sample| *sample == 0.5)
+        );
+        assert!(mix.fill.playing.is_none(), "the clip stops with the break");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn a_short_clip_ends_and_the_break_carries_on_with_the_next() {
+        let dir = std::env::temp_dir().join(format!("spotifast-breaks-{}", sideband_id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let tone = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/break-tone.mp3");
+        std::fs::copy(tone, dir.join("a.mp3")).unwrap();
+        std::fs::copy(tone, dir.join("b.mp3")).unwrap();
+        let mut fill = BreakFill::new(dir.clone());
+        fill.start_break();
+        // Three seconds from two one-second clips: they repeat in turn and
+        // never fall silent for long.
+        let frames: Vec<[f64; 2]> = (0..3 * SAMPLE_RATE).map(|_| fill.frame()).collect();
+        let late = &frames[(2.5 * f64::from(SAMPLE_RATE)) as usize..];
+        assert!(late.iter().any(|frame| frame[0].abs() > 0.05));
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
@@ -858,8 +1134,7 @@ mod tests {
             cue_http: http(CUE_TIMEOUT),
             stop: Arc::default(),
             state: Arc::clone(&state),
-            muted: Arc::default(),
-            lag_ms: 0,
+            break_clips: PathBuf::new(),
             waker: Waker::default(),
         };
         let mut sink = Counting {

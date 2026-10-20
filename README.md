@@ -54,10 +54,14 @@ The rest of this README is upstream's and describes upstream's builds.
   moved into the account menu.
 - **Radio Nova.** The sidebar's *Radio Nova* row plays the Bulgarian
   station live through the same output, equalizer and visualisers as
-  Spotify, with the song on air in the player bar. Advert breaks are
-  muted from the station's own advert cue until the next song; the news
-  stays on. Starting it pauses Spotify; playing anything from Spotify
-  stops it.
+  Spotify, with the song on air in the player bar. Advert breaks, from
+  the station's own advert cue until the next song, are replaced by your
+  own clips: put MP3, Ogg or FLAC files in the `radio-breaks` folder of
+  the configuration directory (on macOS,
+  `~/Library/Application Support/me.paolino.spotifast/radio-breaks`) and
+  they play in a shuffled order, crossfading in and out with the station.
+  With no clips the break is silent. The news stays on. Starting the radio
+  pauses Spotify; playing anything from Spotify stops it.
 - **Smaller changes.** New profiles start in the dark theme. On macOS a
   closed window stays in the Dock instead of the menu bar. The playlist
   library and Made for you load over the playback session when the shared

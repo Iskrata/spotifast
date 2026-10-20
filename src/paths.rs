@@ -119,6 +119,12 @@ impl AppDirs {
         self.config.join("milkdrop")
     }
 
+    /// Clips the live radio plays through advert breaks, as MP3, Ogg or
+    /// FLAC files.
+    pub fn radio_breaks_dir(&self) -> PathBuf {
+        self.config.join("radio-breaks")
+    }
+
     pub fn session_file(&self) -> PathBuf {
         self.state.join("session.json")
     }

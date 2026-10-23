@@ -60,7 +60,10 @@ The rest of this README is upstream's and describes upstream's builds.
   the configuration directory (on macOS,
   `~/Library/Application Support/me.paolino.spotifast/radio-breaks`) and
   they play in a shuffled order, crossfading in and out with the station.
-  With no clips the break is silent. The news stays on. Starting the radio
+  With no clips the break is silent. The news stays on. Tuning in during
+  a break, after one song has ended and before the next, starts with your
+  clips too, so a presenter talking between songs then may be covered
+  until the next song. Starting the radio
   pauses Spotify; playing anything from Spotify stops it.
 - **Smaller changes.** New profiles start in the dark theme. On macOS a
   closed window stays in the Dock instead of the menu bar. The playlist

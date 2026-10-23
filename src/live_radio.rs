@@ -4,10 +4,13 @@
 //! pauses Spotify, and playing anything from Spotify leaves the radio.
 //!
 //! The station broadcasts through Triton Digital, whose stream comes with a
-//! sideband of cue points: each song as it starts, and each advert. The cues
-//! name the song on air, and an advert cue starts a break that lasts until
-//! the next song's cue. Through a break the station is crossfaded out for
-//! the listener's own clips from the break folder (see [`BreakFill`]), or
+//! sideband of cue points: each song as it starts and as it ends, and each
+//! advert. The cues name the song on air, and an advert cue starts a break
+//! that lasts until the next song's cue. A break already on when the radio
+//! connects sent its advert cue before, so it is read from the station's
+//! now-playing answer instead: a song that has ended with no other started
+//! (see `on_air`). Through a break the station is crossfaded out for
+//! the listener's own clips from the break folder (see `BreakFill`), or
 //! for silence when it has none. News and talk carry no cues and stay
 //! audible. Every cue is stamped with its place in this connection's
 //! stream, and is applied to the decoded sound at that place, so a break
@@ -67,6 +70,10 @@ const STREAM_TIMEOUT: Duration = Duration::from_secs(15);
 /// How long the cues may be quiet before their connection is reopened. News
 /// carries none, and a long song only two, so this is generous.
 const CUE_TIMEOUT: Duration = Duration::from_secs(600);
+/// Longer than the pause between one song's end and the next one's start
+/// (up to ten seconds on air): a song over for longer has given way to a
+/// break.
+const SEGUE: Duration = Duration::from_secs(20);
 /// Longer than any advert break: a break whose closing cue went missing
 /// hands back to the station.
 const MAX_AD_BREAK: Duration = Duration::from_secs(8 * 60);
@@ -487,19 +494,32 @@ impl Radio {
             .name("live-radio-cues".into())
             .spawn(move || {
                 let closed = || stop.load(Ordering::Relaxed) || connection.load(Ordering::Relaxed);
-                if let Some(Cue::Song { artist, title }) = now_playing(&http, mount)
+                // The sideband first repeats the last song cue, which during
+                // a break joined late is the song's end: not the next song.
+                let mut repeated = None;
+                if let Some(on_air) = now_playing(&http, mount)
                     && !closed()
                 {
-                    let mut state = state.lock().unwrap_or_else(PoisonError::into_inner);
-                    if state.song.is_empty() {
-                        state.artist = artist;
-                        state.song = title;
-                        drop(state);
-                        waker.wake();
+                    if on_air.between_songs {
+                        log::info!("live radio: joined between songs, in an advert break");
+                        pending
+                            .lock()
+                            .unwrap_or_else(PoisonError::into_inner)
+                            .push_back((0, Cue::Advert));
+                        repeated = Some(on_air.song.clone());
+                    }
+                    if let Cue::Song { artist, title } = on_air.song {
+                        let mut state = state.lock().unwrap_or_else(PoisonError::into_inner);
+                        if state.song.is_empty() {
+                            state.artist = artist;
+                            state.song = title;
+                            drop(state);
+                            waker.wake();
+                        }
                     }
                 }
                 while !closed() {
-                    if let Err(error) = read_cues(&http, &url, &pending, &closed) {
+                    if let Err(error) = read_cues(&http, &url, &pending, &closed, &mut repeated) {
                         log::debug!("live radio: cues interrupted: {error}");
                     }
                     if closed() || wait(&connection, RETRY_AFTER) {
@@ -585,12 +605,14 @@ fn parse_cue(data: &str) -> Option<(u64, Cue)> {
     Some((event.timestamp, cue))
 }
 
-/// Reads server-sent events from `url` until the connection ends.
+/// Reads server-sent events from `url` until the connection ends. The
+/// first cue is dropped if it is `repeated`.
 fn read_cues(
     http: &reqwest::blocking::Client,
     url: &reqwest::Url,
     pending: &Mutex<VecDeque<(u64, Cue)>>,
     closed: &dyn Fn() -> bool,
+    repeated: &mut Option<Cue>,
 ) -> Result<(), String> {
     let response = http
         .get(url.clone())
@@ -608,7 +630,9 @@ fn read_cues(
             data.push_str(part);
             data.push('\n');
         } else if line.trim().is_empty() && !data.is_empty() {
-            if let Some(cue) = parse_cue(&data) {
+            if let Some(cue) = parse_cue(&data)
+                && repeated.take().is_none_or(|song| song != cue.1)
+            {
                 log::debug!("live radio: cue {cue:?}");
                 pending
                     .lock()
@@ -621,23 +645,72 @@ fn read_cues(
     Ok(())
 }
 
-/// The song Triton last announced on `mount`.
-fn now_playing(http: &reqwest::blocking::Client, mount: &str) -> Option<Cue> {
+/// What Triton's now-playing answer says is on air.
+#[derive(Debug, PartialEq)]
+struct OnAir {
+    /// The song it last announced.
+    song: Cue,
+    /// That song is over and no other has started: the radio joined an
+    /// advert break, whose own cue went out before it connected.
+    between_songs: bool,
+}
+
+/// One announcement of Triton's now-playing answer.
+struct Announcement {
+    song: Cue,
+    start_ms: u64,
+    length_ms: u64,
+}
+
+/// What Triton last announced on `mount`.
+fn now_playing(http: &reqwest::blocking::Client, mount: &str) -> Option<OnAir> {
     let body = http
         .get(NOW_PLAYING)
         .query(&[
             ("mountName", mount),
-            ("numberToFetch", "1"),
+            ("numberToFetch", "2"),
             ("eventType", "track"),
         ])
         .send()
         .and_then(reqwest::blocking::Response::error_for_status)
         .and_then(reqwest::blocking::Response::text)
         .ok()?;
-    let title = xml_property(&body, "cue_title")?;
-    Some(Cue::Song {
-        artist: xml_property(&body, "track_artist_name").unwrap_or_default(),
-        title,
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()?
+        .as_millis() as u64;
+    on_air(&body, now_ms)
+}
+
+/// Reads the answer's latest two announcements, newest first. The station
+/// announces every song twice: as it starts and as it ends. An advert break
+/// comes after a song's end, or cuts a song short without one, and its own
+/// cue is only sent as it starts.
+fn on_air(body: &str, now_ms: u64) -> Option<OnAir> {
+    let mut announcements = body.split("<nowplaying-info ").skip(1).filter_map(|entry| {
+        let ms = |name| {
+            xml_property(entry, name)
+                .and_then(|value| value.parse::<f64>().ok())
+                .map(|value| value as u64)
+        };
+        Some(Announcement {
+            song: Cue::Song {
+                artist: xml_property(entry, "track_artist_name").unwrap_or_default(),
+                title: xml_property(entry, "cue_title")?,
+            },
+            start_ms: ms("cue_time_start").unwrap_or(now_ms),
+            length_ms: ms("cue_time_duration").map_or(u64::MAX, |seconds| seconds * 1000),
+        })
+    });
+    let latest = announcements.next()?;
+    let since = now_ms.saturating_sub(latest.start_ms);
+    let ended = announcements
+        .next()
+        .is_some_and(|before| before.song == latest.song);
+    let overran = since > latest.length_ms.saturating_add(SEGUE.as_millis() as u64);
+    Some(OnAir {
+        between_songs: since > SEGUE.as_millis() as u64 && (ended || overran),
+        song: latest.song,
     })
 }
 
@@ -1074,6 +1147,76 @@ mod tests {
             Some("THE WEEKND")
         );
         assert_eq!(xml_property(body, "program_id"), None);
+    }
+
+    /// Triton's now-playing answer, newest first, as `(title, start, length)`
+    /// with the start in seconds since the epoch.
+    fn announcements(entries: &[(&str, u64, &str)]) -> String {
+        let entries: String = entries
+            .iter()
+            .map(|(title, start, length)| {
+                format!(
+                    "<nowplaying-info mountName=\"RADIO_NOVAAAC_H\" timestamp=\"{start}\" type=\"track\"><property name=\"cue_time_duration\"><![CDATA[{length}]]></property><property name=\"cue_time_start\"><![CDATA[{start}000]]></property><property name=\"cue_title\"><![CDATA[{title}]]></property><property name=\"track_artist_name\"><![CDATA[Artist]]></property></nowplaying-info>"
+                )
+            })
+            .collect();
+        format!(
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?><nowplaying-info-list>{entries}</nowplaying-info-list>"
+        )
+    }
+
+    fn between_songs(body: &str, now: u64) -> bool {
+        on_air(body, now * 1000).unwrap().between_songs
+    }
+
+    #[test]
+    fn a_song_announced_again_has_ended_and_a_break_is_on_after_it() {
+        // 23 October 2026: "Feel What You Want" ended at 07:44:32, adverts
+        // ran until "Hypnotized" at 07:47:43.
+        let (start, end) = (1_792_741_273, 1_792_741_472);
+        let body = announcements(&[
+            ("Feel What You Want", end, "385.8808"),
+            ("Feel What You Want", start, "385.8808"),
+        ]);
+        assert!(between_songs(&body, end + 60));
+        // The next song's cue is a few seconds behind an end, not a break.
+        assert!(!between_songs(&body, end + 5));
+        assert_eq!(
+            on_air(&body, (end + 60) * 1000).unwrap().song,
+            Cue::Song {
+                artist: "Artist".into(),
+                title: "Feel What You Want".into(),
+            }
+        );
+    }
+
+    #[test]
+    fn a_song_on_air_is_not_a_break() {
+        let start = 1_792_741_663;
+        let body = announcements(&[
+            ("Hypnotized (Radio Edit)", start, "214.0996"),
+            ("Feel What You Want", start - 191, "385.8808"),
+        ]);
+        assert!(!between_songs(&body, start + 100));
+        assert!(!between_songs(&body, start + 220));
+    }
+
+    #[test]
+    fn a_song_long_past_its_length_was_cut_by_a_break() {
+        // "Marea" started at 07:12:43 for 285 s; a break cut it at 07:15:41
+        // with no end announced.
+        let start = 1_792_739_563;
+        let body = announcements(&[
+            ("Marea (We've Lost Dancing)", start, "285.428"),
+            ("Your Move (Kaiserdisco Radio Edit)", start - 4, "238.9682"),
+        ]);
+        assert!(!between_songs(&body, start + 200));
+        assert!(between_songs(&body, start + 330));
+    }
+
+    #[test]
+    fn a_now_playing_answer_without_songs_says_nothing() {
+        assert_eq!(on_air(&announcements(&[]), 0), None);
     }
 
     #[test]

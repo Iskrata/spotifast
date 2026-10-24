@@ -211,6 +211,9 @@ pub struct NowPlaying {
     pub resuming: bool,
     /// A live radio stream: no song length, seeking, skipping or saving.
     pub live: bool,
+    /// A small round picture on the cover's corner: the station's logo
+    /// while its song's own cover shows, so the song reads as the radio's.
+    pub badge: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -2010,7 +2013,7 @@ impl App {
         }
         let station = self.live_radio.station();
         let (title, subtitle) = state.title_and_byline(station, &gettext(self.locale, "Ad break"));
-        let art = station.logo.to_string();
+        let art = state.art(station, &self.live_radio.break_music());
         Some(NowPlaying {
             local: true,
             device_name: None,
@@ -2023,8 +2026,8 @@ impl App {
             album_name: String::new(),
             album_id: None,
             show_id: None,
-            art_url: Some(art.clone()),
-            art_small: Some(art),
+            art_url: art.art_url,
+            art_small: art.art_small,
             duration_ms: 0,
             position_ms: 0,
             playing: state.playing,
@@ -2037,6 +2040,7 @@ impl App {
             is_episode: false,
             resuming: false,
             live: true,
+            badge: art.badge,
         })
     }
 
@@ -2147,6 +2151,7 @@ impl App {
                 is_episode: track.is_episode,
                 resuming: false,
                 live: false,
+                badge: None,
             });
         }
         let remote = self.remote_fresh()?;
@@ -2245,6 +2250,7 @@ impl App {
             is_episode,
             resuming: false,
             live: false,
+            badge: None,
         })
     }
 
@@ -2286,6 +2292,7 @@ impl App {
             is_episode: false,
             resuming: true,
             live: false,
+            badge: None,
         })
     }
 
@@ -17674,6 +17681,7 @@ mod tests {
             is_episode: true,
             resuming: false,
             live: false,
+            badge: None,
         });
         assert_eq!(
             play(&mut app, in_progress, Some(600_000)),
@@ -31185,6 +31193,7 @@ mod tests {
                 is_episode: false,
                 resuming: false,
                 live: false,
+                badge: None,
             };
             app.frame_now = Some(now.clone());
 

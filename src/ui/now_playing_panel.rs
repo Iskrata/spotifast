@@ -52,6 +52,9 @@ fn song(app: &mut App, ui: &mut egui::Ui, now: &NowPlaying) {
             Icon::Music,
             Some(app.backend.art()),
         );
+        if let Some(badge) = &now.badge {
+            widgets::paint_cover_badge(ui, badge, cover, palette.panel, Some(app.backend.art()));
+        }
         if response
             .on_hover_cursor(egui::CursorIcon::PointingHand)
             .clicked()

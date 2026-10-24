@@ -1596,6 +1596,7 @@ mod tests {
             is_episode: false,
             resuming: false,
             live: false,
+            badge: None,
         }
     }
 

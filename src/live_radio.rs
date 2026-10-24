@@ -117,6 +117,45 @@ impl RadioState {
     }
 }
 
+/// The pictures the interface shows for the radio.
+#[derive(Debug, PartialEq, Eq)]
+pub struct RadioArt {
+    pub art_url: Option<String>,
+    pub art_small: Option<String>,
+    /// The station's logo on the cover's corner, while the cover is the
+    /// song's own.
+    pub badge: Option<String>,
+}
+
+impl RadioState {
+    /// The song's album cover with the station's logo as its badge, once
+    /// Spotify has matched the song; the logo alone before then and through
+    /// a break.
+    pub fn art(&self, station: &Station, music: &crate::break_music::BreakMusic) -> RadioArt {
+        let seed = crate::break_music::Seed {
+            artist: self.artist.clone(),
+            title: self.song.clone(),
+        };
+        let cover = (!self.ad_break && !self.song.is_empty())
+            .then(|| music.cover(&seed))
+            .flatten()
+            .filter(|cover| cover.art_url.is_some() || cover.art_small.is_some());
+        let logo = station.logo.to_string();
+        match cover {
+            Some(cover) => RadioArt {
+                art_url: cover.art_url,
+                art_small: cover.art_small,
+                badge: Some(logo),
+            },
+            None => RadioArt {
+                art_url: Some(logo.clone()),
+                art_small: Some(logo),
+                badge: None,
+            },
+        }
+    }
+}
+
 /// How the radio reaches the output, taken from the Spotify engine's config.
 pub struct OutputConfig {
     pub device: Option<String>,
@@ -913,6 +952,50 @@ mod tests {
     }
 
     /// One second of the station, as a constant level on both channels.
+    /// The song's own cover shows once Spotify has matched it, with the
+    /// station's logo on its corner; before then, and through a break, the
+    /// logo alone.
+    #[test]
+    fn the_song_on_air_shows_its_spotify_cover_badged_with_the_station() {
+        let music = crate::break_music::BreakMusic::default();
+        let mut state = RadioState {
+            artist: "Kerri Chandler, Troy Denari".into(),
+            song: "You Are In My System (Original Deluxe)".into(),
+            ..RadioState::default()
+        };
+        let logo_only = RadioArt {
+            art_url: Some(RADIO_NOVA.logo.into()),
+            art_small: Some(RADIO_NOVA.logo.into()),
+            badge: None,
+        };
+        assert_eq!(state.art(&RADIO_NOVA, &music), logo_only);
+
+        music.set_cover(
+            &crate::break_music::Seed {
+                artist: state.artist.clone(),
+                title: state.song.clone(),
+            },
+            crate::break_music::Cover {
+                art_url: Some("cover-640".into()),
+                art_small: Some("cover-64".into()),
+            },
+        );
+        assert_eq!(
+            state.art(&RADIO_NOVA, &music),
+            RadioArt {
+                art_url: Some("cover-640".into()),
+                art_small: Some("cover-64".into()),
+                badge: Some(RADIO_NOVA.logo.into()),
+            }
+        );
+
+        state.ad_break = true;
+        assert_eq!(state.art(&RADIO_NOVA, &music), logo_only);
+        state.ad_break = false;
+        state.song = "The Next Song".into();
+        assert_eq!(state.art(&RADIO_NOVA, &music), logo_only);
+    }
+
     fn station_second() -> Vec<f64> {
         vec![0.5; SAMPLE_RATE as usize * NUM_CHANNELS as usize]
     }

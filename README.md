@@ -54,7 +54,9 @@ The rest of this README is upstream's and describes upstream's builds.
   moved into the account menu.
 - **Radio Nova.** The sidebar's *Radio Nova* row plays the Bulgarian
   station live through the same output, equalizer and visualisers as
-  Spotify, with the song on air in the player bar. Advert breaks, from
+  Spotify, with the song on air in the player bar. Once Spotify matches
+  that song, its album cover shows in the bar and in Now playing, with
+  the station's logo in a small badge on its corner. Advert breaks, from
   the station's own advert cue until the next song, are replaced by
   Spotify's song radio for the song the station played last, crossfading
   in and out with the station. The music plays on a private player:

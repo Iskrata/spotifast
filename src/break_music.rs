@@ -8,6 +8,8 @@
 //! The radio names each song it puts on air ([`BreakMusic::seed`]); a task
 //! on the runtime finds the song on Spotify, resolves its radio, and loads
 //! the first of its songs paused, so a break starts with music at once.
+//! The song it finds also lends the radio its album cover
+//! ([`BreakMusic::cover`]).
 
 use std::collections::VecDeque;
 use std::sync::{Arc, Condvar, Mutex, PoisonError};
@@ -23,6 +25,7 @@ use librespot_playback::{NUM_CHANNELS, SAMPLE_RATE};
 use tokio::sync::watch;
 
 use crate::api::{ApiGateway, Operation};
+use crate::backend::Waker;
 
 /// How much decoded music waits for the radio to take it: half a second.
 const FEED_CAPACITY: usize = SAMPLE_RATE as usize * NUM_CHANNELS as usize / 2;
@@ -34,12 +37,21 @@ pub struct Seed {
     pub title: String,
 }
 
+/// The album cover of the song the station has on air, as Spotify has it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Cover {
+    pub art_url: Option<String>,
+    pub art_small: Option<String>,
+}
+
 /// The break music shared by the radio's stream thread, the Spotify engine
 /// that lends it a session, and the task that chooses its songs.
 pub struct BreakMusic {
     feed: Arc<Feed>,
     inner: Mutex<Inner>,
     seeds: watch::Sender<Option<Seed>>,
+    /// The latest seed's cover, once Spotify has matched its song.
+    cover: Mutex<Option<(Seed, Cover)>>,
 }
 
 #[derive(Default)]
@@ -74,6 +86,7 @@ impl Default for BreakMusic {
             feed: Arc::default(),
             inner: Mutex::default(),
             seeds: watch::Sender::new(None),
+            cover: Mutex::default(),
         }
     }
 }
@@ -144,6 +157,20 @@ impl BreakMusic {
         });
     }
 
+    /// The cover of `seed`'s song, when Spotify has matched it.
+    pub fn cover(&self, seed: &Seed) -> Option<Cover> {
+        self.cover
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .as_ref()
+            .filter(|(found, _)| found == seed)
+            .map(|(_, cover)| cover.clone())
+    }
+
+    pub(crate) fn set_cover(&self, seed: &Seed, cover: Cover) {
+        *self.cover.lock().unwrap_or_else(PoisonError::into_inner) = Some((seed.clone(), cover));
+    }
+
     /// Plays the next break with `songs`. A song already playing through a
     /// break plays on, and these follow it.
     fn prepare(&self, songs: Vec<SpotifyUri>) {
@@ -202,8 +229,9 @@ impl BreakMusic {
     }
 
     /// Chooses each seed's songs, the newest seed first, for as long as the
-    /// music is shared. Runs on the runtime.
-    pub async fn choose_songs(self: Arc<Self>, api: Arc<ApiGateway>) {
+    /// music is shared, and wakes `waker` when a seed's cover is found.
+    /// Runs on the runtime.
+    pub async fn choose_songs(self: Arc<Self>, api: Arc<ApiGateway>, waker: Waker) {
         let mut seeds = self.seeds.subscribe();
         let music = Arc::downgrade(&self);
         drop(self);
@@ -214,7 +242,13 @@ impl BreakMusic {
             let Some(session) = music.upgrade().and_then(|music| music.session()) else {
                 continue;
             };
-            match similar_songs(&api, &session, &seed).await {
+            let on_spotify = |cover: Cover| {
+                if let Some(music) = music.upgrade() {
+                    music.set_cover(&seed, cover);
+                    waker.wake();
+                }
+            };
+            match similar_songs(&api, &session, &seed, on_spotify).await {
                 Ok(songs) => {
                     log::info!(
                         "break music: {} songs like {} by {}",
@@ -256,19 +290,27 @@ impl Inner {
 }
 
 /// The songs of Spotify's radio for the station's song, or for its artist
-/// when Spotify does not have the song.
+/// when Spotify does not have the song. The song's cover goes to `on_spotify`
+/// as soon as the song is found.
 async fn similar_songs(
     api: &ApiGateway,
     session: &Session,
     seed: &Seed,
+    on_spotify: impl FnOnce(Cover),
 ) -> anyhow::Result<Vec<SpotifyUri>> {
     let client = api.client_for(Operation::CatalogSearch).await?;
     let query = format!("track:{} artist:{}", seed.title, seed.artist);
     let found = client.search(&query, &["track"]).await?;
-    let mut radio_seed = found
+    let track = found
         .tracks
-        .and_then(|tracks| tracks.items.into_iter().next())
-        .map(|track| track.uri);
+        .and_then(|tracks| tracks.items.into_iter().next());
+    if let Some(track) = &track {
+        on_spotify(Cover {
+            art_url: track.image(640).map(str::to_string),
+            art_small: track.image(64).map(str::to_string),
+        });
+    }
+    let mut radio_seed = track.map(|track| track.uri);
     if radio_seed.is_none() {
         let found = client.search(&seed.artist, &["artist"]).await?;
         radio_seed = found

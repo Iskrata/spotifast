@@ -170,6 +170,15 @@ fn now_playing_block(app: &mut App, ui: &mut egui::Ui, region: Rect, now: Option
         cover_rect,
         tokens::points(tokens::radius::ROW),
     );
+    if let Some(badge) = &now.badge {
+        super::widgets::paint_cover_badge(
+            &art_ui,
+            badge,
+            cover_rect,
+            palette.panel,
+            Some(app.backend.art()),
+        );
+    }
     let song = app.now_playing_item();
     let drag_sense = if song.is_some() {
         Sense::click_and_drag()

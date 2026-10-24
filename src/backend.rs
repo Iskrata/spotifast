@@ -1259,7 +1259,9 @@ impl Backend {
                         worker_commands,
                         waker,
                     );
-                    tokio::spawn(break_music.choose_songs(Arc::clone(&worker.api)));
+                    tokio::spawn(
+                        break_music.choose_songs(Arc::clone(&worker.api), worker.waker.clone()),
+                    );
                     if restore_sign_in {
                         worker.restore_session();
                     }

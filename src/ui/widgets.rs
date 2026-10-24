@@ -66,6 +66,29 @@ pub fn paint_cover(
     );
 }
 
+/// Paints `url` as a small round badge on the bottom-right corner of the
+/// cover in `cover`, ringed in `ring` so it stands off the art beneath.
+pub fn paint_cover_badge(
+    ui: &Ui,
+    url: &str,
+    cover: Rect,
+    ring: egui::Color32,
+    art: Option<&crate::images::ArtLoader>,
+) {
+    let diameter = (cover.width() * 0.4).clamp(14.0, 28.0);
+    let center = cover.right_bottom() - egui::vec2(diameter * 0.35, diameter * 0.35);
+    let rect = Rect::from_center_size(center, egui::Vec2::splat(diameter));
+    if !ui.is_rect_visible(rect) {
+        return;
+    }
+    let painter = ui.painter();
+    painter.circle_filled(center, diameter / 2.0 + 2.0, ring);
+    // Logos are drawn on white: a blank circle shows until one loads.
+    painter.circle_filled(center, diameter / 2.0, egui::Color32::WHITE);
+    let corner = CornerRadius::same((diameter / 2.0).min(127.0) as u8);
+    paint_cover_url(ui, CoverAt { url, rect, corner }, art, false);
+}
+
 /// Paints the requested cover, keeping a softened thumbnail visible until it
 /// is ready.
 pub(super) fn paint_cover_with_thumbnail(

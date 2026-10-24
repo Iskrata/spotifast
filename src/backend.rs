@@ -1243,6 +1243,7 @@ impl Backend {
         let worker_activity = Arc::clone(&activity);
         let worker_art = art.clone();
         let worker_commands = command_tx.clone();
+        let break_music = Arc::clone(&engine_config.break_music);
         let thread = std::thread::Builder::new()
             .name("spotifast-backend".to_string())
             .spawn(move || {
@@ -1258,6 +1259,7 @@ impl Backend {
                         worker_commands,
                         waker,
                     );
+                    tokio::spawn(break_music.choose_songs(Arc::clone(&worker.api)));
                     if restore_sign_in {
                         worker.restore_session();
                     }
@@ -8425,6 +8427,7 @@ mod authorization_tests {
             ProxyConfig::Off,
             crate::vis::AudioTap::new(),
             crate::eq::shared(),
+            Arc::default(),
         );
         let http = Http::new(reqwest::Client::new());
         let art = ArtLoader::new(http.clone(), runtime.handle().clone(), dirs.art_cache_dir());

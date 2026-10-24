@@ -1013,6 +1013,7 @@ impl App {
             applied_proxy.clone(),
             std::sync::Arc::clone(&tap),
             std::sync::Arc::clone(&eq),
+            std::sync::Arc::default(),
         );
         let live_radio = crate::live_radio::LiveRadio::new(
             &crate::live_radio::RADIO_NOVA,
@@ -1021,8 +1022,8 @@ impl App {
                 buffer_ms: engine_config.buffer_ms,
                 tap: std::sync::Arc::clone(&tap),
                 eq: std::sync::Arc::clone(&eq),
+                break_music: std::sync::Arc::clone(&engine_config.break_music),
             },
-            dirs.radio_breaks_dir(),
             settings.volume,
             waker.clone(),
         );
@@ -12273,6 +12274,7 @@ impl App {
                     self.applied_proxy.clone(),
                     std::sync::Arc::clone(&self.winamp.tap),
                     std::sync::Arc::clone(&self.winamp.eq),
+                    self.live_radio.break_music(),
                 );
                 self.backend.send(Command::RestartEngine(config));
                 if self.local_ready {
@@ -13718,10 +13720,12 @@ pub fn engine_config(
     proxy: crate::settings::ProxyConfig,
     tap: std::sync::Arc<crate::vis::AudioTap>,
     eq: crate::eq::SharedEq,
+    break_music: std::sync::Arc<crate::break_music::BreakMusic>,
 ) -> EngineConfig {
     EngineConfig {
         tap,
         eq,
+        break_music,
         device_name: settings.device_name.trim().to_string(),
         bitrate_kbps: settings.bitrate,
         normalisation: settings.normalisation,
@@ -29285,8 +29289,8 @@ mod tests {
                 buffer_ms: crate::sink::DEFAULT_BUFFER_MS,
                 tap: crate::vis::AudioTap::new(),
                 eq: crate::eq::shared(),
+                break_music: std::sync::Arc::default(),
             },
-            std::path::PathBuf::new(),
             app.settings.volume,
             Waker::default(),
         );

@@ -10,6 +10,7 @@ pub mod auth;
 pub mod autoscroll;
 pub mod backend;
 pub mod bidi;
+pub mod break_music;
 pub mod cast;
 pub mod credentials;
 #[cfg(any(test, feature = "demo"))]

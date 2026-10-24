@@ -67,6 +67,8 @@ pub struct EngineConfig {
     pub proxy: crate::settings::ProxyConfig,
     /// The folder a playlist's `spotify:local:` songs play from.
     pub local_files: Option<PathBuf>,
+    /// The live radio's break music, which plays on the engine's session.
+    pub break_music: Arc<crate::break_music::BreakMusic>,
 }
 
 impl EngineConfig {
@@ -398,6 +400,9 @@ pub struct Engine {
     /// The player came from a dropped session and still plays what that
     /// session left it, until something is loaded through this one.
     carrying: std::sync::atomic::AtomicBool,
+    break_music: Arc<crate::break_music::BreakMusic>,
+    /// This engine among every one the process connects, for the break music.
+    serial: u64,
 }
 
 impl Engine {
@@ -485,6 +490,10 @@ impl Engine {
         });
 
         let device_id = config.device_id();
+        static SERIAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let serial = SERIAL.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        config.break_music.attach(&session, serial);
+
         Ok(Self {
             player,
             spirc: Arc::new(spirc),
@@ -497,6 +506,8 @@ impl Engine {
             closing,
             audio,
             carrying: std::sync::atomic::AtomicBool::new(carrying),
+            break_music: Arc::clone(&config.break_music),
+            serial,
         })
     }
 
@@ -678,6 +689,7 @@ impl Engine {
             .store(true, std::sync::atomic::Ordering::SeqCst);
         let _ = self.spirc.shutdown();
         self.player.stop();
+        self.break_music.detach(self.serial);
     }
 
     /// Ends the session but leaves the player playing, for an engine that
@@ -1896,6 +1908,7 @@ mod tests {
             audio_cache_limit: None,
             proxy: crate::settings::ProxyConfig::Off,
             local_files: None,
+            break_music: Arc::default(),
         };
         let id = config.device_id();
         assert_eq!(id.len(), 40);

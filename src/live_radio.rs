@@ -55,6 +55,20 @@ pub struct Station {
     pub logo: &'static str,
 }
 
+impl Station {
+    /// The break music's seed for a song the station puts on air. The
+    /// station's own jingles are credited to the station and are no song:
+    /// music chosen by one has nothing to do with what the station plays.
+    fn seed(&self, artist: &str, title: &str) -> Option<crate::break_music::Seed> {
+        (!title.is_empty() && !artist.eq_ignore_ascii_case(self.name)).then(|| {
+            crate::break_music::Seed {
+                artist: artist.to_string(),
+                title: title.to_string(),
+            }
+        })
+    }
+}
+
 /// Radio Nova, Sofia: its website's 128 kbps AAC-LC stream.
 pub const RADIO_NOVA: Station = Station {
     name: "Radio Nova",
@@ -362,12 +376,10 @@ impl Radio {
         let before = state.clone();
         change(&mut state);
         if *state != before {
-            let seed = (state.song != before.song || state.artist != before.artist)
-                && !state.song.is_empty();
-            let seed = seed.then(|| crate::break_music::Seed {
-                artist: state.artist.clone(),
-                title: state.song.clone(),
-            });
+            let changed = state.song != before.song || state.artist != before.artist;
+            let seed = changed
+                .then(|| self.station.seed(&state.artist, &state.song))
+                .flatten();
             drop(state);
             if let Some(seed) = seed {
                 self.break_music.seed(seed);
@@ -521,7 +533,7 @@ impl Radio {
     /// already on air.
     fn spawn_cues(&self, url: reqwest::Url, pending: Pending, connection: Arc<AtomicBool>) {
         let http = self.cue_http.clone();
-        let mount = self.station.mount;
+        let station = self.station;
         let (stop, state, music, waker) = (
             Arc::clone(&self.stop),
             Arc::clone(&self.state),
@@ -535,7 +547,7 @@ impl Radio {
                 // The sideband first repeats the last song cue, which during
                 // a break joined late is the song's end: not the next song.
                 let mut repeated = None;
-                if let Some(on_air) = now_playing(&http, mount)
+                if let Some(on_air) = now_playing(&http, station.mount)
                     && !closed()
                 {
                     if on_air.between_songs {
@@ -546,7 +558,7 @@ impl Radio {
                             .push_back((0, Cue::Advert));
                         repeated = Some(on_air.song.clone());
                     }
-                    if show_on_air(&state, &music, on_air.song) {
+                    if show_on_air(&state, station, &music, on_air.song) {
                         waker.wake();
                     }
                 }
@@ -570,6 +582,7 @@ impl Radio {
 /// until it ends. Says whether anything changed.
 fn show_on_air(
     state: &Mutex<RadioState>,
+    station: &Station,
     music: &crate::break_music::BreakMusic,
     song: Cue,
 ) -> bool {
@@ -580,10 +593,13 @@ fn show_on_air(
     if !state.song.is_empty() {
         return false;
     }
-    state.artist.clone_from(&artist);
-    state.song.clone_from(&title);
+    let seed = station.seed(&artist, &title);
+    state.artist = artist;
+    state.song = title;
     drop(state);
-    music.seed(crate::break_music::Seed { artist, title });
+    if let Some(seed) = seed {
+        music.seed(seed);
+    }
     true
 }
 
@@ -739,7 +755,9 @@ fn now_playing(http: &reqwest::blocking::Client, mount: &str) -> Option<OnAir> {
 /// Reads the answer's latest two announcements, newest first. The station
 /// announces every song twice: as it starts and as it ends. An advert break
 /// comes after a song's end, or cuts a song short without one, and its own
-/// cue is only sent as it starts.
+/// cue is only sent as it starts. An announcement over for longer than any
+/// break says nothing of what is on air now: a presenter's show, say, which
+/// the station does not announce.
 fn on_air(body: &str, now_ms: u64) -> Option<OnAir> {
     let mut announcements = body.split("<nowplaying-info ").skip(1).filter_map(|entry| {
         let ms = |name| {
@@ -762,6 +780,14 @@ fn on_air(body: &str, now_ms: u64) -> Option<OnAir> {
         .next()
         .is_some_and(|before| before.song == latest.song);
     let overran = since > latest.length_ms.saturating_add(SEGUE.as_millis() as u64);
+    let over_for = if ended {
+        since
+    } else {
+        since.saturating_sub(latest.length_ms)
+    };
+    if over_for > MAX_AD_BREAK.as_millis() as u64 {
+        return None;
+    }
     Some(OnAir {
         between_songs: since > SEGUE.as_millis() as u64 && (ended || overran),
         song: latest.song,
@@ -966,6 +992,16 @@ mod tests {
             }),
             "the next break's music follows the song on air"
         );
+        drop(state);
+        radio.apply(Cue::Song {
+            artist: "Radio NOVA".into(),
+            title: "Just listen!".into(),
+        });
+        assert_eq!(
+            radio.break_music.seeded().map(|seed| seed.title),
+            Some("All I Want".into()),
+            "a jingle leaves the music chosen by the last song"
+        );
     }
 
     /// One second of the station, as a constant level on both channels.
@@ -1146,7 +1182,7 @@ mod tests {
             artist: "Astrid Suryanto".into(),
             title: "All I Want".into(),
         };
-        assert!(show_on_air(&state, &music, song()));
+        assert!(show_on_air(&state, &RADIO_NOVA, &music, song()));
         assert_eq!(state.lock().unwrap().song, "All I Want");
         assert_eq!(
             music.seeded(),
@@ -1156,7 +1192,39 @@ mod tests {
             })
         );
         // A cue that already named a song is not overwritten.
-        assert!(!show_on_air(&state, &music, song()));
+        assert!(!show_on_air(&state, &RADIO_NOVA, &music, song()));
+    }
+
+    #[test]
+    fn the_stations_own_jingle_never_chooses_the_break_music() {
+        // 25 October 2026: "Just listen!" by "Radio NOVA" chose Spotify's
+        // radio of an unrelated song, and the break played chalga.
+        let state = Mutex::new(RadioState::default());
+        let music = crate::break_music::BreakMusic::default();
+        let jingle = Cue::Song {
+            artist: "Radio NOVA".into(),
+            title: "Just listen!".into(),
+        };
+        assert!(show_on_air(&state, &RADIO_NOVA, &music, jingle));
+        assert_eq!(state.lock().unwrap().song, "Just listen!");
+        assert_eq!(music.seeded(), None);
+    }
+
+    #[test]
+    fn an_announcement_hours_old_says_nothing_of_what_is_on_air() {
+        // 25 October 2026: the last announcement was a 25 second jingle
+        // 4.6 hours before, and the evening show was muted as a break.
+        let start = 1_792_941_000;
+        let body = announcements(&[("Just listen!", start, "25.0417")]);
+        assert_eq!(on_air(&body, (start + 16_738) * 1000), None);
+        // Inside a break's length after it, it still marks one.
+        assert!(between_songs(&body, start + 120));
+        let (start, end) = (1_792_741_273, 1_792_741_472);
+        let body = announcements(&[
+            ("Feel What You Want", end, "385.8808"),
+            ("Feel What You Want", start, "385.8808"),
+        ]);
+        assert_eq!(on_air(&body, (end + 9 * 60) * 1000), None);
     }
 
     #[test]

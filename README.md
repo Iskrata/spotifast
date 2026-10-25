@@ -58,14 +58,16 @@ The rest of this README is upstream's and describes upstream's builds.
   that song, its album cover shows in the bar and in Now playing, with
   the station's logo in a small badge on its corner. Advert breaks, from
   the station's own advert cue until the next song, are replaced by
-  Spotify's song radio for the song the station played last, crossfading
+  Spotify's song radio for the last song the station played (its own
+  jingles do not count), crossfading
   in and out with the station. The music plays on a private player:
   your queue and Spotify Connect are untouched. It needs local playback
   to be signed in; without it, or when Spotify has neither the song nor
   its artist, the break is silent. The news stays on. Tuning in during a
   break, after one song has ended and before the next, starts with the
   music too, so a presenter talking between songs then may be covered
-  until the next song. Starting the radio
+  until the next song. A station that has announced nothing for longer
+  than a break is not taken to be in one. Starting the radio
   pauses Spotify; playing anything from Spotify stops it.
 - **Smaller changes.** New profiles start in the dark theme. On macOS a
   closed window stays in the Dock instead of the menu bar. The playlist

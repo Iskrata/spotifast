@@ -199,7 +199,10 @@ impl BreakMusic {
     /// A break started: the music plays into the feed.
     pub fn start(&self) {
         self.feed.open();
-        if let Some(attached) = &self.inner().player {
+        // With no song loaded yet, the songs start as they are found.
+        if let Some(attached) = &self.inner().player
+            && attached.loaded
+        {
             attached.player.play();
         }
     }

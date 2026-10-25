@@ -522,9 +522,10 @@ impl Radio {
     fn spawn_cues(&self, url: reqwest::Url, pending: Pending, connection: Arc<AtomicBool>) {
         let http = self.cue_http.clone();
         let mount = self.station.mount;
-        let (stop, state, waker) = (
+        let (stop, state, music, waker) = (
             Arc::clone(&self.stop),
             Arc::clone(&self.state),
+            Arc::clone(&self.break_music),
             self.waker.clone(),
         );
         let spawned = thread::Builder::new()
@@ -545,14 +546,8 @@ impl Radio {
                             .push_back((0, Cue::Advert));
                         repeated = Some(on_air.song.clone());
                     }
-                    if let Cue::Song { artist, title } = on_air.song {
-                        let mut state = state.lock().unwrap_or_else(PoisonError::into_inner);
-                        if state.song.is_empty() {
-                            state.artist = artist;
-                            state.song = title;
-                            drop(state);
-                            waker.wake();
-                        }
+                    if show_on_air(&state, &music, on_air.song) {
+                        waker.wake();
                     }
                 }
                 while !closed() {
@@ -568,6 +563,28 @@ impl Radio {
             log::warn!("live radio: could not read its cues: {error}");
         }
     }
+}
+
+/// Shows the song Triton says is on air until the first cue names one, and
+/// chooses the break music by it: a break joined late hears no song cue
+/// until it ends. Says whether anything changed.
+fn show_on_air(
+    state: &Mutex<RadioState>,
+    music: &crate::break_music::BreakMusic,
+    song: Cue,
+) -> bool {
+    let Cue::Song { artist, title } = song else {
+        return false;
+    };
+    let mut state = state.lock().unwrap_or_else(PoisonError::into_inner);
+    if !state.song.is_empty() {
+        return false;
+    }
+    state.artist.clone_from(&artist);
+    state.song.clone_from(&title);
+    drop(state);
+    music.seed(crate::break_music::Seed { artist, title });
+    true
 }
 
 /// Sets its flag when dropped: the stream connection has closed.
@@ -1119,6 +1136,27 @@ mod tests {
                 title: "Feel What You Want".into(),
             }
         );
+    }
+
+    #[test]
+    fn a_break_joined_late_chooses_its_music_by_the_song_it_followed() {
+        let state = Mutex::new(RadioState::default());
+        let music = crate::break_music::BreakMusic::default();
+        let song = || Cue::Song {
+            artist: "Astrid Suryanto".into(),
+            title: "All I Want".into(),
+        };
+        assert!(show_on_air(&state, &music, song()));
+        assert_eq!(state.lock().unwrap().song, "All I Want");
+        assert_eq!(
+            music.seeded(),
+            Some(crate::break_music::Seed {
+                artist: "Astrid Suryanto".into(),
+                title: "All I Want".into(),
+            })
+        );
+        // A cue that already named a song is not overwritten.
+        assert!(!show_on_air(&state, &music, song()));
     }
 
     #[test]

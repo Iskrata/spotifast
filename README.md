@@ -40,17 +40,19 @@ The rest of this README is upstream's and describes upstream's builds.
 - **Motion.** Side panels and the sidebar slide, pages fade in, menus and
   dialogs fade, the player bar cross-fades between songs, and hover feedback
   eases in.
-- **Accessibility switches.** Settings > Appearance has *Reduce motion* and
-  *Reduce transparency*. Both follow the macOS accessibility settings until
-  you change them.
-- **Now playing and Friend Activity.** A right panel shows the playing song,
-  the current lyric lines, an About the artist card, what is next in the
-  queue, and what the people you follow are listening to. You can unfollow
-  someone from there.
+- **Accessibility.** All of that motion follows the system's wish for less
+  motion (macOS, Windows and GNOME), as upstream's own animations do.
+  Settings > Appearance adds *Reduce transparency*, which follows the macOS
+  accessibility setting until you change it.
+- **Now playing above Listening activity.** While a song plays, upstream's
+  Listening activity panel is headed by it: the cover, title and artists,
+  the current lyric lines, an About the artist card and what is next in the
+  queue, above what the people you follow are listening to. It opens on
+  launch until you close it.
 - **A tidier interface.** Sizes, corners and timings are named design
   tokens. Icon buttons, Play buttons and text buttons each come in a few
-  fixed sizes. Lyrics, Queue, Friend Activity and Devices are toggled from
-  one group in the player bar. Settings, the Winamp mini player and MilkDrop
+  fixed sizes. Lyrics, Queue, Listening activity and Devices are toggled
+  from one group in the player bar. Settings, the Winamp mini player and MilkDrop
   moved into the account menu.
 - **Radio Nova.** The sidebar's *Radio Nova* row plays the Bulgarian
   station live through the same output, equalizer and visualisers as
@@ -69,10 +71,12 @@ The rest of this README is upstream's and describes upstream's builds.
   until the next song. A station that has announced nothing for longer
   than a break is not taken to be in one. Starting the radio
   pauses Spotify; playing anything from Spotify stops it.
-- **Smaller changes.** New profiles start in the dark theme. On macOS a
-  closed window stays in the Dock instead of the menu bar. The playlist
-  library and Made for you load over the playback session when the shared
-  Web API app is rate limited. The updater reads this fork's releases.
+- **Smaller changes.** New profiles start in the dark theme. On macOS there
+  is no menu-bar icon: a closed window stays in the Dock, and its icon
+  brings the window back. A search's playlists come from the playback
+  session, so they include Spotify's own playlists and your mixes even with
+  only a personal Spotify app. The player bar has no visualizer. The updater
+  reads this fork's releases.
 
 | | |
 |---|---|
@@ -81,7 +85,7 @@ The rest of this README is upstream's and describes upstream's builds.
 | ![Artist page in the light theme](docs/fork/artist-light.jpg) | ![Home with Reduce transparency on](docs/fork/reduce-transparency.jpg) |
 | Light theme | Reduce transparency: solid panels, same background |
 
-![Settings > Appearance with the album art background, Reduce motion and Reduce transparency switches](docs/fork/settings-appearance.jpg)
+![Settings > Appearance with the album art background and Reduce transparency switches](docs/fork/settings-appearance.jpg)
 
 **Getting it.** This fork publishes no builds yet, so build it from source as
 upstream describes below. On a Mac with a Developer ID certificate,

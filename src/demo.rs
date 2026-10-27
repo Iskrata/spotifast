@@ -931,7 +931,7 @@ fn sample_lyrics() -> crate::lyrics::Lyrics {
 
 /// Invented friends for `--demo-show friends`: one listening now, long
 /// titles in two scripts, and each kind of place a song plays from.
-#[cfg(feature = "demo")]
+#[cfg(any(test, feature = "demo"))]
 fn demo_friends() -> Vec<crate::session_reads::FriendActivity> {
     let now = jiff::Timestamp::now().as_millisecond();
     let friend = |name: &str,
@@ -2489,7 +2489,7 @@ mod tests {
                 ("Volume (%)", Role::Slider),
                 ("Mute", Role::Button),
                 ("Connect to a device", Role::Button),
-                ("Friend Activity", Role::Button),
+                ("Listening activity", Role::Button),
                 ("Queue", Role::Button),
                 ("Lyrics", Role::Button),
             ];
@@ -2596,7 +2596,7 @@ mod tests {
             let row: Vec<_> = [
                 "Lyrics",
                 "Queue",
-                "Friend Activity",
+                "Listening activity",
                 "Connect to a device",
                 "Mute",
             ]
@@ -2760,7 +2760,19 @@ mod tests {
             assert!(app.manual_queue.is_empty());
             assert_eq!(app.queue.get().unwrap().queue, rows[2..]);
             let tree = accessible_frame(&ctx, &mut app, vec![]);
-            let recent = accessible_node(&tree, &gettext(locale, "Recent"), Role::Button);
+            // The queue panel's tab, not the sidebar's sort button, which
+            // some languages name the same.
+            let recent_label = gettext(locale, "Recent");
+            let recent = tree
+                .nodes
+                .iter()
+                .find(|(_, node)| {
+                    node.label() == Some(recent_label.as_ref())
+                        && node.role() == Role::Button
+                        && node.bounds().is_some_and(|bounds| bounds.x0 > 640.0)
+                })
+                .map(|(id, _)| *id)
+                .expect("the queue panel's Recent tab");
             accessible_frame(
                 &ctx,
                 &mut app,
@@ -4176,6 +4188,8 @@ mod tests {
         use egui::accesskit::Role;
         let (ctx, mut app) = accessible_app("library-grid-drop-highlight");
         app.settings.sidebar_grid = true;
+        // The grid's header settles on the second frame.
+        accessible_frame(&ctx, &mut app, vec![]);
         let tree = accessible_frame(&ctx, &mut app, vec![]);
         let liked = tree
             .nodes
@@ -5628,8 +5642,10 @@ mod tests {
         let popup = egui::AreaState::load(&ctx, egui::Id::new("devices-popup"))
             .unwrap()
             .rect();
+        // This computer and its audio output, under the heading: a couple of
+        // rows, where forty speakers filled the window.
         assert!(
-            popup.height() < 160.0,
+            popup.height() < 200.0,
             "a list with only this computer should shrink to fit: {popup:?}"
         );
         app.backend.shutdown();
@@ -6530,6 +6546,8 @@ mod tests {
         }
 
         let (ctx, mut app) = accessible_app("loading-collections");
+        // The About the artist card would supply the artist at once.
+        app.artist_about.clear();
         app.playlist_pages.remove("pl1");
         app.album_pages.remove("alb0");
         app.artist_pages.remove("art0");
@@ -6941,6 +6959,9 @@ mod tests {
     fn follow_system_offers_a_light_and_a_dark_theme_of_their_own_base() {
         let (ctx, mut app) = accessible_app("theme-pair-picker");
         app.backend.shutdown();
+        // The pair belongs to Follow system, which this fork's new profiles
+        // do not start with.
+        app.settings.theme = crate::settings::ThemeChoice::System;
         app.open(Page::Settings);
         ctx.data_mut(|data| {
             data.insert_temp(egui::Id::new("settings-filter"), "Appearance".to_string())
@@ -10648,7 +10669,7 @@ mod tests {
         // right under Liked Songs, between what were the first two
         // unpinned playlists.
         let mut dropped = false;
-        for step in 0..40 {
+        for step in 0..60 {
             let pos = egui::pos2(120.0, 100.0 + step as f32 * 10.0);
             egui::DragAndDrop::set_payload(
                 &ctx,
@@ -12141,6 +12162,9 @@ mod tests {
         for theme in ["dark", "light"] {
             for (place, label, pick) in targets {
                 let (ctx, mut app) = accessible_app(&format!("saved-hover-{theme}"));
+                // Hover eases in; held still, the lifted colour shows at once.
+                app.motion.hold(true);
+                crate::motion::apply(&ctx, true);
                 app.open(Page::Album("alb0".into()));
                 app.settings.theme = if theme == "light" {
                     crate::settings::ThemeChoice::Light

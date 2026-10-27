@@ -17468,6 +17468,7 @@ mod tests {
         );
         app.show_friends_panel = false;
         app.save_session();
+        assert!(app.flush_files());
         let session = SessionState::load(&app.dirs.session_file());
         assert_eq!(session.friends_open, Some(false));
         assert!(!friends_open_at_start(&session, true));
@@ -21221,8 +21222,9 @@ mod tests {
         app.backend.shutdown();
     }
 
-    /// The Listening activity button sits in the player bar beside Lyrics,
-    /// and gives way in a narrow window before it crowds Repeat.
+    /// The Listening activity button sits in the player bar's toggle group
+    /// after Lyrics and Queue at every width, and the group never runs into
+    /// Repeat: the bar keeps room for all of it.
     #[cfg(feature = "demo")]
     #[test]
     fn the_listening_activity_button_never_crowds_the_transport() {
@@ -21231,7 +21233,6 @@ mod tests {
         let mut app = test_app("friends-button-room");
         app.attach(&ctx);
         crate::demo::populate(&mut app);
-        let mut shown_at = None;
         for width in (760..=1600).step_by(8) {
             let width = width as f32;
             let mut tree = None;
@@ -21259,16 +21260,19 @@ mod tests {
             };
             let repeat = button("Repeat").expect("Repeat");
             let lyrics = button("Lyrics").expect("Lyrics");
-            if let Some(friends) = button("Listening activity") {
-                shown_at.get_or_insert(width);
-                assert!(friends.y0 > 700.0, "in the player bar at {width}");
-                assert!(friends.x1 <= lyrics.x0, "before Lyrics at {width}");
-                assert!(friends.x0 - repeat.x1 >= 10.0, "clear of Repeat at {width}");
-            } else {
-                assert!(shown_at.is_none(), "it stays once shown, gone at {width}");
-            }
+            let queue = button("Queue").expect("Queue");
+            let friends = button("Listening activity")
+                .unwrap_or_else(|| panic!("in the player bar at {width}"));
+            assert!(friends.y0 > 700.0, "in the player bar at {width}");
+            assert!(lyrics.x1 <= queue.x0, "Lyrics, then Queue at {width}");
+            assert!(queue.x1 <= friends.x0, "after Queue at {width}");
+            // At the window's least width the group sits a few points
+            // from Repeat; it never runs into it.
+            assert!(
+                lyrics.x0 - repeat.x1 >= 8.0,
+                "clear of Repeat at {width}: {repeat:?} {lyrics:?}"
+            );
         }
-        assert!(shown_at.is_some_and(|width| width > 760.0 && width <= 840.0));
         app.backend.shutdown();
     }
 

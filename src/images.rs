@@ -755,11 +755,14 @@ fn hue(rgb: [u8; 3]) -> f32 {
     egui::ecolor::Hsva::from_srgb(rgb).h
 }
 
+/// The dominant colour of each quarter of a cover, in reading order.
+pub type Quarters = [[u8; 3]; 4];
+
 /// The palette of an album cover, as [`art_palette`] reads it, and the
 /// dominant colour of each quarter of it, in reading order, from one decode.
 /// The quarters keep the cover's layout, so a gradient built from them puts
 /// each colour roughly where the art has it.
-pub fn art_colors(bytes: &[u8]) -> Option<(Vec<[u8; 3]>, [[u8; 3]; 4])> {
+pub fn art_colors(bytes: &[u8]) -> Option<(Vec<[u8; 3]>, Quarters)> {
     let small = art_thumbnail(bytes)?;
     let palette = palette_of(&small);
     let accent = *palette.first()?;

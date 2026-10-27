@@ -4396,6 +4396,8 @@ mod tests {
     fn hovered_collection_shuffle_button_stays_green_while_on() {
         let ctx = egui::Context::default();
         theme::install(&ctx);
+        // Hover eases in; held still, the lifted colour shows at once.
+        crate::motion::apply(&ctx, true);
         let mut app = test_app();
         app.apply(Action::SetShuffle(true), &ctx);
         app.actions.clear();
